@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: mangai
+      POSTGRES_USER: mangai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+    ports:
+      - "5432:5432"
+    volumes:
+      - mangai_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mangai -d mangai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: development
+      DATABASE_URL: postgresql+psycopg://mangai:${POSTGRES_PASSWORD:-change-me}@postgres:5432/mangai
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080
+      DATA_MODE: demo
+      DATA_DIR: /app/data
+      MODEL_DIR: /app/models
+      LOG_LEVEL: INFO
+    ports:
+      - "8000:8000"
+    volumes:
+      - mangai_data:/app/data
+      - mangai_models:/app/models
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    depends_on:
+      - backend
+    environment:
+      VITE_API_BASE_URL: ""
+    ports:
+      - "8080:80"
+
+volumes:
+  mangai_pg:
+  mangai_data:
+  mangai_models:

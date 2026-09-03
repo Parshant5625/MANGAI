@@ -1,0 +1,9 @@
+{
+  "geological": ["sample_id", "latitude", "longitude", "elevation_m", "slope_deg", "aspect_deg", "depth_m", "formation", "mn_pct", "fe_pct", "sio2_pct", "ore_thickness_m", "is_manganese"],
+  "boreholes": ["borehole_id", "latitude", "longitude", "from_depth_m", "to_depth_m", "lithology", "mn_pct", "fe_pct", "sio2_pct"],
+  "satellite": ["sample_id", "latitude", "longitude", "blue_b2", "green_b3", "red_b4", "nir_b8", "swir_b11", "swir_b12", "ndvi", "ndwi", "swir_ratio", "bare_soil_index", "land_surface_temperature"],
+  "weather": ["date", "rainfall_mm", "soil_moisture", "temperature_c", "vegetation_index"],
+  "equipment": ["date", "equipment_id", "equipment_type", "capacity_tph", "operating_hours", "downtime_hours", "utilization", "maintenance"],
+  "blasting": ["date", "planned_blasts", "blasting_delay_hours", "delay_reason"],
+  "production": ["date", "production_mt", "target_mt", "production_gap_mt", "rainfall_mm", "downtime_hours", "blasting_delay_hours"]
+}

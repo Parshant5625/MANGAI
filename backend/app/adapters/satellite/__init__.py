@@ -1,0 +1,2 @@
+"""Satellite provider adapters."""
+

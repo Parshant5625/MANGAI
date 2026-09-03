@@ -4,6 +4,9 @@ __pycache__/
 .venv/
 venv/
 env/
+*.egg-info/
+dist/
+build/
 
 # Jupyter
 .ipynb_checkpoints/
@@ -15,18 +18,24 @@ env/
 data/raw/*
 data/processed/*
 data/synthetic/*
+!data/schemas/
+!data/schemas/**
 
-# Model files
-*.pkl
+# Model binaries
 *.pickle
 *.joblib
 *.h5
 *.pt
 *.pth
 
-# IDE
-.vscode/
+# Keep demo feature schemas
+!models/**/*.json
+!models/**/*.csv
 
-# OS
+# IDE / OS
+.vscode/
 .DS_Store
 Thumbs.db
+node_modules/
+frontend/dist/
+mangai_dev.db

@@ -1,0 +1,2 @@
+"""MANGAI backend application package."""
+
