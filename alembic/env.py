@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+from alembic import context
 from backend.app.core.config import get_settings
-from backend.app.db.base import Base
 from backend.app.db import models  # noqa: F401
+from backend.app.db.base import Base
 
 config = context.config
 if config.config_file_name is not None:
@@ -16,6 +16,7 @@ if config.config_file_name is not None:
 settings = get_settings()
 config.set_main_option("sqlalchemy.url", settings.database_url)
 target_metadata = Base.metadata
+render_as_batch = settings.database_url.startswith("sqlite")
 
 
 def run_migrations_offline() -> None:
@@ -25,6 +26,7 @@ def run_migrations_offline() -> None:
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
         compare_type=True,
+        render_as_batch=render_as_batch,
     )
     with context.begin_transaction():
         context.run_migrations()
@@ -37,7 +39,12 @@ def run_migrations_online() -> None:
         poolclass=pool.NullPool,
     )
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata, compare_type=True)
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            compare_type=True,
+            render_as_batch=render_as_batch,
+        )
         with context.begin_transaction():
             context.run_migrations()
 

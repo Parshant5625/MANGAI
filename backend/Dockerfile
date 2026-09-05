@@ -10,6 +10,7 @@ COPY ml ./ml
 COPY scripts ./scripts
 COPY alembic ./alembic
 COPY alembic.ini ./
+COPY data ./data
 COPY models ./models
 
 RUN pip install --no-cache-dir -e .

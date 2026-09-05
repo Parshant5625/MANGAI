@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from functools import lru_cache
 from pathlib import Path
 
@@ -7,6 +8,7 @@ import pandas as pd
 
 from backend.app.core.config import get_settings
 
+logger = logging.getLogger(__name__)
 
 BOUNDARY_NOTICE = (
     "DEMO / SYNTHETIC DATA. MANGAI is a decision-support prototype until validated "
@@ -23,8 +25,8 @@ class DemoDataStore:
         self.synthetic_dir = self.data_dir / "synthetic"
         self.processed_dir = self.data_dir / "processed"
 
-    def ensure_demo_data(self) -> None:
-        required = [
+    def required_demo_paths(self) -> list[Path]:
+        return [
             self.synthetic_dir / "geological.csv",
             self.synthetic_dir / "satellite_features.csv",
             self.synthetic_dir / "production.csv",
@@ -32,46 +34,58 @@ class DemoDataStore:
             self.synthetic_dir / "weather.csv",
             self.synthetic_dir / "blasting.csv",
         ]
+
+    def demo_data_available(self) -> bool:
+        return all(path.exists() for path in self.required_demo_paths())
+
+    def ensure_demo_data(self) -> None:
+        required = self.required_demo_paths()
         if all(path.exists() for path in required):
             return
         from ml.generate_data import main as generate_demo_data
 
-        generate_demo_data()
+        logger.info("Generating missing demo datasets in %s", self.synthetic_dir)
+        try:
+            generate_demo_data()
+        except Exception:
+            logger.exception("Demo data generation failed")
+            raise
 
-    def read_csv(self, relative_path: str, parse_dates: list[str] | None = None) -> pd.DataFrame:
+    def read_csv(self, name: str, parse_dates: list[str] | None = None) -> pd.DataFrame:
         self.ensure_demo_data()
-        path = self.root / relative_path
+        path = self.synthetic_dir / name
         if not path.exists():
+            logger.warning("Required demo dataset not found: %s", path)
             raise FileNotFoundError(f"Required demo dataset not found: {path}")
         return pd.read_csv(path, parse_dates=parse_dates)
 
     @lru_cache(maxsize=1)
     def geological(self) -> pd.DataFrame:
-        return self.read_csv("data/synthetic/geological.csv")
+        return self.read_csv("geological.csv")
 
     @lru_cache(maxsize=1)
     def satellite(self) -> pd.DataFrame:
-        return self.read_csv("data/synthetic/satellite_features.csv")
+        return self.read_csv("satellite_features.csv")
 
     @lru_cache(maxsize=1)
     def boreholes(self) -> pd.DataFrame:
-        return self.read_csv("data/synthetic/boreholes.csv")
+        return self.read_csv("boreholes.csv")
 
     @lru_cache(maxsize=1)
     def production(self) -> pd.DataFrame:
-        return self.read_csv("data/synthetic/production.csv", parse_dates=["date"]).sort_values("date")
+        return self.read_csv("production.csv", parse_dates=["date"]).sort_values("date")
 
     @lru_cache(maxsize=1)
     def equipment(self) -> pd.DataFrame:
-        return self.read_csv("data/synthetic/equipment.csv", parse_dates=["date"]).sort_values("date")
+        return self.read_csv("equipment.csv", parse_dates=["date"]).sort_values("date")
 
     @lru_cache(maxsize=1)
     def weather(self) -> pd.DataFrame:
-        return self.read_csv("data/synthetic/weather.csv", parse_dates=["date"]).sort_values("date")
+        return self.read_csv("weather.csv", parse_dates=["date"]).sort_values("date")
 
     @lru_cache(maxsize=1)
     def blasting(self) -> pd.DataFrame:
-        return self.read_csv("data/synthetic/blasting.csv", parse_dates=["date"]).sort_values("date")
+        return self.read_csv("blasting.csv", parse_dates=["date"]).sort_values("date")
 
     @lru_cache(maxsize=1)
     def reserve_predictions(self) -> pd.DataFrame:
@@ -123,4 +137,3 @@ def demo_envelope() -> dict[str, object]:
         "synthetic_data": settings.data_mode == "demo",
         "boundary_notice": BOUNDARY_NOTICE,
     }
-

@@ -89,36 +89,64 @@ PostgreSQL Database + Model Registry
 ### Prerequisites
 - Python 3.11+
 - Node.js 18+
-- PostgreSQL 16+ (or use Docker)
+- PostgreSQL 16+ (only required for `DATA_MODE=live`; not needed for demo mode)
 
-### Quick Start
+### Local Development
 
-#### 1. Clone and Setup
+These steps assume you are in the project root (`MANGAI/`).
 
-```bash
-git clone <repository-url>
-cd MANGAI
-```
-
-#### 2. Backend Setup
+#### 1. Create virtual environment
 
 ```bash
-# Create virtual environment
 python -m venv backend/.venv
-source backend/.venv/bin/activate  # On Windows: backend\.venv\Scripts\activate
-
-# Install dependencies
-pip install -r backend/requirements.txt
-
-# Copy environment configuration
-cp .env.example .env
-# Edit .env with your settings
-
-# Initialize database and seed demo data
-python scripts/seed_demo.py
+source backend/.venv/bin/activate        # Linux / macOS
+# Windows (PowerShell):
+# backend\.venv\Scripts\Activate.ps1
 ```
 
-#### 3. Frontend Setup
+#### 2. Install dependencies
+
+```bash
+pip install -r backend/requirements.txt
+```
+
+#### 3. Configure environment
+
+```bash
+cp .env.example .env
+```
+
+By default `DATA_MODE=demo`, which requires no external services. See [Configuration](#configuration) for `DATA_MODE=live`.
+
+#### 4. Seed demo data
+
+```bash
+python scripts/seed_demo.py --skip-train
+```
+
+This generates the offline synthetic datasets and initializes the database. Use `--skip-train` to avoid training ML models (models are optional in demo mode).
+
+#### 5. Run migrations
+
+```bash
+alembic upgrade head
+```
+
+Note: `scripts/seed_demo.py` already runs migrations. Run this step directly when applying migrations without reseeding.
+
+#### 6. Start backend
+
+```bash
+uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+The API is available at:
+- API base: http://localhost:8000
+- API docs (Swagger): http://localhost:8000/docs
+- Health: http://localhost:8000/health
+- Readiness: http://localhost:8000/ready
+
+#### 7. Start frontend
 
 ```bash
 cd frontend
@@ -126,25 +154,36 @@ npm install
 npm run dev
 ```
 
-#### 4. Access the Application
+Frontend: http://localhost:5173
 
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:8000
-- API Docs: http://localhost:8000/docs
+#### 8. Run tests
+
+```bash
+pytest
+```
+
+Run a single suite:
+
+```bash
+pytest tests/backend -q
+pytest tests/ml -q
+pytest tests/integration -q
+```
+
+Lint:
+
+```bash
+ruff check .
+```
 
 ---
 
-## Docker Deployment
+## Docker
+
+Build and start all services (PostgreSQL, backend, frontend):
 
 ```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
+docker compose up --build
 ```
 
 Services:
@@ -152,13 +191,12 @@ Services:
 - Backend API: port 8000
 - Frontend: port 8080
 
----
+The backend container seeds demo data on startup, so `DATA_MODE=demo` works without internet access. To rebuild from scratch:
 
-## API Endpoints
-
-### Health & Status
-- `GET /health` - Health check
-- `GET /ready` - Readiness check (database, models)
+```bash
+docker compose down -v
+docker compose up --build
+```
 
 ### Overview
 - `GET /api/v1/overview` - Executive KPIs
@@ -291,12 +329,55 @@ Key environment variables (see `.env.example` for full list):
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `APP_ENV` | Environment (development/production) | development |
-| `DATABASE_URL` | PostgreSQL connection string | sqlite:///./mangai_dev.db |
-| `DATA_MODE` | Data mode (demo/file/external) | demo |
+| `DATABASE_URL` | Database connection string | sqlite:///./mangai_dev.db |
+| `DATA_MODE` | Data mode: `demo` or `live` | demo |
 | `MODEL_DIR` | Path to model artifacts | models |
 | `DATA_DIR` | Path to data directory | data |
-| `CORS_ORIGINS` | Allowed CORS origins | http://localhost:5173 |
-| `LOG_LEVEL` | Logging level | INFO |
+| `CORS_ORIGINS` | Comma-separated allowed CORS origins | http://localhost:5173,http://127.0.0.1:5173 |
+| `LOG_LEVEL` | Logging level (DEBUG/INFO/WARNING/ERROR) | INFO |
+
+### DATA_MODE=demo
+
+Default mode. Uses synthetic datasets shipped in `data/synthetic/`. No external services, internet connection, or ML model artifacts are required. The database defaults to a local SQLite file. This is the recommended mode for local development and demos.
+
+### DATA_MODE=live
+
+Production-intended mode. Requires:
+- A reachable PostgreSQL database (`DATABASE_URL`)
+- Trained ML model artifacts under `MODEL_DIR`
+- Real operational data
+
+In live mode, endpoints that need ML inference return `503 MODEL_UNAVAILABLE` when model artifacts are missing, instead of falling back to demo heuristics.
+
+### Database configuration
+
+- **Demo / local development:** SQLite (default). Set `DATABASE_URL=sqlite:///./mangai_dev.db`.
+- **Docker / production:** PostgreSQL. Set `DATABASE_URL=postgresql+psycopg://mangai:<password>@postgres:5432/mangai`.
+
+Apply migrations with:
+
+```bash
+alembic upgrade head
+```
+
+### Health & readiness endpoints
+
+- `GET /health` — Lightweight liveness check. Returns `{"status": "healthy", "service": "mangai-api"}`.
+- `GET /ready` — Readiness check verifying database and dependencies. Returns structured status:
+
+```json
+{
+  "status": "ready",
+  "database": true,
+  "data_mode": "demo",
+  "models": {
+    "reserve_prospectivity": true,
+    "production_forecast": true
+  }
+}
+```
+
+`status` is `"ready"` when all required dependencies are available, otherwise `"degraded"`. In demo mode model artifacts are not required; in live mode they are.
 
 ---
 

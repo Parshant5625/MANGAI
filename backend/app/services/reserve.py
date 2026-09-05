@@ -1,22 +1,25 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from backend.app.core.config import get_settings
+from backend.app.core.errors import ModelUnavailableError
 from backend.app.services.demo_data import DemoDataStore, demo_envelope, heuristic_prospectivity
+from backend.app.services.model_artifacts import reserve_prospectivity_available
 from ml.reserve.explain import explain_row
 from ml.reserve.features import ensure_spectral_indices
 from ml.reserve.inference import maybe_predict_regressor, predict_prospectivity_frame
 from ml.reserve.resource_estimator import estimate_resource_potential
 
-
 CELL_AREA_M2 = 10_000.0
 DENSITY_T_PER_M3 = 3.6
 _FRAME_CACHE: dict[tuple[str, float], pd.DataFrame] = {}
+logger = logging.getLogger(__name__)
 
 
 class ReserveService:
@@ -32,9 +35,13 @@ class ReserveService:
         stamps = []
         for path in [
             model_dir / "reserve" / "prospectivity_xgboost.json",
+            model_dir / "reserve" / "prospectivity_xgboost_features.pkl",
             model_dir / "reserve_xgboost.json",
+            model_dir / "reserve_features.pkl",
             model_dir / "reserve" / "grade_xgboost.json",
+            model_dir / "reserve" / "grade_xgboost_features.pkl",
             model_dir / "reserve" / "thickness_xgboost.json",
+            model_dir / "reserve" / "thickness_xgboost_features.pkl",
             self.settings.resolved_data_dir / "processed" / "reserve_predictions.csv",
         ]:
             stamps.append(path.stat().st_mtime if path.exists() else 0.0)
@@ -56,7 +63,13 @@ class ReserveService:
             scored = predict_prospectivity_frame(df, self._model_dir())
             df["manganese_probability"] = scored["manganese_probability"]
             df["prospectivity_class"] = scored["prospectivity_class"]
-        except FileNotFoundError:
+        except Exception as exc:
+            logger.warning("Reserve prospectivity model unavailable; using demo heuristic fallback: %s", exc)
+            if self.settings.require_model_artifacts:
+                raise ModelUnavailableError(
+                    "Reserve prospectivity model is not available.",
+                    details={"model": "reserve_prospectivity"},
+                ) from exc
             df["manganese_probability"] = heuristic_prospectivity(df)
             df["prospectivity_class"] = pd.cut(
                 df["manganese_probability"],
@@ -93,6 +106,22 @@ class ReserveService:
         support = np.minimum(1.0, 0.55 + np.abs(probability - 0.5) * 0.8)
         spectral_completeness = 1 - df[["blue_b2", "green_b3", "red_b4", "nir_b8", "swir_b11", "swir_b12"]].isna().mean(axis=1)
         return pd.Series((support * 0.7 + spectral_completeness * 0.3).clip(0.35, 0.95), index=df.index).round(2)
+
+    def _parse_bbox(self, bbox: str) -> list[float]:
+        try:
+            values = [float(part.strip()) for part in bbox.split(",")]
+        except ValueError as exc:
+            raise ValueError("bbox must contain numeric min_lon,min_lat,max_lon,max_lat") from exc
+        if len(values) != 4:
+            raise ValueError("bbox must contain min_lon,min_lat,max_lon,max_lat")
+        min_lon, min_lat, max_lon, max_lat = values
+        if not (-180 <= min_lon <= 180 and -180 <= max_lon <= 180):
+            raise ValueError("bbox longitude values must be between -180 and 180")
+        if not (-90 <= min_lat <= 90 and -90 <= max_lat <= 90):
+            raise ValueError("bbox latitude values must be between -90 and 90")
+        if min_lon >= max_lon or min_lat >= max_lat:
+            raise ValueError("bbox minimum coordinates must be smaller than maximum coordinates")
+        return values
 
     def _resource_payload(self, probability: float, thickness_m: float, confidence: float, seed_key: str) -> dict[str, Any]:
         seed = int(hashlib.sha256(seed_key.encode("utf-8")).hexdigest()[:8], 16)
@@ -167,12 +196,11 @@ class ReserveService:
         min_probability: float | None = None,
         limit: int = 500,
     ) -> dict[str, Any]:
-        df = self._base_frame()
         bbox_values: list[float] | None = None
         if bbox:
-            bbox_values = [float(part) for part in bbox.split(",")]
-            if len(bbox_values) != 4:
-                raise ValueError("bbox must contain min_lon,min_lat,max_lon,max_lat")
+            bbox_values = self._parse_bbox(bbox)
+        df = self._base_frame()
+        if bbox_values:
             min_lon, min_lat, max_lon, max_lat = bbox_values
             df = df[
                 (df["longitude"] >= min_lon)
@@ -271,6 +299,12 @@ class ReserveService:
         }
 
     def predict(self, payload: dict[str, Any]) -> dict[str, Any]:
+        if self.settings.require_model_artifacts and not reserve_prospectivity_available(self.settings):
+            logger.warning("Reserve prediction requested in live mode without model artifacts")
+            raise ModelUnavailableError(
+                "Reserve prospectivity model is not available.",
+                details={"model": "reserve_prospectivity"},
+            )
         df = pd.DataFrame([payload])
         df["sample_id"] = "API-RESERVE-0001"
         df = ensure_spectral_indices(df)
@@ -279,7 +313,13 @@ class ReserveService:
             df["manganese_probability"] = scored["manganese_probability"]
             df["prospectivity_class"] = scored["prospectivity_class"]
             version = "reserve-xgb-2026.09.001"
-        except FileNotFoundError:
+        except Exception as exc:
+            logger.warning("Reserve prediction model unavailable; using demo heuristic fallback: %s", exc)
+            if self.settings.require_model_artifacts:
+                raise ModelUnavailableError(
+                    "Reserve prospectivity model is not available.",
+                    details={"model": "reserve_prospectivity"},
+                ) from exc
             df["manganese_probability"] = heuristic_prospectivity(df)
             df["prospectivity_class"] = pd.cut(
                 df["manganese_probability"],

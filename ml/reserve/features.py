@@ -6,7 +6,6 @@ import pandas as pd
 
 from ml.common.preprocessing import one_hot_align
 
-
 RESERVE_NUMERICAL_FEATURES = [
     "elevation_m",
     "slope_deg",

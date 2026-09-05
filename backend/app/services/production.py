@@ -1,16 +1,21 @@
 from __future__ import annotations
 
+import logging
 import math
 from typing import Any
 
 import pandas as pd
 
 from backend.app.core.config import get_settings
+from backend.app.core.errors import ModelUnavailableError
 from backend.app.services.demo_data import DemoDataStore, demo_envelope
+from backend.app.services.model_artifacts import production_forecast_available
 from ml.production.explain import explain_production_latest
 from ml.production.forecast import naive_rolling_forecast, xgb_daily_forecast, xgb_horizon_forecast
-from ml.risk.shortfall import shortfall_probability as calibrated_shortfall
 from ml.risk.shortfall import severity as risk_severity
+from ml.risk.shortfall import shortfall_probability as calibrated_shortfall
+
+logger = logging.getLogger(__name__)
 
 
 class ProductionService:
@@ -40,6 +45,12 @@ class ProductionService:
 
     def forecast(self, site_id: str | None = None, horizon: int = 7) -> dict[str, Any]:
         horizon = max(1, min(int(horizon), 30))
+        if self.settings.require_model_artifacts and not production_forecast_available(self.settings):
+            logger.warning("Production forecast requested in live mode without model artifacts")
+            raise ModelUnavailableError(
+                "Production forecast model is not available.",
+                details={"model": "production_forecast"},
+            )
         df = self._frame()
         state = self._driver_state(df)
         latest_date = pd.Timestamp(df["date"].max())
@@ -49,7 +60,16 @@ class ProductionService:
         downtime_penalty = max(0.0, state["downtime_7d"] - state["downtime_7d_baseline"]) * 42.0
         blast_penalty = max(0.0, state["blasting_delay_7d"] - state["blasting_delay_7d_baseline"]) * 65.0
         momentum = (state["production_mean_7"] - state["production_mean_28"]) * 0.35
-        xgb_daily = xgb_daily_forecast(df, self.settings.resolved_model_dir)
+        try:
+            xgb_daily = xgb_daily_forecast(df, self.settings.resolved_model_dir)
+        except Exception as exc:
+            logger.warning("Production model loading or inference failed; using demo baseline fallback: %s", exc)
+            if self.settings.require_model_artifacts:
+                raise ModelUnavailableError(
+                    "Production forecast model is not available.",
+                    details={"model": "production_forecast"},
+                ) from exc
+            xgb_daily = None
         daily_forecast = (
             xgb_daily if xgb_daily is not None else daily_baseline + momentum - rain_penalty - downtime_penalty - blast_penalty
         )
@@ -57,7 +77,16 @@ class ProductionService:
             "production-xgb-2026.09.001" if xgb_daily is not None else "production-demo-chronological-baseline-001"
         )
         target_daily = float(df.tail(28)["target_mt"].mean())
-        horizon_series = xgb_horizon_forecast(df, self.settings.resolved_model_dir, horizon)
+        try:
+            horizon_series = xgb_horizon_forecast(df, self.settings.resolved_model_dir, horizon)
+        except Exception as exc:
+            logger.warning("Production horizon model inference failed; using demo baseline series: %s", exc)
+            if self.settings.require_model_artifacts:
+                raise ModelUnavailableError(
+                    "Production forecast model is not available.",
+                    details={"model": "production_forecast"},
+                ) from exc
+            horizon_series = None
         if horizon_series:
             forecast_mt = float(sum(item["forecast_mt"] for item in horizon_series))
             target_mt = float(sum(item["target_mt"] for item in horizon_series))

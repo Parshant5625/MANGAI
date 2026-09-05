@@ -1,10 +1,10 @@
 """Tests for backend services."""
 
-from backend.app.services.reserve import ReserveService
+from backend.app.services.data_quality import DataQualityService
+from backend.app.services.operations import OperationsService
 from backend.app.services.production import ProductionService
 from backend.app.services.recommendations import RecommendationService
-from backend.app.services.operations import OperationsService
-from backend.app.services.data_quality import DataQualityService
+from backend.app.services.reserve import ReserveService
 
 
 def test_reserve_service_prospectivity(demo_store):

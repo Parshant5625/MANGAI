@@ -39,6 +39,7 @@ include = ["backend*", "ml*", "scripts*"]
 testpaths = ["tests"]
 pythonpath = ["."]
 filterwarnings = ["ignore::DeprecationWarning"]
+addopts = "-ra --basetemp=.pytest-tmp"
 
 [tool.ruff]
 line-length = 120

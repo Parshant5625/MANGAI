@@ -8,7 +8,6 @@ from backend.app.services.operations import OperationsService
 from backend.app.services.production import ProductionService
 from backend.app.services.reserve import ReserveService
 
-
 PRIORITY_ORDER = {"CRITICAL": 4, "HIGH": 3, "MEDIUM": 2, "LOW": 1}
 
 

@@ -1,7 +1,7 @@
 import os
-import pandas as pd
-import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
+import pandas as pd
 
 BASE_DIR = os.path.abspath(
     os.path.join(

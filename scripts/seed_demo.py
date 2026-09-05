@@ -2,14 +2,22 @@ from __future__ import annotations
 
 import argparse
 import os
-from pathlib import Path
 
-from backend.app.core.config import get_settings
-from backend.app.db.base import Base
-from backend.app.db.session import SessionLocal, engine
+from alembic.config import Config
+
+from alembic import command
+from backend.app.core.config import Settings, get_settings
 from backend.app.db import models as _models  # noqa: F401
+from backend.app.db.session import SessionLocal
 from backend.app.repositories.seed import seed_demo_database
 from backend.app.services.demo_data import DemoDataStore
+
+
+def run_migrations(settings: Settings) -> None:
+    alembic_cfg = Config(str(settings.project_root / "alembic.ini"))
+    alembic_cfg.set_main_option("script_location", str(settings.project_root / "alembic"))
+    alembic_cfg.set_main_option("sqlalchemy.url", settings.database_url)
+    command.upgrade(alembic_cfg, "head")
 
 
 def main() -> None:
@@ -22,7 +30,7 @@ def main() -> None:
     settings = get_settings()
     store = DemoDataStore()
     store.ensure_demo_data()
-    Base.metadata.create_all(bind=engine)
+    run_migrations(settings)
     with SessionLocal() as session:
         site_id = seed_demo_database(session, store=store)
     print(f"Seeded demo site {site_id} into {settings.database_url}")

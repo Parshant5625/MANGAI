@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC
 
 import pandas as pd
 from sqlalchemy.orm import Session

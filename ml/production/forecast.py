@@ -7,7 +7,7 @@ import joblib
 import pandas as pd
 from xgboost import XGBRegressor
 
-from ml.production.features import FEATURE_COLUMNS, build_daily_features
+from ml.production.features import build_daily_features
 
 
 def naive_rolling_forecast(production: pd.DataFrame, horizon_days: int = 7, window: int = 28) -> float:

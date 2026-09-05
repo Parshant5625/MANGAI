@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from datetime import UTC, datetime
 from typing import Any
 
 from backend.app.core.config import get_settings
 from backend.app.services.demo_data import DemoDataStore, demo_envelope
+from backend.app.services.model_artifacts import reserve_prospectivity_available
 
 
 class ModelRegistryService:
@@ -36,6 +37,13 @@ class ModelRegistryService:
     def _fallback_catalog(self) -> list[dict[str, Any]]:
         metrics_path = self.settings.resolved_model_dir / "reserve_metrics.json"
         metrics = json.loads(metrics_path.read_text(encoding="utf-8")) if metrics_path.exists() else {"status": "missing"}
+        artifact_path = self.settings.resolved_model_dir / "reserve_xgboost.json"
+        created_at = (
+            datetime.fromtimestamp(artifact_path.stat().st_mtime, UTC).isoformat()
+            if artifact_path.exists()
+            else datetime.fromtimestamp(0, UTC).isoformat()
+        )
+        available = reserve_prospectivity_available(self.settings)
         return [
             {
                 "model_name": "reserve_prospectivity",
@@ -46,8 +54,8 @@ class ModelRegistryService:
                 "feature_schema_hash": "unhashed",
                 "metrics": metrics,
                 "artifact_path": "models/reserve_xgboost.json",
-                "created_at": "",
-                "status": "candidate",
-                "notes": "Synthetic-data model; not field-validated.",
+                "created_at": created_at,
+                "status": "available" if available else "missing",
+                "notes": "Synthetic-data model; not field-validated." if available else "Model artifact is not available.",
             }
         ]

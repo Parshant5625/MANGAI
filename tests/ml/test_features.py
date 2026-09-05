@@ -1,6 +1,6 @@
+
 from ml.common.preprocessing import spatial_block_id
 from ml.production.features import FEATURE_COLUMNS, build_daily_features
-import pandas as pd
 
 
 def test_spatial_blocks_keep_groups(demo_store):

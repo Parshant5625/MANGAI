@@ -9,7 +9,6 @@ import pandas as pd
 from backend.app.core.config import get_settings
 from backend.app.services.demo_data import DemoDataStore, demo_envelope
 
-
 REQUIRED_COLUMNS = {
     "geological": {"sample_id", "latitude", "longitude", "elevation_m", "slope_deg", "aspect_deg", "depth_m", "formation"},
     "satellite_features": {"sample_id", "latitude", "longitude", "blue_b2", "green_b3", "red_b4", "nir_b8", "swir_b11", "swir_b12"},

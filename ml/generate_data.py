@@ -1,8 +1,9 @@
 import os
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+from backend.app.core.config import get_settings
 
 # ============================================================
 # CONFIGURATION
@@ -10,8 +11,8 @@ import pandas as pd
 
 np.random.seed(42)
 
-ROOT = Path(__file__).resolve().parents[1]
-OUTPUT_DIR = ROOT / "data" / "synthetic"
+SETTINGS = get_settings()
+OUTPUT_DIR = SETTINGS.resolved_data_dir / "synthetic"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 COMPACT = os.environ.get("MANGAI_COMPACT_DATA") == "1"
 
@@ -127,7 +128,6 @@ def generate_satellite_data(geological_df):
 
     n = len(geological_df)
 
-    mn = geological_df["mn_pct"].values
     manganese = geological_df["is_manganese"].values
 
     # Spectral bands
@@ -501,8 +501,6 @@ def generate_production_data(
 ):
 
     print("Generating production data...")
-
-    dates = weather_df["date"]
 
     # Daily aggregate equipment information
     equipment_daily = (
