@@ -1,41 +1,100 @@
+# =========================================================
 # Python
+# =========================================================
 __pycache__/
+**/__pycache__/
 *.py[cod]
+*.pyo
+
 .venv/
+**/.venv/
 venv/
 env/
 *.egg-info/
-dist/
-build/
 
+# Python tooling
+.pytest_cache/
+**/.pytest_cache/
+.ruff_cache/
+**/.ruff_cache/
+.mypy_cache/
+**/.mypy_cache/
+
+# =========================================================
 # Jupyter
+# =========================================================
 .ipynb_checkpoints/
 
+# =========================================================
 # Environment / secrets
+# =========================================================
 .env
+.env.*
+!.env.example
 
+# =========================================================
+# Node / Frontend
+# =========================================================
+node_modules/
+**/node_modules/
+
+frontend/dist/
+**/dist/
+
+# =========================================================
+# Build artifacts
+# =========================================================
+build/
+**/build/
+
+# =========================================================
+# Logs / generated audit reports
+# =========================================================
+*.log
+
+# =========================================================
 # Data
+# =========================================================
+
+# Raw and processed data should not be committed
 data/raw/*
 data/processed/*
-data/synthetic/*
+
+# KEEP synthetic/demo data in Git
+# This allows MANGAI to run offline for SIH demonstration.
+
+# Always keep schema definitions
 !data/schemas/
 !data/schemas/**
 
+# =========================================================
 # Model binaries
+# =========================================================
 *.pickle
 *.joblib
 *.h5
 *.pt
 *.pth
 
-# Keep demo feature schemas
+# Keep lightweight demo/model metadata
 !models/**/*.json
 !models/**/*.csv
 
-# IDE / OS
+# =========================================================
+# Local database
+# =========================================================
+mangai_dev.db
+*.sqlite
+*.sqlite3
+
+# =========================================================
+# IDE
+# =========================================================
 .vscode/
+.idea/
+
+# =========================================================
+# OS
+# =========================================================
 .DS_Store
 Thumbs.db
-node_modules/
-frontend/dist/
-mangai_dev.db
