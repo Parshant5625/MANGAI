@@ -1,0 +1,1518 @@
+F.........F.F..F.F....F.....FF.F....................................FF.. [ 56%]
+..........FF....F.F..FF................................                  [100%]
+================================== FAILURES ===================================
+_______________________ test_health_and_core_endpoints ________________________
+
+demo_store = <backend.app.services.demo_data.DemoDataStore object at 0x0000018352490EC0>
+
+    def test_health_and_core_endpoints(demo_store):
+        client = TestClient(app)
+        assert client.get("/health").status_code == 200
+>       overview = client.get("/api/v1/overview")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\backend\test_api.py:9: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+backend\.venv\Lib\site-packages\starlette\testclient.py:483: in get
+    return super().get(
+backend\.venv\Lib\site-packages\httpx2\_client.py:1113: in get
+    return self.request(
+backend\.venv\Lib\site-packages\starlette\testclient.py:455: in request
+    return super().request(
+backend\.venv\Lib\site-packages\httpx2\_client.py:797: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\httpx2\_client.py:980: in send
+    response = self._send_handling_auth(
+backend\.venv\Lib\site-packages\httpx2\_client.py:1008: in _send_handling_auth
+    response = self._send_handling_redirects(
+backend\.venv\Lib\site-packages\httpx2\_client.py:1043: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\httpx2\_client.py:1076: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+backend\.venv\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+backend\.venv\Lib\site-packages\anyio\from_thread.py:338: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\AppData\Local\Programs\Python\Python313\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\..\..\AppData\Local\Programs\Python\Python313\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+backend\.venv\Lib\site-packages\anyio\from_thread.py:263: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\fastapi\applications.py:1163: in __call__
+    await super().__call__(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+backend\.venv\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+backend\.venv\Lib\site-packages\starlette\middleware\cors.py:88: in __call__
+    await self.app(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+backend\.venv\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+backend\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\routing.py:670: in __call__
+    await self.middleware_stack(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:2734: in app
+    await route.handle(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:1780: in handle
+    await self.original_router.handle(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:2789: in handle
+    await included_router._handle_selected(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:1800: in _handle_selected
+    await original_route.handle(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:1279: in handle
+    await app(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:158: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+backend\.venv\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+backend\.venv\Lib\site-packages\fastapi\routing.py:144: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\fastapi\routing.py:706: in app
+    raw_response = await run_endpoint_function(
+backend\.venv\Lib\site-packages\fastapi\routing.py:354: in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\starlette\concurrency.py:34: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\anyio\to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+backend\.venv\Lib\site-packages\anyio\_backends\_asyncio.py:2641: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\anyio\_backends\_asyncio.py:1033: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+backend\app\api\v1\router.py:53: in get_overview
+    return OverviewService().get_overview(site_id=_validate_site_id(site_id))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\app\services\overview.py:31: in get_overview
+    reserve = self.reserve_service.get_summary(site_id=site_id)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <backend.app.services.reserve.ReserveService object at 0x0000018317FAAF90>
+site_id = 'demo-moil-site'
+
+    def get_summary(self, site_id: str | None = None) -> dict[str, Any]:
+        df = self._base_frame()
+        high = df[df["manganese_probability"] >= 0.75]
+        very_high = df[df["manganese_probability"] >= 0.85]
+        payloads = [
+>           self._resource_payload(
+                float(row["manganese_probability"]),
+                float(row["predicted_thickness_m"]),
+                float(row["confidence"]),
+                str(row["sample_id"]),
+            )
+            for _, row in high.iterrows()
+        ]
+E       TypeError: ReserveService._resource_payload() missing 1 required positional argument: 'seed_key'
+
+backend\app\services\reserve.py:329: TypeError
+------------------------------ Captured log call ------------------------------
+INFO     httpx2:_client.py:1085 HTTP Request: GET http://testserver/health "HTTP/1.1 200 OK"
+ERROR    backend.app.main:main.py:134 Unhandled endpoint failure path=/api/v1/overview
+Traceback (most recent call last):
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\routing.py", line 670, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 2734, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 1780, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 2789, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 1800, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 1279, in handle
+    await app(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 158, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 144, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 706, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 354, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\anyio\to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2641, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1033, in run
+    result = context.run(func, *args)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\api\v1\router.py", line 53, in get_overview
+    return OverviewService().get_overview(site_id=_validate_site_id(site_id))
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\services\overview.py", line 31, in get_overview
+    reserve = self.reserve_service.get_summary(site_id=site_id)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\services\reserve.py", line 329, in get_summary
+    self._resource_payload(
+    ~~~~~~~~~~~~~~~~~~~~~~^
+        float(row["manganese_probability"]),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        str(row["sample_id"]),
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+TypeError: ReserveService._resource_payload() missing 1 required positional argument: 'seed_key'
+_______________ test_demo_mode_preserves_synthetic_api_behavior _______________
+
+demo_store = <backend.app.services.demo_data.DemoDataStore object at 0x0000018352490EC0>
+
+    def test_demo_mode_preserves_synthetic_api_behavior(demo_store):
+        get_settings.cache_clear()
+        response = _client().get("/api/v1/overview")
+    
+>       assert response.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = <Response [500 Internal Server Error]>.status_code
+
+tests\backend\test_foundation.py:134: AssertionError
+------------------------------ Captured log call ------------------------------
+ERROR    backend.app.main:main.py:134 Unhandled endpoint failure path=/api/v1/overview
+Traceback (most recent call last):
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\routing.py", line 670, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 2734, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 1780, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 2789, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 1800, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 1279, in handle
+    await app(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 158, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 144, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 706, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 354, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\anyio\to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2641, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1033, in run
+    result = context.run(func, *args)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\api\v1\router.py", line 53, in get_overview
+    return OverviewService().get_overview(site_id=_validate_site_id(site_id))
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\services\overview.py", line 31, in get_overview
+    reserve = self.reserve_service.get_summary(site_id=site_id)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\services\reserve.py", line 329, in get_summary
+    self._resource_payload(
+    ~~~~~~~~~~~~~~~~~~~~~~^
+        float(row["manganese_probability"]),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        str(row["sample_id"]),
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+TypeError: ReserveService._resource_payload() missing 1 required positional argument: 'seed_key'
+INFO     httpx2:_client.py:1085 HTTP Request: GET http://testserver/api/v1/overview "HTTP/1.1 500 Internal Server Error"
+_________________________ test_reserve_grid_endpoint __________________________
+
+demo_store = <backend.app.services.demo_data.DemoDataStore object at 0x0000018352490EC0>
+
+    def test_reserve_grid_endpoint(demo_store):
+        client = TestClient(app)
+        response = client.get("/api/v1/reserves/grid?cells=4")
+>       assert response.status_code == 200
+E       assert 404 == 200
+E        +  where 404 = <Response [404 Not Found]>.status_code
+
+tests\backend\test_phase4_api.py:11: AssertionError
+------------------------------ Captured log call ------------------------------
+WARNING  backend.app.main:main.py:90 API error path=/api/v1/reserves/grid code=RESERVE_CELL_NOT_FOUND message=Reserve cell not found: grid
+INFO     httpx2:_client.py:1085 HTTP Request: GET http://testserver/api/v1/reserves/grid?cells=4 "HTTP/1.1 404 Not Found"
+_____________________ test_recommendations_are_structured _____________________
+
+demo_store = <backend.app.services.demo_data.DemoDataStore object at 0x0000018352490EC0>
+
+    def test_recommendations_are_structured(demo_store):
+>       response = RecommendationService().list_recommendations()
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\backend\test_recommendations.py:5: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+backend\app\services\recommendations.py:31: in list_recommendations
+    reserve = self.reserve_service.get_summary(site_id=site_id)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <backend.app.services.reserve.ReserveService object at 0x000001831810FAC0>
+site_id = None
+
+    def get_summary(self, site_id: str | None = None) -> dict[str, Any]:
+        df = self._base_frame()
+        high = df[df["manganese_probability"] >= 0.75]
+        very_high = df[df["manganese_probability"] >= 0.85]
+        payloads = [
+>           self._resource_payload(
+                float(row["manganese_probability"]),
+                float(row["predicted_thickness_m"]),
+                float(row["confidence"]),
+                str(row["sample_id"]),
+            )
+            for _, row in high.iterrows()
+        ]
+E       TypeError: ReserveService._resource_payload() missing 1 required positional argument: 'seed_key'
+
+backend\app\services\reserve.py:329: TypeError
+__________________ test_model_registry_lists_reserve_models ___________________
+
+demo_store = <backend.app.services.demo_data.DemoDataStore object at 0x0000018352490EC0>
+
+    def test_model_registry_lists_reserve_models(demo_store):
+        client = TestClient(app)
+>       response = client.get("/api/v1/models")
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\backend\test_reserve_model_metadata.py:42: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+backend\.venv\Lib\site-packages\starlette\testclient.py:483: in get
+    return super().get(
+backend\.venv\Lib\site-packages\httpx2\_client.py:1113: in get
+    return self.request(
+backend\.venv\Lib\site-packages\starlette\testclient.py:455: in request
+    return super().request(
+backend\.venv\Lib\site-packages\httpx2\_client.py:797: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\httpx2\_client.py:980: in send
+    response = self._send_handling_auth(
+backend\.venv\Lib\site-packages\httpx2\_client.py:1008: in _send_handling_auth
+    response = self._send_handling_redirects(
+backend\.venv\Lib\site-packages\httpx2\_client.py:1043: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\httpx2\_client.py:1076: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+backend\.venv\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+backend\.venv\Lib\site-packages\anyio\from_thread.py:338: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\AppData\Local\Programs\Python\Python313\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\..\..\AppData\Local\Programs\Python\Python313\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+backend\.venv\Lib\site-packages\anyio\from_thread.py:263: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\fastapi\applications.py:1163: in __call__
+    await super().__call__(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+backend\.venv\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+backend\.venv\Lib\site-packages\starlette\middleware\cors.py:88: in __call__
+    await self.app(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+backend\.venv\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+backend\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\routing.py:670: in __call__
+    await self.middleware_stack(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:2734: in app
+    await route.handle(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:1780: in handle
+    await self.original_router.handle(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:2789: in handle
+    await included_router._handle_selected(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:1800: in _handle_selected
+    await original_route.handle(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:1279: in handle
+    await app(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:158: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+backend\.venv\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+backend\.venv\Lib\site-packages\fastapi\routing.py:144: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\fastapi\routing.py:727: in app
+    content = await serialize_response(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+field = ModelField(field_info=FieldInfo(annotation=ModelRegistryResponse, required=True), name='Response_get_models_api_v1_models_get', mode='serialization', config=None)
+response_content = {'data_mode': 'demo', 'synthetic_data': True, 'boundary_notice': 'DEMO / SYNTHETIC DATA. MANGAI is a decision-support .....}, {'model_name': 'reserve_thickness', 'version': '2026.09.002', 'task': 'regression', 'algorithm': 'XGBoost', ...}]}
+include = None, exclude = None, by_alias = True, exclude_unset = False
+exclude_defaults = False, exclude_none = False, is_coroutine = False
+endpoint_ctx = {'file': 'C:\\Users\\parsh\\OneDrive\\Attachments\\Desktop\\MANGAI\\backend\\app\\api\\v1\\router.py', 'line': 138, 'function': 'get_models', 'path': 'GET /api/v1/models'}
+dump_json = True
+
+    async def serialize_response(
+        *,
+        field: ModelField | None = None,
+        response_content: Any,
+        include: IncEx | None = None,
+        exclude: IncEx | None = None,
+        by_alias: bool = True,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        is_coroutine: bool = True,
+        endpoint_ctx: EndpointContext | None = None,
+        dump_json: bool = False,
+    ) -> Any:
+        if field:
+            if is_coroutine:
+                value, errors = field.validate(response_content, {}, loc=("response",))
+            else:
+                value, errors = await run_in_threadpool(
+                    field.validate, response_content, {}, loc=("response",)
+                )
+            if errors:
+                ctx = endpoint_ctx or EndpointContext()
+>               raise ResponseValidationError(
+                    errors=errors,
+                    body=response_content,
+                    endpoint_ctx=ctx,
+                )
+E               fastapi.exceptions.ResponseValidationError: 6 validation errors:
+E                 {'type': 'missing', 'loc': ('response', 'models', 0, 'created_at'), 'msg': 'Field required', 'input': {'model_name': 'reserve_grade', 'version': '2026.09.001', 'task': 'regression', 'algorithm': 'Ridge', 'status': 'candidate', 'validation_strategy': 'spatial_block_holdout', 'metrics': {'mae': 5.834651902579735, 'rmse': 7.353399371410525, 'r2': 0.5049002330270889, 'cv_mae': 6.12571009614245, 'cv_rmse': 7.6044772027930705, 'cv_r2': 0.5027194712380252, 'validation': 'spatial_block_holdout', 'validation_details': {'strategy': 'GroupShuffleSplit over 5x5 latitude/longitude spatial blocks', 'primary': True, 'held_out_blocks': 5, 'train_rows': 4009, 'test_rows': 991, 'random_state': 42}, 'candidate_comparison': {'ridge': {'mae': 5.834651902579735, 'rmse': 7.353399371410525, 'r2': 0.5049002330270889, 'cv_mae': 6.12571009614245, 'cv_rmse': 7.6044772027930705, 'cv_r2': 0.5027194712380252}, 'random_forest': {'mae': 5.855424072357181, 'rmse': 7.383824193011307, 'r2': 0.5007947890807467, 'cv_mae': 6.153576308823319, 'cv_rmse': 7.643906985007645, 'cv_r2': 0.4976411450356176}, 'xgboost': {'mae': 5.969489097595215, 'rmse': 7.555681922578898, 'r2': 0.4772864580154419, 'cv_mae': 6.275617694854736, 'cv_rmse': 7.783824266570315, 'cv_r2': 0.4790602207183838}}, 'selected_algorithm': 'ridge', 'selection_metric': 'rmse', 'random_split_diagnostic': {'metrics': {'mae': 6.091290669638899, 'rmse': 7.578878908225802, 'r2': 0.4775221919278849}, 'note': 'Random i.i.d. split allows spatially adjacent samples to leak between train and validation. Reported for comparison only — the spatial-block holdout above is the primary validation.'}, 'target': 'mn_pct', 'leakage_exclusions': ['fe_pct', 'is_manganese', 'mn_pct', 'ore_thickness_m', 'production_gap_mt', 'production_mt', 'shortfall', 'sio2_pct', 'target_mt'], 'leakage_check_passed': True, 'feature_names': ['elevation_m', 'slope_deg', 'aspect_deg', 'depth_m', 'blue_b2', 'green_b3', 'red_b4', 'nir_b8', 'swir_b11', 'swir_b12', 'ndvi', 'ndwi', 'swir_ratio', 'bare_soil_index', 'land_surface_temperature', 'formation_Gondite', 'formation_Granite', 'formation_Laterite', 'formation_Manganiferous_Formation', 'formation_Quartzite', 'formation_Schist'], 'training_rows': 5000, 'synthetic_data': True}, 'feature_schema_hash': '479dcab4682f8899', 'training_data_hash': 'ee64a69a91fb9c77', 'leakage_check_passed': True, 'artifact_path': 'models/reserve/versions/2026.09.001/grade_ridge_model.joblib', 'artifact_exists': True, 'promoted_at': None, 'previous_champion': None, 'notes': 'Synthetic-data candidate. Not field-validated.', 'drift': {'status': 'unknown_demo', 'note': 'No MOIL production baseline. Drift monitoring is a placeholder until field data is connected.'}}}
+E                 {'type': 'missing', 'loc': ('response', 'models', 1, 'created_at'), 'msg': 'Field required', 'input': {'model_name': 'reserve_grade', 'version': '2026.09.002', 'task': 'regression', 'algorithm': 'Ridge', 'status': 'candidate', 'validation_strategy': 'spatial_block_holdout', 'metrics': {'mae': 5.834651902579735, 'rmse': 7.353399371410525, 'r2': 0.5049002330270889, 'cv_mae': 6.12571009614245, 'cv_rmse': 7.6044772027930705, 'cv_r2': 0.5027194712380252, 'validation': 'spatial_block_holdout', 'validation_details': {'strategy': 'GroupShuffleSplit over 5x5 latitude/longitude spatial blocks', 'primary': True, 'held_out_blocks': 5, 'train_rows': 4009, 'test_rows': 991, 'random_state': 42}, 'candidate_comparison': {'ridge': {'mae': 5.834651902579735, 'rmse': 7.353399371410525, 'r2': 0.5049002330270889, 'cv_mae': 6.12571009614245, 'cv_rmse': 7.6044772027930705, 'cv_r2': 0.5027194712380252}, 'random_forest': {'mae': 5.85542407235718, 'rmse': 7.383824193011306, 'r2': 0.5007947890807469, 'cv_mae': 6.153576308823316, 'cv_rmse': 7.643906985007645, 'cv_r2': 0.4976411450356176}, 'xgboost': {'mae': 5.969489097595215, 'rmse': 7.555681922578898, 'r2': 0.4772864580154419, 'cv_mae': 6.275617694854736, 'cv_rmse': 7.783824266570315, 'cv_r2': 0.4790602207183838}}, 'selected_algorithm': 'ridge', 'selection_metric': 'rmse', 'random_split_diagnostic': {'metrics': {'mae': 6.091290669638899, 'rmse': 7.578878908225802, 'r2': 0.4775221919278849}, 'note': 'Random i.i.d. split allows spatially adjacent samples to leak between train and validation. Reported for comparison only — the spatial-block holdout above is the primary validation.'}, 'target': 'mn_pct', 'leakage_exclusions': ['fe_pct', 'is_manganese', 'mn_pct', 'ore_thickness_m', 'production_gap_mt', 'production_mt', 'shortfall', 'sio2_pct', 'target_mt'], 'leakage_check_passed': True, 'feature_names': ['elevation_m', 'slope_deg', 'aspect_deg', 'depth_m', 'blue_b2', 'green_b3', 'red_b4', 'nir_b8', 'swir_b11', 'swir_b12', 'ndvi', 'ndwi', 'swir_ratio', 'bare_soil_index', 'land_surface_temperature', 'formation_Gondite', 'formation_Granite', 'formation_Laterite', 'formation_Manganiferous_Formation', 'formation_Quartzite', 'formation_Schist'], 'training_rows': 5000, 'synthetic_data': True}, 'feature_schema_hash': '479dcab4682f8899', 'training_data_hash': 'ee64a69a91fb9c77', 'leakage_check_passed': True, 'artifact_path': 'models/reserve/versions/2026.09.002/grade_ridge_model.joblib', 'artifact_exists': True, 'promoted_at': None, 'previous_champion': None, 'notes': 'Synthetic-data candidate. Not field-validated.', 'drift': {'status': 'unknown_demo', 'note': 'No MOIL production baseline. Drift monitoring is a placeholder until field data is connected.'}}}
+E                 {'type': 'missing', 'loc': ('response', 'models', 2, 'created_at'), 'msg': 'Field required', 'input': {'model_name': 'reserve_prospectivity', 'version': '2026.09.001', 'task': 'binary_classification', 'algorithm': 'XGBoost', 'status': 'candidate', 'validation_strategy': 'spatial_block_holdout', 'metrics': {'roc_auc': 0.8840011220297881, 'pr_auc': 0.8318449704243221, 'precision': 0.8228346456692913, 'recall': 0.616519174041298, 'f1': 0.7048903878583473, 'confusion_matrix': {'tn': 607, 'fp': 45, 'fn': 130, 'tp': 209}, 'cv_roc_auc': 0.8872882909891077, 'cv_pr_auc': 0.8322645313961793, 'cv_precision': 0.8375920580233531, 'cv_recall': 0.628691037277777, 'cv_f1': 0.7178060460388009, 'validation': 'spatial_block_holdout', 'validation_details': {'strategy': 'GroupShuffleSplit over 5x5 latitude/longitude spatial blocks', 'primary': True, 'held_out_blocks': 5, 'train_rows': 4009, 'test_rows': 991, 'random_state': 42}, 'candidate_comparison': {'logistic_regression': {'roc_auc': 0.8164576433754999, 'pr_auc': 0.7250726468997897, 'precision': 0.7725321888412017, 'recall': 0.5309734513274337, 'f1': 0.6293706293706294, 'confusion_matrix': {'tn': 599, 'fp': 53, 'fn': 159, 'tp': 180}, 'cv_roc_auc': 0.8213372845700441, 'cv_pr_auc': 0.7311185633596963, 'cv_precision': 0.7852913464920027, 'cv_recall': 0.568154204832397, 'cv_f1': 0.6586549726557666}, 'random_forest': {'roc_auc': 0.786067828510415, 'pr_auc': 0.6973651826599035, 'precision': 0.7876106194690266, 'recall': 0.5250737463126843, 'f1': 0.6300884955752213, 'confusion_matrix': {'tn': 604, 'fp': 48, 'fn': 161, 'tp': 178}, 'cv_roc_auc': 0.7835856874746276, 'cv_pr_auc': 0.7046533993808051, 'cv_precision': 0.803791123128085, 'cv_recall': 0.5538284666537987, 'cv_f1': 0.655420567681004}, 'xgboost': {'roc_auc': 0.8840011220297881, 'pr_auc': 0.8318449704243221, 'precision': 0.8228346456692913, 'recall': 0.616519174041298, 'f1': 0.7048903878583473, 'confusion_matrix': {'tn': 607, 'fp': 45, 'fn': 130, 'tp': 209}, 'cv_roc_auc': 0.8872882909891077, 'cv_pr_auc': 0.8322645313961793, 'cv_precision': 0.8375920580233531, 'cv_recall': 0.628691037277777, 'cv_f1': 0.7178060460388009}}, 'selected_algorithm': 'xgboost', 'selection_metric': 'roc_auc', 'random_split_diagnostic': {'metrics': {'roc_auc': 0.8846050347222222, 'pr_auc': 0.8324779429956259, 'precision': 0.8455598455598455, 'recall': 0.6083333333333333, 'f1': 0.7075928917609047, 'confusion_matrix': {'tn': 600, 'fp': 40, 'fn': 141, 'tp': 219}}, 'note': 'Random i.i.d. split allows spatially adjacent samples to leak between train and validation. Reported for comparison only — the spatial-block holdout above is the primary validation.'}, 'target': 'is_manganese', 'leakage_exclusions': ['fe_pct', 'is_manganese', 'mn_pct', 'ore_thickness_m', 'production_gap_mt', 'production_mt', 'shortfall', 'sio2_pct', 'target_mt'], 'leakage_check_passed': True, 'feature_names': ['elevation_m', 'slope_deg', 'aspect_deg', 'depth_m', 'blue_b2', 'green_b3', 'red_b4', 'nir_b8', 'swir_b11', 'swir_b12', 'ndvi', 'ndwi', 'swir_ratio', 'bare_soil_index', 'land_surface_temperature', 'formation_Gondite', 'formation_Granite', 'formation_Laterite', 'formation_Manganiferous_Formation', 'formation_Quartzite', 'formation_Schist'], 'training_rows': 5000, 'synthetic_data': True}, 'feature_schema_hash': '479dcab4682f8899', 'training_data_hash': 'ee64a69a91fb9c77', 'leakage_check_passed': True, 'artifact_path': 'models/reserve/versions/2026.09.001/prospectivity_xgboost.json', 'artifact_exists': True, 'promoted_at': None, 'previous_champion': None, 'notes': 'Synthetic-data candidate. Not field-validated.', 'drift': {'status': 'unknown_demo', 'note': 'No MOIL production baseline. Drift monitoring is a placeholder until field data is connected.'}}}
+E                 {'type': 'missing', 'loc': ('response', 'models', 3, 'created_at'), 'msg': 'Field required', 'input': {'model_name': 'reserve_prospectivity', 'version': '2026.09.002', 'task': 'binary_classification', 'algorithm': 'XGBoost', 'status': 'candidate', 'validation_strategy': 'spatial_block_holdout', 'metrics': {'roc_auc': 0.8840011220297881, 'pr_auc': 0.8318449704243221, 'precision': 0.8228346456692913, 'recall': 0.616519174041298, 'f1': 0.7048903878583473, 'confusion_matrix': {'tn': 607, 'fp': 45, 'fn': 130, 'tp': 209}, 'cv_roc_auc': 0.8872882909891077, 'cv_pr_auc': 0.8322645313961793, 'cv_precision': 0.8375920580233531, 'cv_recall': 0.628691037277777, 'cv_f1': 0.7178060460388009, 'validation': 'spatial_block_holdout', 'validation_details': {'strategy': 'GroupShuffleSplit over 5x5 latitude/longitude spatial blocks', 'primary': True, 'held_out_blocks': 5, 'train_rows': 4009, 'test_rows': 991, 'random_state': 42}, 'candidate_comparison': {'logistic_regression': {'roc_auc': 0.8164576433754999, 'pr_auc': 0.7250726468997897, 'precision': 0.7725321888412017, 'recall': 0.5309734513274337, 'f1': 0.6293706293706294, 'confusion_matrix': {'tn': 599, 'fp': 53, 'fn': 159, 'tp': 180}, 'cv_roc_auc': 0.8213372845700441, 'cv_pr_auc': 0.7311185633596963, 'cv_precision': 0.7852913464920027, 'cv_recall': 0.568154204832397, 'cv_f1': 0.6586549726557666}, 'random_forest': {'roc_auc': 0.786067828510415, 'pr_auc': 0.6973651826599035, 'precision': 0.7876106194690266, 'recall': 0.5250737463126843, 'f1': 0.6300884955752213, 'confusion_matrix': {'tn': 604, 'fp': 48, 'fn': 161, 'tp': 178}, 'cv_roc_auc': 0.7835856874746276, 'cv_pr_auc': 0.7046533993808051, 'cv_precision': 0.803791123128085, 'cv_recall': 0.5538284666537987, 'cv_f1': 0.655420567681004}, 'xgboost': {'roc_auc': 0.8840011220297881, 'pr_auc': 0.8318449704243221, 'precision': 0.8228346456692913, 'recall': 0.616519174041298, 'f1': 0.7048903878583473, 'confusion_matrix': {'tn': 607, 'fp': 45, 'fn': 130, 'tp': 209}, 'cv_roc_auc': 0.8872882909891077, 'cv_pr_auc': 0.8322645313961793, 'cv_precision': 0.8375920580233531, 'cv_recall': 0.628691037277777, 'cv_f1': 0.7178060460388009}}, 'selected_algorithm': 'xgboost', 'selection_metric': 'roc_auc', 'random_split_diagnostic': {'metrics': {'roc_auc': 0.8846050347222222, 'pr_auc': 0.8324779429956259, 'precision': 0.8455598455598455, 'recall': 0.6083333333333333, 'f1': 0.7075928917609047, 'confusion_matrix': {'tn': 600, 'fp': 40, 'fn': 141, 'tp': 219}}, 'note': 'Random i.i.d. split allows spatially adjacent samples to leak between train and validation. Reported for comparison only — the spatial-block holdout above is the primary validation.'}, 'target': 'is_manganese', 'leakage_exclusions': ['fe_pct', 'is_manganese', 'mn_pct', 'ore_thickness_m', 'production_gap_mt', 'production_mt', 'shortfall', 'sio2_pct', 'target_mt'], 'leakage_check_passed': True, 'feature_names': ['elevation_m', 'slope_deg', 'aspect_deg', 'depth_m', 'blue_b2', 'green_b3', 'red_b4', 'nir_b8', 'swir_b11', 'swir_b12', 'ndvi', 'ndwi', 'swir_ratio', 'bare_soil_index', 'land_surface_temperature', 'formation_Gondite', 'formation_Granite', 'formation_Laterite', 'formation_Manganiferous_Formation', 'formation_Quartzite', 'formation_Schist'], 'training_rows': 5000, 'synthetic_data': True}, 'feature_schema_hash': '479dcab4682f8899', 'training_data_hash': 'ee64a69a91fb9c77', 'leakage_check_passed': True, 'artifact_path': 'models/reserve/versions/2026.09.002/prospectivity_xgboost.json', 'artifact_exists': True, 'promoted_at': None, 'previous_champion': None, 'notes': 'Synthetic-data candidate. Not field-validated.', 'drift': {'status': 'unknown_demo', 'note': 'No MOIL production baseline. Drift monitoring is a placeholder until field data is connected.'}}}
+E                 {'type': 'missing', 'loc': ('response', 'models', 4, 'created_at'), 'msg': 'Field required', 'input': {'model_name': 'reserve_thickness', 'version': '2026.09.001', 'task': 'regression', 'algorithm': 'XGBoost', 'status': 'candidate', 'validation_strategy': 'spatial_block_holdout', 'metrics': {'mae': 2.3449456691741943, 'rmse': 3.435005947813079, 'r2': 0.23536264896392822, 'cv_mae': 2.257273960113525, 'cv_rmse': 3.225325745894468, 'cv_r2': 0.21569228172302246, 'validation': 'spatial_block_holdout', 'validation_details': {'strategy': 'GroupShuffleSplit over 5x5 latitude/longitude spatial blocks', 'primary': True, 'held_out_blocks': 5, 'train_rows': 4009, 'test_rows': 991, 'random_state': 42}, 'candidate_comparison': {'ridge': {'mae': 2.4090571148361066, 'rmse': 3.531982203995566, 'r2': 0.19157910437939707, 'cv_mae': 2.3005933886030405, 'cv_rmse': 3.264497618747941, 'cv_r2': 0.19685518453547804}, 'random_forest': {'mae': 2.4315687500982737, 'rmse': 3.539955697443207, 'r2': 0.1879249440611508, 'cv_mae': 2.3561254541115804, 'cv_rmse': 3.3216069259862993, 'cv_r2': 0.1683206591706437}, 'xgboost': {'mae': 2.3449456691741943, 'rmse': 3.435005947813079, 'r2': 0.23536264896392822, 'cv_mae': 2.257273960113525, 'cv_rmse': 3.225325745894468, 'cv_r2': 0.21569228172302246}}, 'selected_algorithm': 'xgboost', 'selection_metric': 'rmse', 'random_split_diagnostic': {'metrics': {'mae': 2.307900905609131, 'rmse': 3.2847540174849166, 'r2': 0.15899503231048584}, 'note': 'Random i.i.d. split allows spatially adjacent samples to leak between train and validation. Reported for comparison only — the spatial-block holdout above is the primary validation.'}, 'target': 'ore_thickness_m', 'leakage_exclusions': ['fe_pct', 'is_manganese', 'mn_pct', 'ore_thickness_m', 'production_gap_mt', 'production_mt', 'shortfall', 'sio2_pct', 'target_mt'], 'leakage_check_passed': True, 'feature_names': ['elevation_m', 'slope_deg', 'aspect_deg', 'depth_m', 'blue_b2', 'green_b3', 'red_b4', 'nir_b8', 'swir_b11', 'swir_b12', 'ndvi', 'ndwi', 'swir_ratio', 'bare_soil_index', 'land_surface_temperature', 'formation_Gondite', 'formation_Granite', 'formation_Laterite', 'formation_Manganiferous_Formation', 'formation_Quartzite', 'formation_Schist'], 'training_rows': 5000, 'synthetic_data': True}, 'feature_schema_hash': '479dcab4682f8899', 'training_data_hash': 'ee64a69a91fb9c77', 'leakage_check_passed': True, 'artifact_path': 'models/reserve/versions/2026.09.001/thickness_xgboost.json', 'artifact_exists': True, 'promoted_at': None, 'previous_champion': None, 'notes': 'Synthetic-data candidate. Not field-validated.', 'drift': {'status': 'unknown_demo', 'note': 'No MOIL production baseline. Drift monitoring is a placeholder until field data is connected.'}}}
+E                 {'type': 'missing', 'loc': ('response', 'models', 5, 'created_at'), 'msg': 'Field required', 'input': {'model_name': 'reserve_thickness', 'version': '2026.09.002', 'task': 'regression', 'algorithm': 'XGBoost', 'status': 'candidate', 'validation_strategy': 'spatial_block_holdout', 'metrics': {'mae': 2.3449456691741943, 'rmse': 3.435005947813079, 'r2': 0.23536264896392822, 'cv_mae': 2.257273960113525, 'cv_rmse': 3.225325745894468, 'cv_r2': 0.21569228172302246, 'validation': 'spatial_block_holdout', 'validation_details': {'strategy': 'GroupShuffleSplit over 5x5 latitude/longitude spatial blocks', 'primary': True, 'held_out_blocks': 5, 'train_rows': 4009, 'test_rows': 991, 'random_state': 42}, 'candidate_comparison': {'ridge': {'mae': 2.4090571148361066, 'rmse': 3.531982203995566, 'r2': 0.19157910437939707, 'cv_mae': 2.3005933886030405, 'cv_rmse': 3.264497618747941, 'cv_r2': 0.19685518453547804}, 'random_forest': {'mae': 2.4315687500982737, 'rmse': 3.539955697443207, 'r2': 0.1879249440611508, 'cv_mae': 2.35612545411158, 'cv_rmse': 3.3216069259862993, 'cv_r2': 0.1683206591706437}, 'xgboost': {'mae': 2.3449456691741943, 'rmse': 3.435005947813079, 'r2': 0.23536264896392822, 'cv_mae': 2.257273960113525, 'cv_rmse': 3.225325745894468, 'cv_r2': 0.21569228172302246}}, 'selected_algorithm': 'xgboost', 'selection_metric': 'rmse', 'random_split_diagnostic': {'metrics': {'mae': 2.307900905609131, 'rmse': 3.2847540174849166, 'r2': 0.15899503231048584}, 'note': 'Random i.i.d. split allows spatially adjacent samples to leak between train and validation. Reported for comparison only — the spatial-block holdout above is the primary validation.'}, 'target': 'ore_thickness_m', 'leakage_exclusions': ['fe_pct', 'is_manganese', 'mn_pct', 'ore_thickness_m', 'production_gap_mt', 'production_mt', 'shortfall', 'sio2_pct', 'target_mt'], 'leakage_check_passed': True, 'feature_names': ['elevation_m', 'slope_deg', 'aspect_deg', 'depth_m', 'blue_b2', 'green_b3', 'red_b4', 'nir_b8', 'swir_b11', 'swir_b12', 'ndvi', 'ndwi', 'swir_ratio', 'bare_soil_index', 'land_surface_temperature', 'formation_Gondite', 'formation_Granite', 'formation_Laterite', 'formation_Manganiferous_Formation', 'formation_Quartzite', 'formation_Schist'], 'training_rows': 5000, 'synthetic_data': True}, 'feature_schema_hash': '479dcab4682f8899', 'training_data_hash': 'ee64a69a91fb9c77', 'leakage_check_passed': True, 'artifact_path': 'models/reserve/versions/2026.09.002/thickness_xgboost.json', 'artifact_exists': True, 'promoted_at': None, 'previous_champion': None, 'notes': 'Synthetic-data candidate. Not field-validated.', 'drift': {'status': 'unknown_demo', 'note': 'No MOIL production baseline. Drift monitoring is a placeholder until field data is connected.'}}}
+E               
+E                 File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\api\v1\router.py", line 138, in get_models
+E                   GET /api/v1/models
+
+backend\.venv\Lib\site-packages\fastapi\routing.py:324: ResponseValidationError
+------------------------------ Captured log call ------------------------------
+ERROR    backend.app.main:main.py:134 Unhandled endpoint failure path=/api/v1/models
+Traceback (most recent call last):
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\routing.py", line 670, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 2734, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 1780, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 2789, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 1800, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 1279, in handle
+    await app(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 158, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 144, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 727, in app
+    content = await serialize_response(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<11 lines>...
+    )
+    ^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 324, in serialize_response
+    raise ResponseValidationError(
+    ...<3 lines>...
+    )
+fastapi.exceptions.ResponseValidationError: 6 validation errors:
+  {'type': 'missing', 'loc': ('response', 'models', 0, 'created_at'), 'msg': 'Field required', 'input': {'model_name': 'reserve_grade', 'version': '2026.09.001', 'task': 'regression', 'algorithm': 'Ridge', 'status': 'candidate', 'validation_strategy': 'spatial_block_holdout', 'metrics': {'mae': 5.834651902579735, 'rmse': 7.353399371410525, 'r2': 0.5049002330270889, 'cv_mae': 6.12571009614245, 'cv_rmse': 7.6044772027930705, 'cv_r2': 0.5027194712380252, 'validation': 'spatial_block_holdout', 'validation_details': {'strategy': 'GroupShuffleSplit over 5x5 latitude/longitude spatial blocks', 'primary': True, 'held_out_blocks': 5, 'train_rows': 4009, 'test_rows': 991, 'random_state': 42}, 'candidate_comparison': {'ridge': {'mae': 5.834651902579735, 'rmse': 7.353399371410525, 'r2': 0.5049002330270889, 'cv_mae': 6.12571009614245, 'cv_rmse': 7.6044772027930705, 'cv_r2': 0.5027194712380252}, 'random_forest': {'mae': 5.855424072357181, 'rmse': 7.383824193011307, 'r2': 0.5007947890807467, 'cv_mae': 6.153576308823319, 'cv_rmse': 7.643906985007645, 'cv_r2': 0.4976411450356176}, 'xgboost': {'mae': 5.969489097595215, 'rmse': 7.555681922578898, 'r2': 0.4772864580154419, 'cv_mae': 6.275617694854736, 'cv_rmse': 7.783824266570315, 'cv_r2': 0.4790602207183838}}, 'selected_algorithm': 'ridge', 'selection_metric': 'rmse', 'random_split_diagnostic': {'metrics': {'mae': 6.091290669638899, 'rmse': 7.578878908225802, 'r2': 0.4775221919278849}, 'note': 'Random i.i.d. split allows spatially adjacent samples to leak between train and validation. Reported for comparison only — the spatial-block holdout above is the primary validation.'}, 'target': 'mn_pct', 'leakage_exclusions': ['fe_pct', 'is_manganese', 'mn_pct', 'ore_thickness_m', 'production_gap_mt', 'production_mt', 'shortfall', 'sio2_pct', 'target_mt'], 'leakage_check_passed': True, 'feature_names': ['elevation_m', 'slope_deg', 'aspect_deg', 'depth_m', 'blue_b2', 'green_b3', 'red_b4', 'nir_b8', 'swir_b11', 'swir_b12', 'ndvi', 'ndwi', 'swir_ratio', 'bare_soil_index', 'land_surface_temperature', 'formation_Gondite', 'formation_Granite', 'formation_Laterite', 'formation_Manganiferous_Formation', 'formation_Quartzite', 'formation_Schist'], 'training_rows': 5000, 'synthetic_data': True}, 'feature_schema_hash': '479dcab4682f8899', 'training_data_hash': 'ee64a69a91fb9c77', 'leakage_check_passed': True, 'artifact_path': 'models/reserve/versions/2026.09.001/grade_ridge_model.joblib', 'artifact_exists': True, 'promoted_at': None, 'previous_champion': None, 'notes': 'Synthetic-data candidate. Not field-validated.', 'drift': {'status': 'unknown_demo', 'note': 'No MOIL production baseline. Drift monitoring is a placeholder until field data is connected.'}}}
+  {'type': 'missing', 'loc': ('response', 'models', 1, 'created_at'), 'msg': 'Field required', 'input': {'model_name': 'reserve_grade', 'version': '2026.09.002', 'task': 'regression', 'algorithm': 'Ridge', 'status': 'candidate', 'validation_strategy': 'spatial_block_holdout', 'metrics': {'mae': 5.834651902579735, 'rmse': 7.353399371410525, 'r2': 0.5049002330270889, 'cv_mae': 6.12571009614245, 'cv_rmse': 7.6044772027930705, 'cv_r2': 0.5027194712380252, 'validation': 'spatial_block_holdout', 'validation_details': {'strategy': 'GroupShuffleSplit over 5x5 latitude/longitude spatial blocks', 'primary': True, 'held_out_blocks': 5, 'train_rows': 4009, 'test_rows': 991, 'random_state': 42}, 'candidate_comparison': {'ridge': {'mae': 5.834651902579735, 'rmse': 7.353399371410525, 'r2': 0.5049002330270889, 'cv_mae': 6.12571009614245, 'cv_rmse': 7.6044772027930705, 'cv_r2': 0.5027194712380252}, 'random_forest': {'mae': 5.85542407235718, 'rmse': 7.383824193011306, 'r2': 0.5007947890807469, 'cv_mae': 6.153576308823316, 'cv_rmse': 7.643906985007645, 'cv_r2': 0.4976411450356176}, 'xgboost': {'mae': 5.969489097595215, 'rmse': 7.555681922578898, 'r2': 0.4772864580154419, 'cv_mae': 6.275617694854736, 'cv_rmse': 7.783824266570315, 'cv_r2': 0.4790602207183838}}, 'selected_algorithm': 'ridge', 'selection_metric': 'rmse', 'random_split_diagnostic': {'metrics': {'mae': 6.091290669638899, 'rmse': 7.578878908225802, 'r2': 0.4775221919278849}, 'note': 'Random i.i.d. split allows spatially adjacent samples to leak between train and validation. Reported for comparison only — the spatial-block holdout above is the primary validation.'}, 'target': 'mn_pct', 'leakage_exclusions': ['fe_pct', 'is_manganese', 'mn_pct', 'ore_thickness_m', 'production_gap_mt', 'production_mt', 'shortfall', 'sio2_pct', 'target_mt'], 'leakage_check_passed': True, 'feature_names': ['elevation_m', 'slope_deg', 'aspect_deg', 'depth_m', 'blue_b2', 'green_b3', 'red_b4', 'nir_b8', 'swir_b11', 'swir_b12', 'ndvi', 'ndwi', 'swir_ratio', 'bare_soil_index', 'land_surface_temperature', 'formation_Gondite', 'formation_Granite', 'formation_Laterite', 'formation_Manganiferous_Formation', 'formation_Quartzite', 'formation_Schist'], 'training_rows': 5000, 'synthetic_data': True}, 'feature_schema_hash': '479dcab4682f8899', 'training_data_hash': 'ee64a69a91fb9c77', 'leakage_check_passed': True, 'artifact_path': 'models/reserve/versions/2026.09.002/grade_ridge_model.joblib', 'artifact_exists': True, 'promoted_at': None, 'previous_champion': None, 'notes': 'Synthetic-data candidate. Not field-validated.', 'drift': {'status': 'unknown_demo', 'note': 'No MOIL production baseline. Drift monitoring is a placeholder until field data is connected.'}}}
+  {'type': 'missing', 'loc': ('response', 'models', 2, 'created_at'), 'msg': 'Field required', 'input': {'model_name': 'reserve_prospectivity', 'version': '2026.09.001', 'task': 'binary_classification', 'algorithm': 'XGBoost', 'status': 'candidate', 'validation_strategy': 'spatial_block_holdout', 'metrics': {'roc_auc': 0.8840011220297881, 'pr_auc': 0.8318449704243221, 'precision': 0.8228346456692913, 'recall': 0.616519174041298, 'f1': 0.7048903878583473, 'confusion_matrix': {'tn': 607, 'fp': 45, 'fn': 130, 'tp': 209}, 'cv_roc_auc': 0.8872882909891077, 'cv_pr_auc': 0.8322645313961793, 'cv_precision': 0.8375920580233531, 'cv_recall': 0.628691037277777, 'cv_f1': 0.7178060460388009, 'validation': 'spatial_block_holdout', 'validation_details': {'strategy': 'GroupShuffleSplit over 5x5 latitude/longitude spatial blocks', 'primary': True, 'held_out_blocks': 5, 'train_rows': 4009, 'test_rows': 991, 'random_state': 42}, 'candidate_comparison': {'logistic_regression': {'roc_auc': 0.8164576433754999, 'pr_auc': 0.7250726468997897, 'precision': 0.7725321888412017, 'recall': 0.5309734513274337, 'f1': 0.6293706293706294, 'confusion_matrix': {'tn': 599, 'fp': 53, 'fn': 159, 'tp': 180}, 'cv_roc_auc': 0.8213372845700441, 'cv_pr_auc': 0.7311185633596963, 'cv_precision': 0.7852913464920027, 'cv_recall': 0.568154204832397, 'cv_f1': 0.6586549726557666}, 'random_forest': {'roc_auc': 0.786067828510415, 'pr_auc': 0.6973651826599035, 'precision': 0.7876106194690266, 'recall': 0.5250737463126843, 'f1': 0.6300884955752213, 'confusion_matrix': {'tn': 604, 'fp': 48, 'fn': 161, 'tp': 178}, 'cv_roc_auc': 0.7835856874746276, 'cv_pr_auc': 0.7046533993808051, 'cv_precision': 0.803791123128085, 'cv_recall': 0.5538284666537987, 'cv_f1': 0.655420567681004}, 'xgboost': {'roc_auc': 0.8840011220297881, 'pr_auc': 0.8318449704243221, 'precision': 0.8228346456692913, 'recall': 0.616519174041298, 'f1': 0.7048903878583473, 'confusion_matrix': {'tn': 607, 'fp': 45, 'fn': 130, 'tp': 209}, 'cv_roc_auc': 0.8872882909891077, 'cv_pr_auc': 0.8322645313961793, 'cv_precision': 0.8375920580233531, 'cv_recall': 0.628691037277777, 'cv_f1': 0.7178060460388009}}, 'selected_algorithm': 'xgboost', 'selection_metric': 'roc_auc', 'random_split_diagnostic': {'metrics': {'roc_auc': 0.8846050347222222, 'pr_auc': 0.8324779429956259, 'precision': 0.8455598455598455, 'recall': 0.6083333333333333, 'f1': 0.7075928917609047, 'confusion_matrix': {'tn': 600, 'fp': 40, 'fn': 141, 'tp': 219}}, 'note': 'Random i.i.d. split allows spatially adjacent samples to leak between train and validation. Reported for comparison only — the spatial-block holdout above is the primary validation.'}, 'target': 'is_manganese', 'leakage_exclusions': ['fe_pct', 'is_manganese', 'mn_pct', 'ore_thickness_m', 'production_gap_mt', 'production_mt', 'shortfall', 'sio2_pct', 'target_mt'], 'leakage_check_passed': True, 'feature_names': ['elevation_m', 'slope_deg', 'aspect_deg', 'depth_m', 'blue_b2', 'green_b3', 'red_b4', 'nir_b8', 'swir_b11', 'swir_b12', 'ndvi', 'ndwi', 'swir_ratio', 'bare_soil_index', 'land_surface_temperature', 'formation_Gondite', 'formation_Granite', 'formation_Laterite', 'formation_Manganiferous_Formation', 'formation_Quartzite', 'formation_Schist'], 'training_rows': 5000, 'synthetic_data': True}, 'feature_schema_hash': '479dcab4682f8899', 'training_data_hash': 'ee64a69a91fb9c77', 'leakage_check_passed': True, 'artifact_path': 'models/reserve/versions/2026.09.001/prospectivity_xgboost.json', 'artifact_exists': True, 'promoted_at': None, 'previous_champion': None, 'notes': 'Synthetic-data candidate. Not field-validated.', 'drift': {'status': 'unknown_demo', 'note': 'No MOIL production baseline. Drift monitoring is a placeholder until field data is connected.'}}}
+  {'type': 'missing', 'loc': ('response', 'models', 3, 'created_at'), 'msg': 'Field required', 'input': {'model_name': 'reserve_prospectivity', 'version': '2026.09.002', 'task': 'binary_classification', 'algorithm': 'XGBoost', 'status': 'candidate', 'validation_strategy': 'spatial_block_holdout', 'metrics': {'roc_auc': 0.8840011220297881, 'pr_auc': 0.8318449704243221, 'precision': 0.8228346456692913, 'recall': 0.616519174041298, 'f1': 0.7048903878583473, 'confusion_matrix': {'tn': 607, 'fp': 45, 'fn': 130, 'tp': 209}, 'cv_roc_auc': 0.8872882909891077, 'cv_pr_auc': 0.8322645313961793, 'cv_precision': 0.8375920580233531, 'cv_recall': 0.628691037277777, 'cv_f1': 0.7178060460388009, 'validation': 'spatial_block_holdout', 'validation_details': {'strategy': 'GroupShuffleSplit over 5x5 latitude/longitude spatial blocks', 'primary': True, 'held_out_blocks': 5, 'train_rows': 4009, 'test_rows': 991, 'random_state': 42}, 'candidate_comparison': {'logistic_regression': {'roc_auc': 0.8164576433754999, 'pr_auc': 0.7250726468997897, 'precision': 0.7725321888412017, 'recall': 0.5309734513274337, 'f1': 0.6293706293706294, 'confusion_matrix': {'tn': 599, 'fp': 53, 'fn': 159, 'tp': 180}, 'cv_roc_auc': 0.8213372845700441, 'cv_pr_auc': 0.7311185633596963, 'cv_precision': 0.7852913464920027, 'cv_recall': 0.568154204832397, 'cv_f1': 0.6586549726557666}, 'random_forest': {'roc_auc': 0.786067828510415, 'pr_auc': 0.6973651826599035, 'precision': 0.7876106194690266, 'recall': 0.5250737463126843, 'f1': 0.6300884955752213, 'confusion_matrix': {'tn': 604, 'fp': 48, 'fn': 161, 'tp': 178}, 'cv_roc_auc': 0.7835856874746276, 'cv_pr_auc': 0.7046533993808051, 'cv_precision': 0.803791123128085, 'cv_recall': 0.5538284666537987, 'cv_f1': 0.655420567681004}, 'xgboost': {'roc_auc': 0.8840011220297881, 'pr_auc': 0.8318449704243221, 'precision': 0.8228346456692913, 'recall': 0.616519174041298, 'f1': 0.7048903878583473, 'confusion_matrix': {'tn': 607, 'fp': 45, 'fn': 130, 'tp': 209}, 'cv_roc_auc': 0.8872882909891077, 'cv_pr_auc': 0.8322645313961793, 'cv_precision': 0.8375920580233531, 'cv_recall': 0.628691037277777, 'cv_f1': 0.7178060460388009}}, 'selected_algorithm': 'xgboost', 'selection_metric': 'roc_auc', 'random_split_diagnostic': {'metrics': {'roc_auc': 0.8846050347222222, 'pr_auc': 0.8324779429956259, 'precision': 0.8455598455598455, 'recall': 0.6083333333333333, 'f1': 0.7075928917609047, 'confusion_matrix': {'tn': 600, 'fp': 40, 'fn': 141, 'tp': 219}}, 'note': 'Random i.i.d. split allows spatially adjacent samples to leak between train and validation. Reported for comparison only — the spatial-block holdout above is the primary validation.'}, 'target': 'is_manganese', 'leakage_exclusions': ['fe_pct', 'is_manganese', 'mn_pct', 'ore_thickness_m', 'production_gap_mt', 'production_mt', 'shortfall', 'sio2_pct', 'target_mt'], 'leakage_check_passed': True, 'feature_names': ['elevation_m', 'slope_deg', 'aspect_deg', 'depth_m', 'blue_b2', 'green_b3', 'red_b4', 'nir_b8', 'swir_b11', 'swir_b12', 'ndvi', 'ndwi', 'swir_ratio', 'bare_soil_index', 'land_surface_temperature', 'formation_Gondite', 'formation_Granite', 'formation_Laterite', 'formation_Manganiferous_Formation', 'formation_Quartzite', 'formation_Schist'], 'training_rows': 5000, 'synthetic_data': True}, 'feature_schema_hash': '479dcab4682f8899', 'training_data_hash': 'ee64a69a91fb9c77', 'leakage_check_passed': True, 'artifact_path': 'models/reserve/versions/2026.09.002/prospectivity_xgboost.json', 'artifact_exists': True, 'promoted_at': None, 'previous_champion': None, 'notes': 'Synthetic-data candidate. Not field-validated.', 'drift': {'status': 'unknown_demo', 'note': 'No MOIL production baseline. Drift monitoring is a placeholder until field data is connected.'}}}
+  {'type': 'missing', 'loc': ('response', 'models', 4, 'created_at'), 'msg': 'Field required', 'input': {'model_name': 'reserve_thickness', 'version': '2026.09.001', 'task': 'regression', 'algorithm': 'XGBoost', 'status': 'candidate', 'validation_strategy': 'spatial_block_holdout', 'metrics': {'mae': 2.3449456691741943, 'rmse': 3.435005947813079, 'r2': 0.23536264896392822, 'cv_mae': 2.257273960113525, 'cv_rmse': 3.225325745894468, 'cv_r2': 0.21569228172302246, 'validation': 'spatial_block_holdout', 'validation_details': {'strategy': 'GroupShuffleSplit over 5x5 latitude/longitude spatial blocks', 'primary': True, 'held_out_blocks': 5, 'train_rows': 4009, 'test_rows': 991, 'random_state': 42}, 'candidate_comparison': {'ridge': {'mae': 2.4090571148361066, 'rmse': 3.531982203995566, 'r2': 0.19157910437939707, 'cv_mae': 2.3005933886030405, 'cv_rmse': 3.264497618747941, 'cv_r2': 0.19685518453547804}, 'random_forest': {'mae': 2.4315687500982737, 'rmse': 3.539955697443207, 'r2': 0.1879249440611508, 'cv_mae': 2.3561254541115804, 'cv_rmse': 3.3216069259862993, 'cv_r2': 0.1683206591706437}, 'xgboost': {'mae': 2.3449456691741943, 'rmse': 3.435005947813079, 'r2': 0.23536264896392822, 'cv_mae': 2.257273960113525, 'cv_rmse': 3.225325745894468, 'cv_r2': 0.21569228172302246}}, 'selected_algorithm': 'xgboost', 'selection_metric': 'rmse', 'random_split_diagnostic': {'metrics': {'mae': 2.307900905609131, 'rmse': 3.2847540174849166, 'r2': 0.15899503231048584}, 'note': 'Random i.i.d. split allows spatially adjacent samples to leak between train and validation. Reported for comparison only — the spatial-block holdout above is the primary validation.'}, 'target': 'ore_thickness_m', 'leakage_exclusions': ['fe_pct', 'is_manganese', 'mn_pct', 'ore_thickness_m', 'production_gap_mt', 'production_mt', 'shortfall', 'sio2_pct', 'target_mt'], 'leakage_check_passed': True, 'feature_names': ['elevation_m', 'slope_deg', 'aspect_deg', 'depth_m', 'blue_b2', 'green_b3', 'red_b4', 'nir_b8', 'swir_b11', 'swir_b12', 'ndvi', 'ndwi', 'swir_ratio', 'bare_soil_index', 'land_surface_temperature', 'formation_Gondite', 'formation_Granite', 'formation_Laterite', 'formation_Manganiferous_Formation', 'formation_Quartzite', 'formation_Schist'], 'training_rows': 5000, 'synthetic_data': True}, 'feature_schema_hash': '479dcab4682f8899', 'training_data_hash': 'ee64a69a91fb9c77', 'leakage_check_passed': True, 'artifact_path': 'models/reserve/versions/2026.09.001/thickness_xgboost.json', 'artifact_exists': True, 'promoted_at': None, 'previous_champion': None, 'notes': 'Synthetic-data candidate. Not field-validated.', 'drift': {'status': 'unknown_demo', 'note': 'No MOIL production baseline. Drift monitoring is a placeholder until field data is connected.'}}}
+  {'type': 'missing', 'loc': ('response', 'models', 5, 'created_at'), 'msg': 'Field required', 'input': {'model_name': 'reserve_thickness', 'version': '2026.09.002', 'task': 'regression', 'algorithm': 'XGBoost', 'status': 'candidate', 'validation_strategy': 'spatial_block_holdout', 'metrics': {'mae': 2.3449456691741943, 'rmse': 3.435005947813079, 'r2': 0.23536264896392822, 'cv_mae': 2.257273960113525, 'cv_rmse': 3.225325745894468, 'cv_r2': 0.21569228172302246, 'validation': 'spatial_block_holdout', 'validation_details': {'strategy': 'GroupShuffleSplit over 5x5 latitude/longitude spatial blocks', 'primary': True, 'held_out_blocks': 5, 'train_rows': 4009, 'test_rows': 991, 'random_state': 42}, 'candidate_comparison': {'ridge': {'mae': 2.4090571148361066, 'rmse': 3.531982203995566, 'r2': 0.19157910437939707, 'cv_mae': 2.3005933886030405, 'cv_rmse': 3.264497618747941, 'cv_r2': 0.19685518453547804}, 'random_forest': {'mae': 2.4315687500982737, 'rmse': 3.539955697443207, 'r2': 0.1879249440611508, 'cv_mae': 2.35612545411158, 'cv_rmse': 3.3216069259862993, 'cv_r2': 0.1683206591706437}, 'xgboost': {'mae': 2.3449456691741943, 'rmse': 3.435005947813079, 'r2': 0.23536264896392822, 'cv_mae': 2.257273960113525, 'cv_rmse': 3.225325745894468, 'cv_r2': 0.21569228172302246}}, 'selected_algorithm': 'xgboost', 'selection_metric': 'rmse', 'random_split_diagnostic': {'metrics': {'mae': 2.307900905609131, 'rmse': 3.2847540174849166, 'r2': 0.15899503231048584}, 'note': 'Random i.i.d. split allows spatially adjacent samples to leak between train and validation. Reported for comparison only — the spatial-block holdout above is the primary validation.'}, 'target': 'ore_thickness_m', 'leakage_exclusions': ['fe_pct', 'is_manganese', 'mn_pct', 'ore_thickness_m', 'production_gap_mt', 'production_mt', 'shortfall', 'sio2_pct', 'target_mt'], 'leakage_check_passed': True, 'feature_names': ['elevation_m', 'slope_deg', 'aspect_deg', 'depth_m', 'blue_b2', 'green_b3', 'red_b4', 'nir_b8', 'swir_b11', 'swir_b12', 'ndvi', 'ndwi', 'swir_ratio', 'bare_soil_index', 'land_surface_temperature', 'formation_Gondite', 'formation_Granite', 'formation_Laterite', 'formation_Manganiferous_Formation', 'formation_Quartzite', 'formation_Schist'], 'training_rows': 5000, 'synthetic_data': True}, 'feature_schema_hash': '479dcab4682f8899', 'training_data_hash': 'ee64a69a91fb9c77', 'leakage_check_passed': True, 'artifact_path': 'models/reserve/versions/2026.09.002/thickness_xgboost.json', 'artifact_exists': True, 'promoted_at': None, 'previous_champion': None, 'notes': 'Synthetic-data candidate. Not field-validated.', 'drift': {'status': 'unknown_demo', 'note': 'No MOIL production baseline. Drift monitoring is a placeholder until field data is connected.'}}}
+
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\api\v1\router.py", line 138, in get_models
+    GET /api/v1/models
+________________________ test_reserve_service_summary _________________________
+
+demo_store = <backend.app.services.demo_data.DemoDataStore object at 0x0000018352490EC0>
+
+    def test_reserve_service_summary(demo_store):
+        """Test reserve summary service returns valid data."""
+        service = ReserveService(store=demo_store)
+>       result = service.get_summary()
+                 ^^^^^^^^^^^^^^^^^^^^^
+
+tests\backend\test_services.py:28: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <backend.app.services.reserve.ReserveService object at 0x000001832D91CC80>
+site_id = None
+
+    def get_summary(self, site_id: str | None = None) -> dict[str, Any]:
+        df = self._base_frame()
+        high = df[df["manganese_probability"] >= 0.75]
+        very_high = df[df["manganese_probability"] >= 0.85]
+        payloads = [
+>           self._resource_payload(
+                float(row["manganese_probability"]),
+                float(row["predicted_thickness_m"]),
+                float(row["confidence"]),
+                str(row["sample_id"]),
+            )
+            for _, row in high.iterrows()
+        ]
+E       TypeError: ReserveService._resource_payload() missing 1 required positional argument: 'seed_key'
+
+backend\app\services\reserve.py:329: TypeError
+______________________ test_recommendation_service_list _______________________
+
+demo_store = <backend.app.services.demo_data.DemoDataStore object at 0x0000018352490EC0>
+
+    def test_recommendation_service_list(demo_store):
+        """Test recommendation service returns valid data."""
+        service = RecommendationService()
+>       result = service.list_recommendations()
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\backend\test_services.py:93: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+backend\app\services\recommendations.py:31: in list_recommendations
+    reserve = self.reserve_service.get_summary(site_id=site_id)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <backend.app.services.reserve.ReserveService object at 0x000001832D246210>
+site_id = None
+
+    def get_summary(self, site_id: str | None = None) -> dict[str, Any]:
+        df = self._base_frame()
+        high = df[df["manganese_probability"] >= 0.75]
+        very_high = df[df["manganese_probability"] >= 0.85]
+        payloads = [
+>           self._resource_payload(
+                float(row["manganese_probability"]),
+                float(row["predicted_thickness_m"]),
+                float(row["confidence"]),
+                str(row["sample_id"]),
+            )
+            for _, row in high.iterrows()
+        ]
+E       TypeError: ReserveService._resource_payload() missing 1 required positional argument: 'seed_key'
+
+backend\app\services\reserve.py:329: TypeError
+____________________ test_recommendation_service_simulate _____________________
+
+demo_store = <backend.app.services.demo_data.DemoDataStore object at 0x0000018352490EC0>
+
+    def test_recommendation_service_simulate(demo_store):
+        """Test recommendation simulation returns valid data."""
+        service = RecommendationService()
+>       result = service.simulate({"reduce_downtime_pct": 20})
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\backend\test_services.py:107: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+backend\app\services\recommendations.py:40: in simulate
+    response = self.list_recommendations(site_id=site_id)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\app\services\recommendations.py:31: in list_recommendations
+    reserve = self.reserve_service.get_summary(site_id=site_id)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <backend.app.services.reserve.ReserveService object at 0x000001832DA23A10>
+site_id = None
+
+    def get_summary(self, site_id: str | None = None) -> dict[str, Any]:
+        df = self._base_frame()
+        high = df[df["manganese_probability"] >= 0.75]
+        very_high = df[df["manganese_probability"] >= 0.85]
+        payloads = [
+>           self._resource_payload(
+                float(row["manganese_probability"]),
+                float(row["predicted_thickness_m"]),
+                float(row["confidence"]),
+                str(row["sample_id"]),
+            )
+            for _, row in high.iterrows()
+        ]
+E       TypeError: ReserveService._resource_payload() missing 1 required positional argument: 'seed_key'
+
+backend\app\services\reserve.py:329: TypeError
+___________________ test_reserve_prediction_and_simulation ____________________
+
+demo_store = <backend.app.services.demo_data.DemoDataStore object at 0x0000018352490EC0>
+
+    def test_reserve_prediction_and_simulation(demo_store):
+        client = TestClient(app)
+        reserve = client.post(
+            "/api/v1/predictions/reserve",
+            json={
+                "latitude": 21.4,
+                "longitude": 80.3,
+                "elevation_m": 640,
+                "slope_deg": 12,
+                "aspect_deg": 180,
+                "depth_m": 28,
+                "formation": "Manganiferous_Formation",
+            },
+        )
+        assert reserve.status_code == 200
+        cell = reserve.json()["prediction"]
+        assert 0 < cell["probability"] < 1
+        assert cell["resource_potential"]["p10"] <= cell["resource_potential"]["p90"]
+    
+>       simulated = client.post(
+            "/api/v1/recommendations/simulate",
+            json={"reduce_downtime_pct": 20, "defer_weather_sensitive_blasts": True},
+        )
+
+tests\integration\test_prediction_flow.py:25: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+backend\.venv\Lib\site-packages\starlette\testclient.py:556: in post
+    return super().post(
+backend\.venv\Lib\site-packages\httpx2\_client.py:1204: in post
+    return self.request(
+backend\.venv\Lib\site-packages\starlette\testclient.py:455: in request
+    return super().request(
+backend\.venv\Lib\site-packages\httpx2\_client.py:797: in request
+    return self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\httpx2\_client.py:980: in send
+    response = self._send_handling_auth(
+backend\.venv\Lib\site-packages\httpx2\_client.py:1008: in _send_handling_auth
+    response = self._send_handling_redirects(
+backend\.venv\Lib\site-packages\httpx2\_client.py:1043: in _send_handling_redirects
+    response = self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\httpx2\_client.py:1076: in _send_single_request
+    response = transport.handle_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\starlette\testclient.py:354: in handle_request
+    raise exc
+backend\.venv\Lib\site-packages\starlette\testclient.py:351: in handle_request
+    portal.call(self.app, scope, receive, send)
+backend\.venv\Lib\site-packages\anyio\from_thread.py:338: in call
+    return cast(T_Retval, self.start_task_soon(func, *args).result())
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+..\..\..\..\AppData\Local\Programs\Python\Python313\Lib\concurrent\futures\_base.py:456: in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+..\..\..\..\AppData\Local\Programs\Python\Python313\Lib\concurrent\futures\_base.py:401: in __get_result
+    raise self._exception
+backend\.venv\Lib\site-packages\anyio\from_thread.py:263: in _call_func
+    retval = await retval_or_awaitable
+             ^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\fastapi\applications.py:1163: in __call__
+    await super().__call__(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\applications.py:96: in __call__
+    await self.middleware_stack(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\middleware\errors.py:186: in __call__
+    raise exc
+backend\.venv\Lib\site-packages\starlette\middleware\errors.py:164: in __call__
+    await self.app(scope, receive, _send)
+backend\.venv\Lib\site-packages\starlette\middleware\cors.py:88: in __call__
+    await self.app(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\middleware\exceptions.py:63: in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+backend\.venv\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+backend\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py:18: in __call__
+    await self.app(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\routing.py:670: in __call__
+    await self.middleware_stack(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:2734: in app
+    await route.handle(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:1780: in handle
+    await self.original_router.handle(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:2789: in handle
+    await included_router._handle_selected(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:1800: in _handle_selected
+    await original_route.handle(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:1279: in handle
+    await app(scope, receive, send)
+backend\.venv\Lib\site-packages\fastapi\routing.py:158: in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+backend\.venv\Lib\site-packages\starlette\_exception_handler.py:53: in wrapped_app
+    raise exc
+backend\.venv\Lib\site-packages\starlette\_exception_handler.py:42: in wrapped_app
+    await app(scope, receive, sender)
+backend\.venv\Lib\site-packages\fastapi\routing.py:144: in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\fastapi\routing.py:706: in app
+    raw_response = await run_endpoint_function(
+backend\.venv\Lib\site-packages\fastapi\routing.py:354: in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\starlette\concurrency.py:34: in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\anyio\to_thread.py:65: in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+backend\.venv\Lib\site-packages\anyio\_backends\_asyncio.py:2641: in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\anyio\_backends\_asyncio.py:1033: in run
+    result = context.run(func, *args)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+backend\app\api\v1\router.py:183: in simulate_recommendations
+    return RecommendationService().simulate(payload.model_dump(), site_id=_validate_site_id(site_id))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\app\services\recommendations.py:40: in simulate
+    response = self.list_recommendations(site_id=site_id)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\app\services\recommendations.py:31: in list_recommendations
+    reserve = self.reserve_service.get_summary(site_id=site_id)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = <backend.app.services.reserve.ReserveService object at 0x000001832D9542C0>
+site_id = None
+
+    def get_summary(self, site_id: str | None = None) -> dict[str, Any]:
+        df = self._base_frame()
+        high = df[df["manganese_probability"] >= 0.75]
+        very_high = df[df["manganese_probability"] >= 0.85]
+        payloads = [
+>           self._resource_payload(
+                float(row["manganese_probability"]),
+                float(row["predicted_thickness_m"]),
+                float(row["confidence"]),
+                str(row["sample_id"]),
+            )
+            for _, row in high.iterrows()
+        ]
+E       TypeError: ReserveService._resource_payload() missing 1 required positional argument: 'seed_key'
+
+backend\app\services\reserve.py:329: TypeError
+------------------------------ Captured log call ------------------------------
+INFO     httpx2:_client.py:1085 HTTP Request: POST http://testserver/api/v1/predictions/reserve "HTTP/1.1 200 OK"
+ERROR    backend.app.main:main.py:134 Unhandled endpoint failure path=/api/v1/recommendations/simulate
+Traceback (most recent call last):
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\middleware\errors.py", line 164, in __call__
+    await self.app(scope, receive, _send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\middleware\cors.py", line 88, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\middleware\exceptions.py", line 63, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\middleware\asyncexitstack.py", line 18, in __call__
+    await self.app(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\routing.py", line 670, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 2734, in app
+    await route.handle(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 1780, in handle
+    await self.original_router.handle(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 2789, in handle
+    await included_router._handle_selected(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 1800, in _handle_selected
+    await original_route.handle(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 1279, in handle
+    await app(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 158, in app
+    await wrap_app_handling_exceptions(app, request)(scope, receive, send)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 53, in wrapped_app
+    raise exc
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\_exception_handler.py", line 42, in wrapped_app
+    await app(scope, receive, sender)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 144, in app
+    response = await f(request)
+               ^^^^^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 706, in app
+    raw_response = await run_endpoint_function(
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\fastapi\routing.py", line 354, in run_endpoint_function
+    return await run_in_threadpool(dependant.call, **values)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\starlette\concurrency.py", line 34, in run_in_threadpool
+    return await anyio.to_thread.run_sync(func)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\anyio\to_thread.py", line 65, in run_sync
+    return await get_async_backend().run_sync_in_worker_thread(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        func, args, abandon_on_cancel=abandon_on_cancel, limiter=limiter
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 2641, in run_sync_in_worker_thread
+    return await future
+           ^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\anyio\_backends\_asyncio.py", line 1033, in run
+    result = context.run(func, *args)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\api\v1\router.py", line 183, in simulate_recommendations
+    return RecommendationService().simulate(payload.model_dump(), site_id=_validate_site_id(site_id))
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\services\recommendations.py", line 40, in simulate
+    response = self.list_recommendations(site_id=site_id)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\services\recommendations.py", line 31, in list_recommendations
+    reserve = self.reserve_service.get_summary(site_id=site_id)
+  File "C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\services\reserve.py", line 329, in get_summary
+    self._resource_payload(
+    ~~~~~~~~~~~~~~~~~~~~~~^
+        float(row["manganese_probability"]),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        str(row["sample_id"]),
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+TypeError: ReserveService._resource_payload() missing 1 required positional argument: 'seed_key'
+___________________ test_compute_member_weights_sums_to_one ___________________
+
+    def test_compute_member_weights_sums_to_one():
+        y = pd.Series([0, 1, 1, 0, 1])
+        oof = {"a": pd.Series([0.2, 0.8, 0.7, 0.3, 0.6]), "b": pd.Series([0.4, 0.5, 0.5, 0.4, 0.5])}
+        weights = compute_member_weights(oof, y)
+        assert abs(sum(weights.values()) - 1.0) < 1e-9
+>       assert weights["a"] > weights["b"]
+E       assert 0.5 > 0.5
+
+tests\ml\test_phase4.py:91: AssertionError
+_____________ test_ensemble_fit_predicts_calibrated_probabilities _____________
+
+tmp_path_factory = TempPathFactory(_given_basetemp=WindowsPath('C:/Users/parsh/OneDrive/Attachments/Desktop/MANGAI/.pytest-tmp'), _trace=...owsPath('C:/Users/parsh/OneDrive/Attachments/Desktop/MANGAI/.pytest-tmp'), _retention_count=3, _retention_policy='all')
+
+    def test_ensemble_fit_predicts_calibrated_probabilities(tmp_path_factory):
+        from ml.reserve.features import RESERVE_TASKS, load_fused_reserve_table, prepare_reserve_matrix
+        from ml.reserve.spatial import spatial_holdout_indices
+    
+        root = _write_training_root(tmp_path_factory.mktemp("ens"), n=300, seed=11)
+        df = load_fused_reserve_table(root)
+        spec = RESERVE_TASKS["prospectivity"]
+>       X = prepare_reserve_matrix(df, spec.numerical_features, spec.categorical_features)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\ml\test_phase4.py:101: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+ml\reserve\features.py:149: in prepare_reserve_matrix
+    return one_hot_align(subset, categorical, feature_columns)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+ml\common\preprocessing.py:16: in one_hot_align
+    return encoded.reindex(columns=feature_columns, fill_value=0)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+backend\.venv\Lib\site-packages\pandas\core\frame.py:6092: in reindex
+    return super().reindex(
+backend\.venv\Lib\site-packages\pandas\core\generic.py:5464: in reindex
+    return self._reindex_axes(
+backend\.venv\Lib\site-packages\pandas\core\generic.py:5486: in _reindex_axes
+    new_index, indexer = ax.reindex(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = Index(['formation_Banded_Iron_Formation', 'formation_Gondite',
+       'formation_Manganiferous_Formation', 'formation_..._Formation', 'formation_Gondite',
+       'formation_Manganiferous_Formation', 'formation_Phyllite'],
+      dtype='str')
+target = Index(['elevation_m', 'slope_deg', 'aspect_deg', 'depth_m', 'blue_b2',
+       'green_b3', 'red_b4', 'nir_b8', 'swir_b11', 'swir_b12', 'ndvi', 'ndwi',
+       'swir_ratio', 'bare_soil_index', 'land_surface_temperature'],
+      dtype='str')
+method = None, level = None, limit = None, tolerance = None
+
+    def reindex(
+        self,
+        target,
+        method: ReindexMethod | None = None,
+        level=None,
+        limit: int | None = None,
+        tolerance: float | None = None,
+    ) -> tuple[Index, npt.NDArray[np.intp] | None]:
+        """
+        Create index with target's values.
+    
+        Parameters
+        ----------
+        target : an iterable
+            An iterable containing the values to be used for creating the new index.
+        method : {None, 'pad'/'ffill', 'backfill'/'bfill', 'nearest'}, optional
+            * default: exact matches only.
+            * pad / ffill: find the PREVIOUS index value if no exact match.
+            * backfill / bfill: use NEXT index value if no exact match
+            * nearest: use the NEAREST index value if no exact match. Tied
+              distances are broken by preferring the larger index value.
+        level : int, optional
+            Level of multiindex.
+        limit : int, optional
+            Maximum number of consecutive labels in ``target`` to match for
+            inexact matches.
+        tolerance : int, float, or list-like, optional
+            Maximum distance between original and new labels for inexact
+            matches. The values of the index at the matching locations must
+            satisfy the equation ``abs(index[indexer] - target) <= tolerance``.
+    
+            Tolerance may be a scalar value, which applies the same tolerance
+            to all values, or list-like, which applies variable tolerance per
+            element. List-like includes list, tuple, array, Series, and must be
+            the same size as the index and its dtype must exactly match the
+            index's type.
+    
+        Returns
+        -------
+        new_index : pd.Index
+            Resulting index.
+        indexer : np.ndarray[np.intp] or None
+            Indices of output values in original index.
+    
+        Raises
+        ------
+        TypeError
+            If ``method`` passed along with ``level``.
+        ValueError
+            If non-unique multi-index
+        ValueError
+            If non-unique index and ``method`` or ``limit`` passed.
+    
+        See Also
+        --------
+        Series.reindex : Conform Series to new index with optional filling logic.
+        DataFrame.reindex : Conform DataFrame to new index with optional filling logic.
+    
+        Examples
+        --------
+        >>> idx = pd.Index(["car", "bike", "train", "tractor"])
+        >>> idx
+        Index(['car', 'bike', 'train', 'tractor'], dtype='str')
+        >>> idx.reindex(["car", "bike"])
+        (Index(['car', 'bike'], dtype='str'), array([0, 1]))
+        """
+        # GH6552: preserve names when reindexing to non-named target
+        # (i.e. neither Index nor Series).
+        preserve_names = not hasattr(target, "name")
+    
+        # GH7774: preserve dtype/tz if target is empty and not an Index.
+        if is_iterator(target):
+            target = list(target)
+    
+        if not isinstance(target, Index) and len(target) == 0:
+            if level is not None and self._is_multi:
+                # "Index" has no attribute "levels"; maybe "nlevels"?
+                idx = self.levels[level]  # type: ignore[attr-defined]
+            else:
+                idx = self
+            target = idx[:0]
+        else:
+            target = ensure_index(target)
+    
+        if level is not None and (
+            isinstance(self, ABCMultiIndex) or isinstance(target, ABCMultiIndex)
+        ):
+            if method is not None:
+                raise TypeError("Fill method not supported if level passed")
+    
+            # TODO: tests where passing `keep_order=not self._is_multi`
+            #  makes a difference for non-MultiIndex case
+            target, indexer, _ = self._join_level(
+                target, level, how="right", keep_order=not self._is_multi
+            )
+    
+        elif self.equals(target):
+            indexer = None
+        elif self._index_as_unique:
+            indexer = self.get_indexer(
+                target, method=method, limit=limit, tolerance=tolerance
+            )
+        elif self._is_multi:
+            raise ValueError("cannot handle a non-unique multi-index!")
+        elif not self.is_unique:
+            # GH#42568
+>           raise ValueError("cannot reindex on an axis with duplicate labels")
+E           ValueError: cannot reindex on an axis with duplicate labels
+
+backend\.venv\Lib\site-packages\pandas\core\indexes\base.py:4253: ValueError
+_________________________ test_drift_no_change_is_ok __________________________
+
+    def test_drift_no_change_is_ok():
+        rng = np.random.default_rng(31)
+        ref = pd.DataFrame({"a": rng.normal(0, 1, 200)})
+>       assert compute_feature_drift(ref, ref.copy())["overall_status"] == "ok"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\ml\test_phase4.py:231: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+reference =             a
+0   -0.395301
+1    0.263915
+2    0.607128
+3   -0.972160
+4    0.767664
+..        ...
+195  1.896939
+196 -0.289685
+197  0.055827
+198 -0.867250
+199  1.981291
+
+[200 rows x 1 columns]
+current =             a
+0   -0.395301
+1    0.263915
+2    0.607128
+3   -0.972160
+4    0.767664
+..        ...
+195  1.896939
+196 -0.289685
+197  0.055827
+198 -0.867250
+199  1.981291
+
+[200 rows x 1 columns]
+percentiles = (10, 50, 90), psi_bins = 10
+thresholds = {'missingness': 0.05, 'mean_shift': 0.25, 'median_shift': 0.25, 'percentile_shift': 0.25, ...}
+categorical_columns = []
+
+    def compute_feature_drift(
+        reference: pd.DataFrame,
+        current: pd.DataFrame,
+        *,
+        percentiles: tuple[int, ...] = DEFAULT_PERCENTILES,
+        psi_bins: int = DEFAULT_PSI_BINS,
+        thresholds: dict[str, float] | None = None,
+        categorical_columns: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Compare training (``reference``) vs new inference (``current``) features.
+    
+        Returns per-feature metrics and an overall status. A ``warning`` status
+        means at least one metric exceeded its configurable threshold; it never
+        invalidates the model.
+        """
+        thresholds = dict(DEFAULT_THRESHOLDS if thresholds is None else thresholds)
+        categorical_columns = categorical_columns or []
+        common = [column for column in reference.columns if column in current.columns]
+        features: dict[str, Any] = {}
+        warnings: list[str] = []
+    
+        for column in common:
+            ref = reference[column]
+            cur = current[column]
+            if column in categorical_columns or ref.dtype == object or cur.dtype == object:
+                tv = _total_variation(ref.astype(str), cur.astype(str))
+                status = "warning" if tv > thresholds["categorical_tv"] else "ok"
+                features[column] = {
+                    "kind": "categorical",
+                    "total_variation": round(tv, 4),
+                    "threshold": thresholds["categorical_tv"],
+                    "status": status,
+                }
+                if status == "warning":
+                    warnings.append(column)
+                continue
+    
+            ref_arr = pd.to_numeric(ref, errors="coerce").to_numpy()
+            cur_arr = pd.to_numeric(cur, errors="coerce").to_numpy()
+            ref_finite = ref_arr[np.isfinite(ref_arr)]
+            cur_finite = cur_arr[np.isfinite(cur_arr)]
+            if len(ref_finite) == 0 or len(cur_finite) == 0:
+                features[column] = {"kind": "numeric", "status": "ok", "note": "insufficient data"}
+                continue
+    
+            ref_missing = float(np.mean(~np.isfinite(ref_arr)))
+            cur_missing = float(np.mean(~np.isfinite(cur_arr)))
+            missing_delta = abs(cur_missing - ref_missing)
+            std = float(np.std(ref_finite)) or 1.0
+            mean_shift = abs(float(np.mean(cur_finite)) - float(np.mean(ref_finite))) / std
+            median_shift = abs(float(np.median(cur_finite)) - float(np.median(ref_finite))) / std
+            percentile_shift = 0.0
+            for percentile in percentiles:
+                ref_p = float(np.percentile(ref_finite, percentile))
+                cur_p = float(np.percentile(cur_finite, percentile))
+                percentile_shift = max(percentile_shift, abs(cur_p - ref_p) / std)
+            psi = _psi(ref_finite, cur_finite, bins=psi_bins)
+    
+            metric_values = {
+                "missingness_delta": missing_delta,
+                "mean_shift": mean_shift,
+                "median_shift": median_shift,
+                "percentile_shift": percentile_shift,
+                "psi": psi,
+            }
+            status = "ok"
+            for metric, value in metric_values.items():
+                if value > thresholds.get(metric, float("inf")):
+                    status = "warning"
+                    warnings.append(column)
+                    break
+            features[column] = {
+                "kind": "numeric",
+                "metrics": {name: round(value, 4) for name, value in metric_values.items()},
+>               "thresholds": {name: thresholds[name] for name in metric_values},
+                                     ^^^^^^^^^^^^^^^^
+                "status": status,
+            }
+E           KeyError: 'missingness_delta'
+
+ml\common\drift.py:137: KeyError
+________________________ test_drift_large_shift_warns _________________________
+
+    def test_drift_large_shift_warns():
+        rng = np.random.default_rng(37)
+        ref = pd.DataFrame({"a": rng.normal(0, 1, 500)})
+        current = pd.DataFrame({"a": rng.normal(5, 1, 500)})
+>       result = compute_feature_drift(ref, current, thresholds={"mean_shift": 0.25, "median_shift": 0.25, "percentile_shift": 0.25, "psi": 0.25, "missingness": 0.05, "categorical_tv": 0.15})
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\ml\test_phase4.py:238: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+reference =             a
+0    0.899903
+1   -0.458375
+2   -1.314085
+3    0.658698
+4    0.955426
+..        ...
+495  0.346966
+496  0.015107
+497  0.312622
+498 -0.586070
+499  0.034950
+
+[500 rows x 1 columns]
+current =             a
+0    6.074261
+1    5.783128
+2    5.414800
+3    5.353503
+4    3.318226
+..        ...
+495  5.540580
+496  5.385180
+497  4.159801
+498  4.574879
+499  4.261070
+
+[500 rows x 1 columns]
+percentiles = (10, 50, 90), psi_bins = 10
+thresholds = {'mean_shift': 0.25, 'median_shift': 0.25, 'percentile_shift': 0.25, 'psi': 0.25, ...}
+categorical_columns = []
+
+    def compute_feature_drift(
+        reference: pd.DataFrame,
+        current: pd.DataFrame,
+        *,
+        percentiles: tuple[int, ...] = DEFAULT_PERCENTILES,
+        psi_bins: int = DEFAULT_PSI_BINS,
+        thresholds: dict[str, float] | None = None,
+        categorical_columns: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Compare training (``reference``) vs new inference (``current``) features.
+    
+        Returns per-feature metrics and an overall status. A ``warning`` status
+        means at least one metric exceeded its configurable threshold; it never
+        invalidates the model.
+        """
+        thresholds = dict(DEFAULT_THRESHOLDS if thresholds is None else thresholds)
+        categorical_columns = categorical_columns or []
+        common = [column for column in reference.columns if column in current.columns]
+        features: dict[str, Any] = {}
+        warnings: list[str] = []
+    
+        for column in common:
+            ref = reference[column]
+            cur = current[column]
+            if column in categorical_columns or ref.dtype == object or cur.dtype == object:
+                tv = _total_variation(ref.astype(str), cur.astype(str))
+                status = "warning" if tv > thresholds["categorical_tv"] else "ok"
+                features[column] = {
+                    "kind": "categorical",
+                    "total_variation": round(tv, 4),
+                    "threshold": thresholds["categorical_tv"],
+                    "status": status,
+                }
+                if status == "warning":
+                    warnings.append(column)
+                continue
+    
+            ref_arr = pd.to_numeric(ref, errors="coerce").to_numpy()
+            cur_arr = pd.to_numeric(cur, errors="coerce").to_numpy()
+            ref_finite = ref_arr[np.isfinite(ref_arr)]
+            cur_finite = cur_arr[np.isfinite(cur_arr)]
+            if len(ref_finite) == 0 or len(cur_finite) == 0:
+                features[column] = {"kind": "numeric", "status": "ok", "note": "insufficient data"}
+                continue
+    
+            ref_missing = float(np.mean(~np.isfinite(ref_arr)))
+            cur_missing = float(np.mean(~np.isfinite(cur_arr)))
+            missing_delta = abs(cur_missing - ref_missing)
+            std = float(np.std(ref_finite)) or 1.0
+            mean_shift = abs(float(np.mean(cur_finite)) - float(np.mean(ref_finite))) / std
+            median_shift = abs(float(np.median(cur_finite)) - float(np.median(ref_finite))) / std
+            percentile_shift = 0.0
+            for percentile in percentiles:
+                ref_p = float(np.percentile(ref_finite, percentile))
+                cur_p = float(np.percentile(cur_finite, percentile))
+                percentile_shift = max(percentile_shift, abs(cur_p - ref_p) / std)
+            psi = _psi(ref_finite, cur_finite, bins=psi_bins)
+    
+            metric_values = {
+                "missingness_delta": missing_delta,
+                "mean_shift": mean_shift,
+                "median_shift": median_shift,
+                "percentile_shift": percentile_shift,
+                "psi": psi,
+            }
+            status = "ok"
+            for metric, value in metric_values.items():
+                if value > thresholds.get(metric, float("inf")):
+                    status = "warning"
+                    warnings.append(column)
+                    break
+            features[column] = {
+                "kind": "numeric",
+                "metrics": {name: round(value, 4) for name, value in metric_values.items()},
+>               "thresholds": {name: thresholds[name] for name in metric_values},
+                                     ^^^^^^^^^^^^^^^^
+                "status": status,
+            }
+E           KeyError: 'missingness_delta'
+
+ml\common\drift.py:137: KeyError
+__________________ test_promotion_deterministic_and_audited ___________________
+
+tmp_path = WindowsPath('C:/Users/parsh/OneDrive/Attachments/Desktop/MANGAI/.pytest-tmp/test_promotion_deterministic_a0')
+
+    def test_promotion_deterministic_and_audited(tmp_path):
+        registry = tmp_path / "registry"
+        registry.mkdir()
+        record = {"model_name": "reserve_prospectivity", "version": "2026.09.001", "task": "binary_classification", "algorithm": "XGBoost", "training_data_hash": "abc", "feature_schema_hash": "def", "metrics": {"validation": "spatial_block_holdout", "leakage_check_passed": True}, "artifact_path": None, "status": "candidate", "created_at": "", "target": "is_manganese", "feature_names": [], "validation_strategy": "spatial_block_holdout"}
+        (registry / "reserve_prospectivity-2026.09.001.json").write_text(json.dumps(record), encoding="utf-8")
+>       assert promote_model(registry, "reserve_prospectivity", "2026.09.001", "validated")["status"] == "validated"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\ml\test_phase4.py:270: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+registry_dir = WindowsPath('C:/Users/parsh/OneDrive/Attachments/Desktop/MANGAI/.pytest-tmp/test_promotion_deterministic_a0/registry')
+model_name = 'reserve_prospectivity', version = '2026.09.001'
+to_status = 'validated'
+required_metrics = ('validation', 'leakage_check_passed')
+demote_previous_champion = True
+
+    def promote_model(
+        registry_dir: Path,
+        model_name: str,
+        version: str,
+        to_status: str,
+        *,
+        required_metrics: tuple[str, ...] = ("validation", "leakage_check_passed"),
+        demote_previous_champion: bool = True,
+    ) -> dict[str, Any]:
+        """Deterministic, auditable promotion along candidate\u2192validated\u2192champion.
+    
+        Promotion requires the criteria in ``check_promotion_criteria`` to pass.
+        When promoting to ``champion``, the existing champion (if any) is demoted
+        to ``validated`` and recorded as ``previous_champion``. Old versions and
+        artifacts are never overwritten.
+        """
+        if to_status not in LIFECYCLE_STATUSES:
+            raise ValueError(f"unknown status {to_status!r}; expected one of {LIFECYCLE_STATUSES}")
+        record = _read_record(registry_dir, model_name, version)
+        if record is None:
+            raise FileNotFoundError(f"no registry record for {model_name} {version}")
+        current = record.get("status", "candidate")
+        allowed = PROMOTION_GRAPH.get(current, ())
+        if to_status not in allowed:
+            raise ValueError(f"illegal promotion {current} -> {to_status}; allowed: {allowed}")
+    
+        if to_status in ("validated", "champion"):
+            passed, failures = check_promotion_criteria(record, required_metrics=required_metrics)
+            if not passed:
+>               raise ValueError(f"promotion criteria not met: {'; '.join(failures)}")
+E               ValueError: promotion criteria not met: leakage_check_passed is not true; validation strategy '' is not spatial_block_holdout
+
+ml\common\registry.py:135: ValueError
+_______________________ test_champion_demotes_previous ________________________
+
+tmp_path = WindowsPath('C:/Users/parsh/OneDrive/Attachments/Desktop/MANGAI/.pytest-tmp/test_champion_demotes_previous0')
+
+    def test_champion_demotes_previous(tmp_path):
+        registry = tmp_path / "registry"
+        registry.mkdir()
+        old = {"model_name": "reserve_prospectivity", "version": "2026.09.001", "task": "binary_classification", "algorithm": "XGBoost", "training_data_hash": "abc", "feature_schema_hash": "def", "metrics": {"validation": "spatial_block_holdout", "leakage_check_passed": True}, "artifact_path": None, "status": "champion", "created_at": "", "target": "is_manganese", "feature_names": [], "validation_strategy": "spatial_block_holdout"}
+        new = dict(old, version="2026.09.002", status="validated")
+        (registry / "reserve_prospectivity-2026.09.001.json").write_text(json.dumps(old), encoding="utf-8")
+        (registry / "reserve_prospectivity-2026.09.002.json").write_text(json.dumps(new), encoding="utf-8")
+>       promote_model(registry, "reserve_prospectivity", "2026.09.002", "champion")
+
+tests\ml\test_phase4.py:290: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+registry_dir = WindowsPath('C:/Users/parsh/OneDrive/Attachments/Desktop/MANGAI/.pytest-tmp/test_champion_demotes_previous0/registry')
+model_name = 'reserve_prospectivity', version = '2026.09.002'
+to_status = 'champion'
+required_metrics = ('validation', 'leakage_check_passed')
+demote_previous_champion = True
+
+    def promote_model(
+        registry_dir: Path,
+        model_name: str,
+        version: str,
+        to_status: str,
+        *,
+        required_metrics: tuple[str, ...] = ("validation", "leakage_check_passed"),
+        demote_previous_champion: bool = True,
+    ) -> dict[str, Any]:
+        """Deterministic, auditable promotion along candidate\u2192validated\u2192champion.
+    
+        Promotion requires the criteria in ``check_promotion_criteria`` to pass.
+        When promoting to ``champion``, the existing champion (if any) is demoted
+        to ``validated`` and recorded as ``previous_champion``. Old versions and
+        artifacts are never overwritten.
+        """
+        if to_status not in LIFECYCLE_STATUSES:
+            raise ValueError(f"unknown status {to_status!r}; expected one of {LIFECYCLE_STATUSES}")
+        record = _read_record(registry_dir, model_name, version)
+        if record is None:
+            raise FileNotFoundError(f"no registry record for {model_name} {version}")
+        current = record.get("status", "candidate")
+        allowed = PROMOTION_GRAPH.get(current, ())
+        if to_status not in allowed:
+            raise ValueError(f"illegal promotion {current} -> {to_status}; allowed: {allowed}")
+    
+        if to_status in ("validated", "champion"):
+            passed, failures = check_promotion_criteria(record, required_metrics=required_metrics)
+            if not passed:
+>               raise ValueError(f"promotion criteria not met: {'; '.join(failures)}")
+E               ValueError: promotion criteria not met: leakage_check_passed is not true; validation strategy '' is not spatial_block_holdout
+
+ml\common\registry.py:135: ValueError
+______________________ test_prediction_grid_with_models _______________________
+
+tmp_path_factory = TempPathFactory(_given_basetemp=WindowsPath('C:/Users/parsh/OneDrive/Attachments/Desktop/MANGAI/.pytest-tmp'), _trace=...owsPath('C:/Users/parsh/OneDrive/Attachments/Desktop/MANGAI/.pytest-tmp'), _retention_count=3, _retention_policy='all')
+
+    def test_prediction_grid_with_models(tmp_path_factory):
+        from ml.reserve.ensemble import train_prospectivity_ensemble
+        from ml.reserve.grid import generate_prediction_grid
+        from ml.reserve.train_prospectivity import train_grade, train_prospectivity, train_thickness
+    
+        root = _write_training_root(tmp_path_factory.mktemp("grid"), n=150, seed=53)
+        train_prospectivity(root, quick=True)
+        train_grade(root, quick=True)
+        train_thickness(root, quick=True)
+        train_prospectivity_ensemble(root, quick=True)
+>       grid = generate_prediction_grid(root / "models", cells_per_side=4)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\ml\test_phase4.py:332: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+ml\reserve\grid.py:121: in generate_prediction_grid
+    grid = _nearest_covariates(grid, observations)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+grid =      latitude  longitude        _lat_m        _lon_m
+0   21.190005  80.090021  2.343064e+06  8.249272e+06
+1   21.19000... 8.263685e+06
+14  21.609887  80.369875  2.389492e+06  8.278097e+06
+15  21.609887  80.509802  2.389492e+06  8.292510e+06
+observations =      sample_id   latitude  ...  bare_soil_index  land_surface_temperature
+0      GS00000  21.349816  ...        -0.243...          33.048073
+4999   GS04999  21.438925  ...        -0.122026                 31.388711
+
+[5000 rows x 24 columns]
+
+    def _nearest_covariates(grid: pd.DataFrame, observations: pd.DataFrame) -> pd.DataFrame:
+        """Attach nearest-observation covariates to every grid cell."""
+        obs = observations[["latitude", "longitude", *COVARIATE_COLUMNS]].copy()
+        obs["_lat_m"] = obs["latitude"] * LAT_METRES
+        obs["_lon_m"] = obs["longitude"] * LON_METRES
+        grid = grid.copy()
+        grid["_lat_m"] = grid["latitude"] * LAT_METRES
+        grid["_lon_m"] = grid["longitude"] * LON_METRES
+        nearest_idx = []
+        distances_m = []
+        for row in grid.itertuples(index=False):
+>           d2 = (obs["_lat_m"] - row._lat_m) ** 2 + (obs["_lon_m"] - row._lon_m) ** 2
+                                  ^^^^^^^^^^
+E           AttributeError: 'Pandas' object has no attribute '_lat_m'
+
+ml\reserve\grid.py:80: AttributeError
+____________________ test_prediction_grid_no_context_cell _____________________
+
+tmp_path_factory = TempPathFactory(_given_basetemp=WindowsPath('C:/Users/parsh/OneDrive/Attachments/Desktop/MANGAI/.pytest-tmp'), _trace=...owsPath('C:/Users/parsh/OneDrive/Attachments/Desktop/MANGAI/.pytest-tmp'), _retention_count=3, _retention_policy='all')
+
+    def test_prediction_grid_no_context_cell(tmp_path_factory):
+        from ml.reserve.grid import generate_prediction_grid
+        from ml.reserve.train_prospectivity import train_prospectivity
+    
+        root = _write_training_root(tmp_path_factory.mktemp("grid_nc"), n=20, seed=57)
+        train_prospectivity(root, quick=True)
+>       grid = generate_prediction_grid(
+            root / "models",
+            bbox={"min_lat": -10.0, "max_lat": -9.9, "min_lon": 10.0, "max_lon": 10.1},
+            cells_per_side=3,
+        )
+
+tests\ml\test_phase4.py:347: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+ml\reserve\grid.py:121: in generate_prediction_grid
+    grid = _nearest_covariates(grid, observations)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+grid =    latitude  longitude     _lat_m     _lon_m
+0    -10.00      10.00 -1105740.0  1030000.0
+1    -10.00      10.05 -1105...  10.00 -1094682.6  1030000.0
+7     -9.90      10.05 -1094682.6  1035150.0
+8     -9.90      10.10 -1094682.6  1040300.0
+observations =      sample_id   latitude  ...  bare_soil_index  land_surface_temperature
+0      GS00000  21.349816  ...        -0.243...          33.048073
+4999   GS04999  21.438925  ...        -0.122026                 31.388711
+
+[5000 rows x 24 columns]
+
+    def _nearest_covariates(grid: pd.DataFrame, observations: pd.DataFrame) -> pd.DataFrame:
+        """Attach nearest-observation covariates to every grid cell."""
+        obs = observations[["latitude", "longitude", *COVARIATE_COLUMNS]].copy()
+        obs["_lat_m"] = obs["latitude"] * LAT_METRES
+        obs["_lon_m"] = obs["longitude"] * LON_METRES
+        grid = grid.copy()
+        grid["_lat_m"] = grid["latitude"] * LAT_METRES
+        grid["_lon_m"] = grid["longitude"] * LON_METRES
+        nearest_idx = []
+        distances_m = []
+        for row in grid.itertuples(index=False):
+>           d2 = (obs["_lat_m"] - row._lat_m) ** 2 + (obs["_lon_m"] - row._lon_m) ** 2
+                                  ^^^^^^^^^^
+E           AttributeError: 'Pandas' object has no attribute '_lat_m'
+
+ml\reserve\grid.py:80: AttributeError
+============================== warnings summary ===============================
+tests/ml/test_phase4.py: 12 warnings
+  C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\.venv\Lib\site-packages\sklearn\metrics\_ranking.py:469: UndefinedMetricWarning: Only one class is present in y_true. ROC AUC score is not defined in that case.
+    warnings.warn(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ===========================
+FAILED tests/backend/test_api.py::test_health_and_core_endpoints - TypeError:...
+FAILED tests/backend/test_foundation.py::test_demo_mode_preserves_synthetic_api_behavior
+FAILED tests/backend/test_phase4_api.py::test_reserve_grid_endpoint - assert ...
+FAILED tests/backend/test_recommendations.py::test_recommendations_are_structured
+FAILED tests/backend/test_reserve_model_metadata.py::test_model_registry_lists_reserve_models
+FAILED tests/backend/test_services.py::test_reserve_service_summary - TypeErr...
+FAILED tests/backend/test_services.py::test_recommendation_service_list - Typ...
+FAILED tests/backend/test_services.py::test_recommendation_service_simulate
+FAILED tests/integration/test_prediction_flow.py::test_reserve_prediction_and_simulation
+FAILED tests/ml/test_phase4.py::test_compute_member_weights_sums_to_one - ass...
+FAILED tests/ml/test_phase4.py::test_ensemble_fit_predicts_calibrated_probabilities
+FAILED tests/ml/test_phase4.py::test_drift_no_change_is_ok - KeyError: 'missi...
+FAILED tests/ml/test_phase4.py::test_drift_large_shift_warns - KeyError: 'mis...
+FAILED tests/ml/test_phase4.py::test_promotion_deterministic_and_audited - Va...
+FAILED tests/ml/test_phase4.py::test_champion_demotes_previous - ValueError: ...
+FAILED tests/ml/test_phase4.py::test_prediction_grid_with_models - AttributeE...
+FAILED tests/ml/test_phase4.py::test_prediction_grid_no_context_cell - Attrib...
+17 failed, 110 passed, 12 warnings in 43.87s

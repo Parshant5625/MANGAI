@@ -1,0 +1,80 @@
+
+=================================== ERRORS ====================================
+_________________ ERROR collecting tests/backend/test_api.py __________________
+ImportError while importing test module 'C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\tests\backend\test_api.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\backend\test_api.py:3: in <module>
+    from backend.app.main import app
+backend\app\main.py:13: in <module>
+    from backend.app.api.v1.router import router as api_v1_router
+backend\app\api\v1\router.py:9: in <module>
+    from backend.app.schemas import (
+E   ImportError: cannot import name 'ModelComparisonResponse' from 'backend.app.schemas' (C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\schemas\__init__.py)
+______________ ERROR collecting tests/backend/test_foundation.py ______________
+ImportError while importing test module 'C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\tests\backend\test_foundation.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\backend\test_foundation.py:6: in <module>
+    from backend.app.main import app
+backend\app\main.py:13: in <module>
+    from backend.app.api.v1.router import router as api_v1_router
+backend\app\api\v1\router.py:9: in <module>
+    from backend.app.schemas import (
+E   ImportError: cannot import name 'ModelComparisonResponse' from 'backend.app.schemas' (C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\schemas\__init__.py)
+______________ ERROR collecting tests/backend/test_phase4_api.py ______________
+ImportError while importing test module 'C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\tests\backend\test_phase4_api.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\backend\test_phase4_api.py:5: in <module>
+    from backend.app.main import app
+backend\app\main.py:13: in <module>
+    from backend.app.api.v1.router import router as api_v1_router
+backend\app\api\v1\router.py:9: in <module>
+    from backend.app.schemas import (
+E   ImportError: cannot import name 'ModelComparisonResponse' from 'backend.app.schemas' (C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\schemas\__init__.py)
+________ ERROR collecting tests/backend/test_reserve_model_metadata.py ________
+ImportError while importing test module 'C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\tests\backend\test_reserve_model_metadata.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\backend\test_reserve_model_metadata.py:12: in <module>
+    from backend.app.main import app
+backend\app\main.py:13: in <module>
+    from backend.app.api.v1.router import router as api_v1_router
+backend\app\api\v1\router.py:9: in <module>
+    from backend.app.schemas import (
+E   ImportError: cannot import name 'ModelComparisonResponse' from 'backend.app.schemas' (C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\schemas\__init__.py)
+_________ ERROR collecting tests/integration/test_prediction_flow.py __________
+ImportError while importing test module 'C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\tests\integration\test_prediction_flow.py'.
+Hint: make sure your test modules/packages have valid Python names.
+Traceback:
+..\..\..\..\AppData\Local\Programs\Python\Python313\Lib\importlib\__init__.py:88: in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tests\integration\test_prediction_flow.py:3: in <module>
+    from backend.app.main import app
+backend\app\main.py:13: in <module>
+    from backend.app.api.v1.router import router as api_v1_router
+backend\app\api\v1\router.py:9: in <module>
+    from backend.app.schemas import (
+E   ImportError: cannot import name 'ModelComparisonResponse' from 'backend.app.schemas' (C:\Users\parsh\OneDrive\Attachments\Desktop\MANGAI\backend\app\schemas\__init__.py)
+=========================== short test summary info ===========================
+ERROR tests/backend/test_api.py
+ERROR tests/backend/test_foundation.py
+ERROR tests/backend/test_phase4_api.py
+ERROR tests/backend/test_reserve_model_metadata.py
+ERROR tests/integration/test_prediction_flow.py
+!!!!!!!!!!!!!!!!!!! Interrupted: 5 errors during collection !!!!!!!!!!!!!!!!!!!
+5 errors in 13.04s

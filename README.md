@@ -603,6 +603,131 @@ cell_area_m2 × predicted_thickness_m × density_t_per_m3 × prospectivity_proba
 
 ---
 
+## Advanced Reserve Intelligence (Phase 4)
+
+Phase 4 upgrades the Phase 3 baseline into a more rigorous spatial
+resource-intelligence prototype. It preserves every Phase 1/2/3 component and
+adds: ensemble prospectivity, probability calibration, conformal prediction
+intervals, resource-uncertainty propagation, spatial prediction grids,
+data-support/extrapolation indicators, model-lifecycle management, drift
+monitoring, and a real-data ingestion skeleton.
+
+### Architecture
+
+```
+Phase 3 baseline models
+        ↓  Phase 4 ensemble (ml/reserve/ensemble.py)
+  weighted soft-voting: LogReg + RF + XGB
+  weights ∝ OOF spatial-CV ROC-AUC
+  calibration fitted on OOF ensemble probabilities (isotonic|sigmoid, by Brier)
+        ↓  probability calibration (ml/reserve/calibration.py)
+  out-of-fold calibration → no calibration leakage
+  reliability diagrams + Brier score → models/reserve/evaluation/
+        ↓  conformal prediction intervals (ml/reserve/conformal.py)
+  split-conformal from grouped-OOF residuals
+  grade + ore-thickness: [pred − q, pred + q], 90% coverage
+  thickness clipped at 0 (documented)
+        ↓  spatial prediction grid (ml/reserve/grid.py)
+  nearest-observation covariate context (not fabricated)
+  per-cell probability/grade/thickness + intervals + resource potential
+        ↓  resource-uncertainty propagation (resource_estimator.py)
+  conformal thickness interval → Monte Carlo; configurable density assumption
+        ↓  data support + extrapolation (ml/reserve/support.py)
+  standardized feature distance + observation proximity + completeness
+        ↓  model lifecycle (ml/common/registry.py)
+  candidate → validated → champion (+ retired); deterministic criteria
+        ↓  drift monitoring (ml/common/drift.py)
+  PSI / mean-percentile shift / missingness / categorical TV; warn-only
+        ↓  real-data ingestion skeleton (ml/ingestion/)
+  CSV/Parquet → load → validate (Phase 2 contracts) → normalize → quality → process
+```
+
+### Ensemble & calibration
+
+- **Ensemble**: `ReserveEnsemble` (weighted soft-voting). Weights ∝
+  `max(oof_roc_auc − 0.5, 0.01)`, normalized, from out-of-fold spatial
+  predictions. The ensemble is only preferred when its ROC-AUC on the same
+  spatial holdout is at least as good as the best single baseline.
+- **Calibration**: monotone calibrator (isotonic or Platt/sigmoid) fitted on
+  pooled OOF ensemble probabilities; the method with the lower Brier score is
+  selected. No calibration leakage (holdout never used for fitting).
+- **Evaluation artifacts** saved to `models/reserve/evaluation/`: reliability
+  diagram PNG + per-bin calibration JSON consuming the actual predictions.
+
+### Conformal prediction intervals
+
+Split-conformal intervals from grouped out-of-fold absolute residuals on the
+training blocks (90% target → `ceil((n+1)·0.9)/n` rank). Interval for point
+`ŷ` is `[ŷ − q, ŷ + q]`; empirical coverage reported on the untouched spatial
+holdout. Ore-thickness lower bound clipped at zero (documented as conservative).
+Coverage is empirical under grouped-exchangeability, not a field guarantee.
+
+### Resource-uncertainty propagation
+
+`estimate_resource_potential_with_intervals` propagates the conformal thickness
+interval via a fitted normal (5th/95th percentiles → interval bounds) and
+Monte Carlo. Density stays configurable; if no density standard deviation is
+given, density is a fixed assumption (no invented geological density
+distribution). Only model-derived uncertainty is propagated.
+
+### Spatial prediction grid
+
+`generate_prediction_grid(bbox, cells_per_side)` — deterministic grid (capped
+40×40). Each cell reuses terrain + satellite covariates from the nearest
+fused observation (available context, not fabricated geology). Cells beyond the
+search radius return a `no_context` data-support state. Every scored cell
+carries calibrated probability, grade/thickness + intervals, prototype
+resource potential, data support, and extrapolation level.
+
+### Data support vs model uncertainty (separate concepts)
+
+- **Model uncertainty**: calibration reliability + prediction-interval width.
+- **Data support**: standardized feature distance (mean |z|; thresholds are
+  documented heuristics) → `well_supported` / `moderate_support` /
+  `extrapolation_warning`; plus nearest-observation distance, observations
+  within 5 km, feature completeness. A warning mechanism only.
+
+### Model lifecycle
+
+`candidate → validated → champion` (+ `retired`) in `ml/common/registry.py`.
+Promotion requires: `leakage_check_passed`, spatial-block validation, required
+metrics present, artifact file exists. Champion promotion demotes the previous
+champion (recorded as `previous_champion`) and appends `promotion_history`.
+Training always writes `candidate`; promotion is explicit. No overwrites.
+
+### Drift monitoring foundation
+
+`compute_feature_drift(reference, current)`: PSI, mean/median/percentile
+shift, missingness delta, categorical total-variation. Configurable
+thresholds → `warning` (never auto-invalidates). A foundation for later MLOps.
+
+### Real-data ingestion skeleton
+
+`ml/ingestion/` — `DataSource` protocol with `CsvSource`/`ParquetSource` and an
+`IngestionPipeline`: load → validate against Phase 2 contracts → normalize →
+quality-check → process. Demo stays offline; real MOIL data supplied later.
+
+### API changes
+
+- `GET /api/v1/reserves/grid` — spatial prediction grid.
+- `GET /api/v1/models/compare` — model-comparison view.
+- `POST /api/v1/predictions/reserve` adds `calibrated_probability`,
+  `base_probabilities`, `grade_interval`, `thickness_interval`,
+  `extrapolation`, `data_support_detail` (all optional → `None` if unavailable).
+- Model-registry responses include lifecycle status, `promoted_at`,
+  `previous_champion`, artifact status.
+
+### Running Phase 4
+
+```bash
+python -m scripts.train_reserve_advanced          # full pipeline + ensemble
+python -m scripts.train_reserve_advanced --quick  # cheap smoke configuration
+
+python -c "from backend.app.services.model_registry import ModelRegistryService; ModelRegistryService().promote('reserve_prospectivity','<version>','champion')"
+```
+
+---
+
 ## SIH Demo Narrative
 
 1. **Discover**: Open Reserve Intelligence and explore the prospectivity heatmap

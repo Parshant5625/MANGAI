@@ -58,20 +58,6 @@ class ResourcePotential(BaseModel):
         return self
 
 
-class ProspectivityCell(BaseModel):
-    id: str = Field(min_length=1, max_length=128, pattern=ID_PATTERN)
-    latitude: float = Field(ge=-90, le=90)
-    longitude: float = Field(ge=-180, le=180)
-    probability: float = Field(ge=0, le=1)
-    prospectivity_class: Literal["LOW", "MODERATE", "HIGH", "VERY_HIGH"]
-    predicted_grade_pct: float = Field(ge=0, le=100)
-    predicted_thickness_m: float = Field(ge=0)
-    confidence: float = Field(ge=0, le=1)
-    resource_potential: ResourcePotential
-    top_contributors: list[TopDriver]
-    data_support: dict[str, Any] = Field(default_factory=dict)
-
-
 class ReserveProspectivityResponse(DemoEnvelope):
     site_id: str = Field(min_length=1, max_length=128, pattern=ID_PATTERN)
     bbox: list[float] | None = None
@@ -129,6 +115,37 @@ class ReservePredictionRequest(BaseModel):
 class ReservePredictionResponse(DemoEnvelope):
     prediction: ProspectivityCell
     model_version: str = Field(min_length=1, max_length=128)
+
+
+# ======================================================== Phase 4 grid --
+
+
+class GridCell(BaseModel):
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    context_available: bool = True
+    nearest_observation_m: float = Field(ge=0)
+    probability: float | None = Field(default=None, ge=0, le=1)
+    calibrated_probability: float | None = Field(default=None, ge=0, le=1)
+    base_probabilities: dict[str, float] | None = None
+    predicted_grade_pct: float | None = Field(default=None, ge=0, le=100)
+    grade_interval: PredictionIntervalOut | None = None
+    predicted_thickness_m: float | None = Field(default=None, ge=0)
+    thickness_interval: PredictionIntervalOut | None = None
+    resource_potential: ResourcePotential | None = None
+    data_support: DataSupportOut | None = None
+    extrapolation_level: Literal["well_supported", "moderate_support", "extrapolation_warning"] | None = None
+    model_version: str | None = None
+
+
+class ReserveGridResponse(DemoEnvelope):
+    site_id: str = Field(min_length=1, max_length=128, pattern=ID_PATTERN)
+    bbox: list[float]
+    cells_per_side: int = Field(ge=2, le=40)
+    model_versions: dict[str, str | None] = Field(default_factory=dict)
+    context_method: str = "nearest_observation_covariates"
+    search_radius_m: float = Field(ge=0)
+    cells: list[GridCell]
 
 
 class ProductionForecastResponse(DemoEnvelope):
@@ -265,6 +282,60 @@ class ModelVersion(BaseModel):
 
 class ModelRegistryResponse(DemoEnvelope):
     models: list[ModelVersion]
+
+
+class ModelComparisonResponse(DemoEnvelope):
+    comparison: list[dict[str, Any]]
+
+
+# ======================================================== Phase 4 schemas --
+
+
+class PredictionIntervalOut(BaseModel):
+    lower: float
+    upper: float
+    level: float = Field(ge=0, le=1)
+    method: str = Field(min_length=1, max_length=64)
+    coverage: float = Field(ge=0, le=1)
+    non_negative: bool = False
+
+
+class DataSupportOut(BaseModel):
+    state: str = Field(min_length=1, max_length=64)
+    feature_completeness: float | None = Field(default=None, ge=0, le=1)
+    nearest_observation_m: float | None = Field(default=None, ge=0)
+    observations_within_5km: int | None = Field(default=None, ge=0)
+    reference_observations: int | None = Field(default=None, ge=0)
+    note: str | None = None
+
+
+class ExtrapolationOut(BaseModel):
+    method: str = Field(min_length=1, max_length=128)
+    score: float | None = None
+    level: Literal["well_supported", "moderate_support", "extrapolation_warning"]
+    thresholds: dict[str, float] = Field(default_factory=dict)
+    note: str = ""
+
+
+class ProspectivityCell(BaseModel):
+    id: str = Field(min_length=1, max_length=128, pattern=ID_PATTERN)
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+    probability: float = Field(ge=0, le=1)
+    prospectivity_class: Literal["LOW", "MODERATE", "HIGH", "VERY_HIGH"]
+    predicted_grade_pct: float = Field(ge=0, le=100)
+    predicted_thickness_m: float = Field(ge=0)
+    confidence: float = Field(ge=0, le=1)
+    resource_potential: ResourcePotential
+    top_contributors: list[TopDriver]
+    data_support: dict[str, Any] = Field(default_factory=dict)
+    # Phase 4 optional enrichment (None when the artifact is unavailable).
+    calibrated_probability: float | None = Field(default=None, ge=0, le=1)
+    base_probabilities: dict[str, float] | None = None
+    grade_interval: PredictionIntervalOut | None = None
+    thickness_interval: PredictionIntervalOut | None = None
+    extrapolation: ExtrapolationOut | None = None
+    data_support_detail: DataSupportOut | None = None
 
 
 class DataQualityRun(BaseModel):

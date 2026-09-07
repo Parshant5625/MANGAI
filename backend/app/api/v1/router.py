@@ -10,12 +10,14 @@ from backend.app.schemas import (
     BlastingResponse,
     DataQualityResponse,
     EquipmentResponse,
+    ModelComparisonResponse,
     ModelRegistryResponse,
     OverviewResponse,
     ProductionForecastResponse,
     ProductionPredictionRequest,
     RecommendationResponse,
     RecommendationSimulationRequest,
+    ReserveGridResponse,
     ReservePredictionRequest,
     ReservePredictionResponse,
     ReserveProspectivityResponse,
@@ -136,6 +138,29 @@ def get_recommendations(site_id: SiteId = None) -> dict:
 @router.get("/models", response_model=ModelRegistryResponse, tags=["mlops"])
 def get_models() -> dict:
     return ModelRegistryService().list_models()
+
+
+@router.get("/models/compare", response_model=ModelComparisonResponse, tags=["mlops"])
+def compare_models(model_name: str | None = None) -> dict:
+    return ModelRegistryService().compare(model_name=model_name)
+
+
+@router.get("/reserves/grid", response_model=ReserveGridResponse, tags=["reserve"])
+def get_reserve_grid(
+    site_id: SiteId = None,
+    bbox: str | None = None,
+    cells: Annotated[int, Query(ge=2, le=40)] = 10,
+    coverage: Annotated[float, Query(ge=0.5, le=0.99)] = 0.9,
+) -> dict:
+    try:
+        return ReserveService().prediction_grid(
+            site_id=_validate_site_id(site_id),
+            bbox=bbox,
+            cells_per_side=cells,
+            coverage=coverage,
+        )
+    except ValueError as exc:
+        raise ValidationFailedError("INVALID_BBOX", str(exc), details={"bbox": bbox}) from exc
 
 
 @router.get("/data-quality", response_model=DataQualityResponse, tags=["mlops"])

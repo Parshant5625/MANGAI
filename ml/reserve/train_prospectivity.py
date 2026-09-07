@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import joblib
+import numpy as np
 import pandas as pd
 from xgboost import XGBClassifier, XGBRegressor
 
@@ -26,6 +27,7 @@ from ml.reserve.spatial import (
     regression_metrics,
     spatial_holdout_indices,
 )
+from ml.reserve.support import SupportAssessor
 
 # Fixed seeds / thread counts keep training reproducible on CPU-only laptops.
 RANDOM_STATE = 42
@@ -175,7 +177,33 @@ def _train_task(root: Path | None, task_name: str, quick: bool = False) -> dict:
     metrics["training_rows"] = int(len(df))
     metrics["synthetic_data"] = True
 
-    return _persist_model(
+    # Conformal prediction intervals for regression tasks (grouped OOF, no leakage).
+    conformal_state = None
+    if spec.kind == "regression":
+        conformal_state = _fit_conformal(
+            get_candidates(spec.kind, quick=quick)[best_name],
+            X,
+            y,
+            groups,
+            train_idx,
+            non_negative=(spec.target == "ore_thickness_m"),
+        )
+        metrics["conformal"] = {
+            "method": "split_conformal",
+            "coverage": conformal_state.coverage,
+            "n_calibration": conformal_state.n_calibration,
+            "non_negative": conformal_state.non_negative,
+            "empirical_coverage": conformal_state.evaluate_coverage(
+                model.predict(X.iloc[test_idx]), y.iloc[test_idx]
+            ),
+            "note": "Coverage is empirical on the synthetic spatial holdout under grouped-exchangeability.",
+        }
+
+    # Data-support statistics for inference-time extrapolation detection.
+    support_assessor = SupportAssessor.fit(X, df["latitude"], df["longitude"])
+    metrics["support_stats"] = support_assessor.to_dict()
+
+    result = _persist_model(
         root,
         model_name=f"reserve_{task_name}",
         task="binary_classification" if spec.kind == "classification" else "regression",
@@ -186,6 +214,36 @@ def _train_task(root: Path | None, task_name: str, quick: bool = False) -> dict:
         metrics=metrics,
         quick=quick,
     )
+
+    # Persist conformal sidecar (regression only) alongside the model artifacts.
+    if conformal_state is not None:
+        model_dir = root / "models"
+        reserve_dir = model_dir / "reserve"
+        sidecar = conformal_state.to_dict()
+        for directory in (reserve_dir / "versions" / result["version"], reserve_dir):
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / f"{spec.name}_conformal.json").write_text(json.dumps(sidecar, indent=2), encoding="utf-8")
+
+    return result
+
+
+def _fit_conformal(factory, X, y, groups, train_idx, *, non_negative: bool):
+    """Grouped-OOF conformal calibration on the training blocks (no leakage)."""
+    from sklearn.model_selection import GroupKFold
+
+    from ml.reserve.conformal import SplitConformalRegressor
+
+    X_train = X.iloc[train_idx]
+    y_train = y.iloc[train_idx].reset_index(drop=True)
+    groups_train = groups.iloc[train_idx].reset_index(drop=True)
+    n_splits = min(5, max(2, int(groups_train.nunique())))
+    oof = np.zeros(len(y_train))
+    fold = GroupKFold(n_splits=n_splits)
+    for fit_idx, val_idx in fold.split(X_train, y_train, groups_train):
+        model = factory()
+        model.fit(X_train.iloc[fit_idx], y_train.iloc[fit_idx])
+        oof[val_idx] = model.predict(X_train.iloc[val_idx])
+    return SplitConformalRegressor.fit(oof, y_train, coverage=0.9, non_negative=non_negative)
 
 
 def _algorithm_label(candidate_name: str) -> str:
