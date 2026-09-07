@@ -32,10 +32,13 @@ def project_root() -> Path:
 
 
 def load_fused_reserve_table(root: Path | None = None) -> pd.DataFrame:
+    """Load raw CSVs from disk and fuse them via the canonical fusion layer."""
     root = root or project_root()
+    from ml.reserve.fusion import fuse_reserve_datasets
+
     geological = pd.read_csv(root / "data/synthetic/geological.csv")
     satellite = pd.read_csv(root / "data/synthetic/satellite_features.csv")
-    return geological.merge(satellite, on=["sample_id", "latitude", "longitude"], how="inner")
+    return fuse_reserve_datasets(geological, satellite, validate=False).data
 
 
 def ensure_spectral_indices(df: pd.DataFrame) -> pd.DataFrame:

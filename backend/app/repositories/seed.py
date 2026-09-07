@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC
 
 import pandas as pd
@@ -168,4 +169,35 @@ def seed_demo_database(session: Session, store: DemoDataStore | None = None, lim
             )
 
     session.commit()
+    _log_seed_summary(session)
     return site.id
+
+
+def _log_seed_summary(session: Session) -> None:
+    """Log row counts so repeated seeding is observable and provably idempotent."""
+    from backend.app.db.models import (
+        BlastingEvent,
+        BoreholeInterval,
+        Equipment,
+        EquipmentEvent,
+        GeologicalSample,
+        MineSite,
+        ProductionRecord,
+        SatelliteObservation,
+        WeatherObservation,
+    )
+
+    logger = logging.getLogger(__name__)
+    counts = {
+        "mine_sites": session.query(MineSite).count(),
+        "geological_samples": session.query(GeologicalSample).count(),
+        "borehole_intervals": session.query(BoreholeInterval).count(),
+        "satellite_observations": session.query(SatelliteObservation).count(),
+        "weather_observations": session.query(WeatherObservation).count(),
+        "equipment": session.query(Equipment).count(),
+        "equipment_events": session.query(EquipmentEvent).count(),
+        "blasting_events": session.query(BlastingEvent).count(),
+        "production_records": session.query(ProductionRecord).count(),
+    }
+    logger.info("Demo seed summary (idempotent re-runs keep these stable): %s", counts)
+    print(f"Demo seed summary: {counts}")

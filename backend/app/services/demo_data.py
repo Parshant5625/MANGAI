@@ -92,19 +92,24 @@ class DemoDataStore:
         path = self.processed_dir / "reserve_predictions.csv"
         if path.exists():
             return pd.read_csv(path)
-        geological = self.geological()
-        satellite = self.satellite()
-        merged = geological.merge(satellite, on=["sample_id", "latitude", "longitude"], how="inner")
-        merged["manganese_probability"] = heuristic_prospectivity(merged)
-        merged["prospectivity_class"] = pd.cut(
-            merged["manganese_probability"],
+        from ml.reserve.fusion import fuse_reserve_datasets
+
+        fused = fuse_reserve_datasets(
+            self.geological(),
+            self.satellite(),
+            validate=False,  # contracts enforced at generation time
+        ).data
+        fused["manganese_probability"] = heuristic_prospectivity(fused)
+        fused["prospectivity_class"] = pd.cut(
+            fused["manganese_probability"],
             bins=[0, 0.25, 0.5, 0.75, 1],
             labels=["LOW", "MODERATE", "HIGH", "VERY_HIGH"],
             include_lowest=True,
         ).astype(str)
         self.processed_dir.mkdir(parents=True, exist_ok=True)
-        merged.to_csv(path, index=False)
-        return merged
+        fused.to_csv(path, index=False)
+        return fused
+
 
 
 def normalize(series: pd.Series, default: float = 0.5) -> pd.Series:
