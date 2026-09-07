@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -20,6 +20,9 @@ class ModelVersionRecord:
     artifact_path: str
     status: str = "candidate"
     created_at: str = ""
+    target: str = ""
+    feature_names: list[str] = field(default_factory=list)
+    validation_strategy: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         payload = asdict(self)

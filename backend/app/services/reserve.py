@@ -13,7 +13,12 @@ from backend.app.services.demo_data import DemoDataStore, demo_envelope, heurist
 from backend.app.services.model_artifacts import reserve_prospectivity_available
 from ml.reserve.explain import explain_row
 from ml.reserve.features import ensure_spectral_indices
-from ml.reserve.inference import maybe_predict_regressor, predict_prospectivity_frame
+from ml.reserve.inference import (
+    load_model_metadata,
+    maybe_predict_regressor,
+    predict_prospectivity_frame,
+    resolve_model_path,
+)
 from ml.reserve.resource_estimator import estimate_resource_potential
 
 CELL_AREA_M2 = 10_000.0
@@ -34,12 +39,16 @@ class ReserveService:
         model_dir = self._model_dir()
         stamps = []
         for path in [
+            model_dir / "reserve" / "prospectivity_model.joblib",
+            model_dir / "reserve" / "prospectivity_features.pkl",
             model_dir / "reserve" / "prospectivity_xgboost.json",
             model_dir / "reserve" / "prospectivity_xgboost_features.pkl",
             model_dir / "reserve_xgboost.json",
             model_dir / "reserve_features.pkl",
+            model_dir / "reserve" / "grade_model.joblib",
             model_dir / "reserve" / "grade_xgboost.json",
             model_dir / "reserve" / "grade_xgboost_features.pkl",
+            model_dir / "reserve" / "thickness_model.joblib",
             model_dir / "reserve" / "thickness_xgboost.json",
             model_dir / "reserve" / "thickness_xgboost_features.pkl",
             self.settings.resolved_data_dir / "processed" / "reserve_predictions.csv",
@@ -78,8 +87,8 @@ class ReserveService:
                 include_lowest=True,
             ).astype(str)
         df["manganese_probability"] = df["manganese_probability"].astype(float).clip(0.01, 0.99)
-        grade = maybe_predict_regressor(df, self._model_dir() / "reserve" / "grade_xgboost.json")
-        thickness = maybe_predict_regressor(df, self._model_dir() / "reserve" / "thickness_xgboost.json")
+        grade = maybe_predict_regressor(df, resolve_model_path(self._model_dir(), "grade"))
+        thickness = maybe_predict_regressor(df, resolve_model_path(self._model_dir(), "thickness"))
         df["predicted_grade_pct"] = grade.clip(2, 48).round(2) if grade is not None else self._predict_grade(df)
         df["predicted_thickness_m"] = thickness.clip(0.2, 18).round(2) if thickness is not None else self._predict_thickness(df)
         df["confidence"] = self._confidence(df)
@@ -156,10 +165,17 @@ class ReserveService:
         ]
 
     def _shap_contributors(self, row: pd.Series) -> list[dict[str, Any]]:
-        model_path = self._model_dir() / "reserve" / "prospectivity_xgboost.json"
-        if not model_path.exists():
-            model_path = self._model_dir() / "reserve_xgboost.json"
+        model_path = resolve_model_path(self._model_dir(), "prospectivity")
+        if model_path is None:
+            return self._contributors(row)
         return explain_row(pd.DataFrame([row]), model_path) or self._contributors(row)
+
+    def _model_metadata(self, name: str = "prospectivity") -> dict[str, Any] | None:
+        """Training metadata for the currently served model artifact."""
+        model_path = resolve_model_path(self._model_dir(), name)
+        if model_path is None:
+            return None
+        return load_model_metadata(model_path)
 
     def _cell(self, row: pd.Series) -> dict[str, Any]:
         resource = self._resource_payload(
@@ -298,6 +314,12 @@ class ReserveService:
             "boreholes": records,
         }
 
+    @staticmethod
+    def _served_version_label(meta: dict[str, Any] | None) -> str:
+        if meta and meta.get("model_name") and meta.get("version"):
+            return f"{meta['model_name']}-{meta['version']}"
+        return "reserve-prospectivity-legacy-artifact"
+
     def predict(self, payload: dict[str, Any]) -> dict[str, Any]:
         if self.settings.require_model_artifacts and not reserve_prospectivity_available(self.settings):
             logger.warning("Reserve prediction requested in live mode without model artifacts")
@@ -312,7 +334,7 @@ class ReserveService:
             scored = predict_prospectivity_frame(df, self._model_dir())
             df["manganese_probability"] = scored["manganese_probability"]
             df["prospectivity_class"] = scored["prospectivity_class"]
-            version = "reserve-xgb-2026.09.001"
+            version = self._served_version_label(self._model_metadata("prospectivity"))
         except Exception as exc:
             logger.warning("Reserve prediction model unavailable; using demo heuristic fallback: %s", exc)
             if self.settings.require_model_artifacts:
@@ -328,9 +350,13 @@ class ReserveService:
                 include_lowest=True,
             ).astype(str)
             version = "reserve-prototype-heuristic-001"
-        grade = maybe_predict_regressor(df, self._model_dir() / "reserve" / "grade_xgboost.json")
-        thickness = maybe_predict_regressor(df, self._model_dir() / "reserve" / "thickness_xgboost.json")
+        grade = maybe_predict_regressor(df, resolve_model_path(self._model_dir(), "grade"))
+        thickness = maybe_predict_regressor(df, resolve_model_path(self._model_dir(), "thickness"))
         df["predicted_grade_pct"] = grade.clip(2, 48).round(2) if grade is not None else self._predict_grade(df)
         df["predicted_thickness_m"] = thickness.clip(0.2, 18).round(2) if thickness is not None else self._predict_thickness(df)
         df["confidence"] = self._confidence(df)
-        return {**demo_envelope(), "prediction": self._cell(df.iloc[0]), "model_version": version}
+        cell = self._cell(df.iloc[0])
+        cell["data_support"]["model_version"] = version
+        cell["data_support"]["model_algorithm"] = (self._model_metadata("prospectivity") or {}).get("algorithm", "demo-heuristic")
+        cell["data_support"]["prediction_type"] = "manganese_prospectivity"
+        return {**demo_envelope(), "prediction": cell, "model_version": version}

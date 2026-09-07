@@ -1,0 +1,127 @@
+{
+  "model_name": "reserve_grade",
+  "version": "2026.09.002",
+  "task": "regression",
+  "algorithm": "Ridge",
+  "training_data_hash": "ee64a69a91fb9c77",
+  "feature_schema_hash": "479dcab4682f8899",
+  "metrics": {
+    "mae": 5.834651902579735,
+    "rmse": 7.353399371410525,
+    "r2": 0.5049002330270889,
+    "cv_mae": 6.12571009614245,
+    "cv_rmse": 7.6044772027930705,
+    "cv_r2": 0.5027194712380252,
+    "validation": "spatial_block_holdout",
+    "validation_details": {
+      "strategy": "GroupShuffleSplit over 5x5 latitude/longitude spatial blocks",
+      "primary": true,
+      "held_out_blocks": 5,
+      "train_rows": 4009,
+      "test_rows": 991,
+      "random_state": 42
+    },
+    "candidate_comparison": {
+      "ridge": {
+        "mae": 5.834651902579735,
+        "rmse": 7.353399371410525,
+        "r2": 0.5049002330270889,
+        "cv_mae": 6.12571009614245,
+        "cv_rmse": 7.6044772027930705,
+        "cv_r2": 0.5027194712380252
+      },
+      "random_forest": {
+        "mae": 5.85542407235718,
+        "rmse": 7.383824193011306,
+        "r2": 0.5007947890807469,
+        "cv_mae": 6.153576308823316,
+        "cv_rmse": 7.643906985007645,
+        "cv_r2": 0.4976411450356176
+      },
+      "xgboost": {
+        "mae": 5.969489097595215,
+        "rmse": 7.555681922578898,
+        "r2": 0.4772864580154419,
+        "cv_mae": 6.275617694854736,
+        "cv_rmse": 7.783824266570315,
+        "cv_r2": 0.4790602207183838
+      }
+    },
+    "selected_algorithm": "ridge",
+    "selection_metric": "rmse",
+    "random_split_diagnostic": {
+      "metrics": {
+        "mae": 6.091290669638899,
+        "rmse": 7.578878908225802,
+        "r2": 0.4775221919278849
+      },
+      "note": "Random i.i.d. split allows spatially adjacent samples to leak between train and validation. Reported for comparison only \u2014 the spatial-block holdout above is the primary validation."
+    },
+    "target": "mn_pct",
+    "leakage_exclusions": [
+      "fe_pct",
+      "is_manganese",
+      "mn_pct",
+      "ore_thickness_m",
+      "production_gap_mt",
+      "production_mt",
+      "shortfall",
+      "sio2_pct",
+      "target_mt"
+    ],
+    "leakage_check_passed": true,
+    "feature_names": [
+      "elevation_m",
+      "slope_deg",
+      "aspect_deg",
+      "depth_m",
+      "blue_b2",
+      "green_b3",
+      "red_b4",
+      "nir_b8",
+      "swir_b11",
+      "swir_b12",
+      "ndvi",
+      "ndwi",
+      "swir_ratio",
+      "bare_soil_index",
+      "land_surface_temperature",
+      "formation_Gondite",
+      "formation_Granite",
+      "formation_Laterite",
+      "formation_Manganiferous_Formation",
+      "formation_Quartzite",
+      "formation_Schist"
+    ],
+    "training_rows": 5000,
+    "synthetic_data": true
+  },
+  "artifact_path": "models/reserve/versions/2026.09.002/grade_ridge_model.joblib",
+  "status": "candidate",
+  "created_at": "2026-09-07T16:02:35.234531+00:00",
+  "target": "mn_pct",
+  "feature_names": [
+    "elevation_m",
+    "slope_deg",
+    "aspect_deg",
+    "depth_m",
+    "blue_b2",
+    "green_b3",
+    "red_b4",
+    "nir_b8",
+    "swir_b11",
+    "swir_b12",
+    "ndvi",
+    "ndwi",
+    "swir_ratio",
+    "bare_soil_index",
+    "land_surface_temperature",
+    "formation_Gondite",
+    "formation_Granite",
+    "formation_Laterite",
+    "formation_Manganiferous_Formation",
+    "formation_Quartzite",
+    "formation_Schist"
+  ],
+  "validation_strategy": "spatial_block_holdout"
+}

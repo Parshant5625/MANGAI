@@ -484,6 +484,125 @@ The `seed_demo_database()` function checks for existing rows before inserting. U
 
 ---
 
+## Reserve AI Baseline (Phase 3)
+
+Prototype resource-intelligence pipeline for three related prediction tasks,
+trained **only on synthetic demo data**. Every output is a decision-support
+signal — **NOT official mineral reserves/resources and NOT field-validated**.
+
+### Pipeline
+
+```
+geological.csv  +  satellite_features.csv
+            ↓  canonical fusion (ml/reserve/fusion.py)
+      fused reserve table
+            ↓  curated feature matrix (ml/reserve/features.py)
+            ↓  LEAKAGE ASSERTION  (ml/reserve/spatial.assert_no_target_leakage)
+            ↓  model comparison   (ml/reserve/evaluate.py)
+            ↓  spatial-block holdout + grouped CV  (ml/reserve/spatial.py)
+      versioned artifacts + registry records
+            ↓  inference (ml/reserve/inference.py) + SHAP (ml/reserve/explain.py)
+            ↓  prototype resource potential (ml/reserve/resource_estimator.py)
+      FastAPI /reserves/* + /predictions/reserve
+```
+
+### The three prediction tasks
+
+| Task | Target | Kind | Primary metric | Candidates compared |
+|------|--------|------|----------------|---------------------|
+| Prospectivity | `is_manganese` | binary classification | ROC-AUC | LogisticRegression, RandomForest, XGBoost |
+| Mn grade | `mn_pct` | regression | RMSE | Ridge, RandomForest, XGBoost |
+| Ore thickness | `ore_thickness_m` | regression | RMSE | Ridge, RandomForest, XGBoost |
+
+All candidates share the same spatial validation; the full metric set of every
+candidate is retained in the registry. Selection uses the primary metric but
+never ignores the others (PR-AUC, F1, precision, recall, confusion matrix for
+classification; MAE, R² for regression).
+
+### Feature groups (explicit, curated — never "all numeric columns")
+
+- **Geological/terrain:** `elevation_m`, `slope_deg`, `aspect_deg`, `depth_m`
+- **Satellite bands:** `blue_b2`, `green_b3`, `red_b4`, `nir_b8`, `swir_b11`, `swir_b12`
+- **Spectral indices:** `ndvi`, `ndwi`, `swir_ratio`, `bare_soil_index`, `land_surface_temperature`
+- **Categorical:** `formation` (one-hot encoded)
+
+No production, future, or target-derived variables are used in reserve models.
+
+### Leakage protection (mandatory, automated)
+
+- `RESERVE_FORBIDDEN_COLUMNS` (`ml/reserve/features.py`) forbids, for **every**
+  task: `mn_pct`, `fe_pct`, `sio2_pct`, `is_manganese`, `ore_thickness_m`,
+  `production_mt`, `target_mt`, `production_gap_mt`, `shortfall`.
+- `assert_no_target_leakage()` runs before training and raises `ValueError` if
+  a forbidden column enters the feature matrix.
+- `check_leakage()` (Phase 2 contract validation) re-checks the matrix and its
+  result is recorded as `leakage_check_passed` in model metadata.
+
+### Validation strategy
+
+- **Primary:** spatial-block holdout — `GroupShuffleSplit` over 5×5
+  latitude/longitude blocks (`spatial_holdout_indices`, seed 42). Samples from
+  the same block never appear in both train and validation sets, so spatially
+  clustered mineralization cannot leak.
+- **Secondary:** `GroupKFold` spatial cross-validation (`grouped_cv_scores`),
+  reported as `cv_*` metrics.
+- **Diagnostic only:** random i.i.d. split (`random_split_diagnostic`). It
+  shares spatial blocks across the split and is recorded solely to quantify
+  the optimism of non-spatial validation. It is never the primary metric.
+
+### Training, artifacts, registry
+
+```bash
+python -m scripts.train_reserve          # full candidate comparison
+python -m scripts.train_reserve --quick  # cheap smoke-test configuration
+```
+
+- Versioned artifacts: `models/reserve/versions/<version>/` — never silently
+  overwritten (versions are `YYYY.MM.NNN`, auto-incremented per model).
+- Latest serving copies: `models/reserve/{prospectivity,grade,thickness}_*`.
+- Legacy compatibility copies: `models/reserve_xgboost.json` et al.
+- Per-model metadata sidecar (`*_meta.json`): model name, version, task,
+  algorithm, target, prediction type, feature names, feature schema hash,
+  training-data hash, validation strategy, full metrics, random seed,
+  `synthetic_data: true`, boundary notice, `status: candidate`.
+- Registry records: `models/registry/<model_name>-<version>.json`, surfaced by
+  `GET /api/v1/models`.
+
+### Inference & API
+
+- `ml/reserve/inference.py` validates artifact availability, applies the exact
+  training feature schema, and fails clearly (`FileNotFoundError`) when a model
+  artifact is missing. `maybe_predict_regressor` returns `None` instead of
+  guessing.
+- `POST /api/v1/predictions/reserve` returns the prediction plus
+  `model_version` resolved from the served artifact's training metadata
+  (never hard-coded), and the demo envelope carries `data_mode`,
+  `synthetic_data`, and the boundary notice.
+- Demo mode (`DATA_MODE=demo`) may fall back to a labelled heuristic
+  (`reserve-prototype-heuristic-001`). Live mode (`DATA_MODE=live`) raises
+  `503 MODEL_UNAVAILABLE` rather than faking predictions.
+- Explanations: SHAP feature contributions via `ml/reserve/explain.py` when
+  available, with model-level gain importance as fallback. Feature importance
+  is **not** geological causality.
+
+### Prototype resource potential
+
+Connected via `ml/reserve/resource_estimator.py`:
+
+```
+cell_area_m2 × predicted_thickness_m × density_t_per_m3 × prospectivity_probability
+```
+
+- Density is configurable (default assumption 3.6 t/m³ — an assumption, not an
+  official MOIL parameter).
+- Uncertainty is a real Monte Carlo simulation (P10/P50/P90), not fabricated.
+- Always labelled `prototype resource potential`, never official reserves.
+
+> ⚠️ All reserve metrics in this repository are computed on synthetic data.
+> They demonstrate pipeline mechanics only — never real-world MOIL performance.
+
+---
+
 ## SIH Demo Narrative
 
 1. **Discover**: Open Reserve Intelligence and explore the prospectivity heatmap

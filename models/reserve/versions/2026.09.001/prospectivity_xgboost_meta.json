@@ -1,0 +1,183 @@
+{
+  "model_name": "reserve_prospectivity",
+  "version": "2026.09.001",
+  "task": "binary_classification",
+  "task_kind": "classification",
+  "algorithm": "XGBoost",
+  "target": "is_manganese",
+  "prediction_type": "manganese_occurrence_probability",
+  "feature_names": [
+    "elevation_m",
+    "slope_deg",
+    "aspect_deg",
+    "depth_m",
+    "blue_b2",
+    "green_b3",
+    "red_b4",
+    "nir_b8",
+    "swir_b11",
+    "swir_b12",
+    "ndvi",
+    "ndwi",
+    "swir_ratio",
+    "bare_soil_index",
+    "land_surface_temperature",
+    "formation_Gondite",
+    "formation_Granite",
+    "formation_Laterite",
+    "formation_Manganiferous_Formation",
+    "formation_Quartzite",
+    "formation_Schist"
+  ],
+  "feature_schema_hash": "479dcab4682f8899",
+  "training_data_hash": "ee64a69a91fb9c77",
+  "training_data": [
+    "data/synthetic/geological.csv",
+    "data/synthetic/satellite_features.csv"
+  ],
+  "validation_strategy": "spatial_block_holdout",
+  "metrics": {
+    "roc_auc": 0.8840011220297881,
+    "pr_auc": 0.8318449704243221,
+    "precision": 0.8228346456692913,
+    "recall": 0.616519174041298,
+    "f1": 0.7048903878583473,
+    "confusion_matrix": {
+      "tn": 607,
+      "fp": 45,
+      "fn": 130,
+      "tp": 209
+    },
+    "cv_roc_auc": 0.8872882909891077,
+    "cv_pr_auc": 0.8322645313961793,
+    "cv_precision": 0.8375920580233531,
+    "cv_recall": 0.628691037277777,
+    "cv_f1": 0.7178060460388009,
+    "validation": "spatial_block_holdout",
+    "validation_details": {
+      "strategy": "GroupShuffleSplit over 5x5 latitude/longitude spatial blocks",
+      "primary": true,
+      "held_out_blocks": 5,
+      "train_rows": 4009,
+      "test_rows": 991,
+      "random_state": 42
+    },
+    "candidate_comparison": {
+      "logistic_regression": {
+        "roc_auc": 0.8164576433754999,
+        "pr_auc": 0.7250726468997897,
+        "precision": 0.7725321888412017,
+        "recall": 0.5309734513274337,
+        "f1": 0.6293706293706294,
+        "confusion_matrix": {
+          "tn": 599,
+          "fp": 53,
+          "fn": 159,
+          "tp": 180
+        },
+        "cv_roc_auc": 0.8213372845700441,
+        "cv_pr_auc": 0.7311185633596963,
+        "cv_precision": 0.7852913464920027,
+        "cv_recall": 0.568154204832397,
+        "cv_f1": 0.6586549726557666
+      },
+      "random_forest": {
+        "roc_auc": 0.786067828510415,
+        "pr_auc": 0.6973651826599035,
+        "precision": 0.7876106194690266,
+        "recall": 0.5250737463126843,
+        "f1": 0.6300884955752213,
+        "confusion_matrix": {
+          "tn": 604,
+          "fp": 48,
+          "fn": 161,
+          "tp": 178
+        },
+        "cv_roc_auc": 0.7835856874746276,
+        "cv_pr_auc": 0.7046533993808051,
+        "cv_precision": 0.803791123128085,
+        "cv_recall": 0.5538284666537987,
+        "cv_f1": 0.655420567681004
+      },
+      "xgboost": {
+        "roc_auc": 0.8840011220297881,
+        "pr_auc": 0.8318449704243221,
+        "precision": 0.8228346456692913,
+        "recall": 0.616519174041298,
+        "f1": 0.7048903878583473,
+        "confusion_matrix": {
+          "tn": 607,
+          "fp": 45,
+          "fn": 130,
+          "tp": 209
+        },
+        "cv_roc_auc": 0.8872882909891077,
+        "cv_pr_auc": 0.8322645313961793,
+        "cv_precision": 0.8375920580233531,
+        "cv_recall": 0.628691037277777,
+        "cv_f1": 0.7178060460388009
+      }
+    },
+    "selected_algorithm": "xgboost",
+    "selection_metric": "roc_auc",
+    "random_split_diagnostic": {
+      "metrics": {
+        "roc_auc": 0.8846050347222222,
+        "pr_auc": 0.8324779429956259,
+        "precision": 0.8455598455598455,
+        "recall": 0.6083333333333333,
+        "f1": 0.7075928917609047,
+        "confusion_matrix": {
+          "tn": 600,
+          "fp": 40,
+          "fn": 141,
+          "tp": 219
+        }
+      },
+      "note": "Random i.i.d. split allows spatially adjacent samples to leak between train and validation. Reported for comparison only \u2014 the spatial-block holdout above is the primary validation."
+    },
+    "target": "is_manganese",
+    "leakage_exclusions": [
+      "fe_pct",
+      "is_manganese",
+      "mn_pct",
+      "ore_thickness_m",
+      "production_gap_mt",
+      "production_mt",
+      "shortfall",
+      "sio2_pct",
+      "target_mt"
+    ],
+    "leakage_check_passed": true,
+    "feature_names": [
+      "elevation_m",
+      "slope_deg",
+      "aspect_deg",
+      "depth_m",
+      "blue_b2",
+      "green_b3",
+      "red_b4",
+      "nir_b8",
+      "swir_b11",
+      "swir_b12",
+      "ndvi",
+      "ndwi",
+      "swir_ratio",
+      "bare_soil_index",
+      "land_surface_temperature",
+      "formation_Gondite",
+      "formation_Granite",
+      "formation_Laterite",
+      "formation_Manganiferous_Formation",
+      "formation_Quartzite",
+      "formation_Schist"
+    ],
+    "training_rows": 5000,
+    "synthetic_data": true
+  },
+  "random_seed": 42,
+  "quick_mode": false,
+  "synthetic_data": true,
+  "boundary_notice": "PROTOTYPE resource intelligence on synthetic demo data. NOT official mineral reserves; NOT field-validated.",
+  "status": "candidate"
+}
