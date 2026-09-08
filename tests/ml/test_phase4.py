@@ -85,7 +85,10 @@ def _write_training_root(root: Path, n: int = 400, seed: int = 7) -> Path:
 
 def test_compute_member_weights_sums_to_one():
     y = pd.Series([0, 1, 1, 0, 1])
-    oof = {"a": pd.Series([0.2, 0.8, 0.7, 0.3, 0.6]), "b": pd.Series([0.4, 0.5, 0.5, 0.4, 0.5])}
+    # ``a`` perfectly separates the classes (ROC-AUC 1.0); ``b`` is imperfect
+    # (positive/negative score overlap), so the fitted ``a`` weight must exceed
+    # ``b`` while both sum to one.
+    oof = {"a": pd.Series([0.2, 0.8, 0.7, 0.3, 0.6]), "b": pd.Series([0.4, 0.5, 0.5, 0.4, 0.4])}
     weights = compute_member_weights(oof, y)
     assert abs(sum(weights.values()) - 1.0) < 1e-9
     assert weights["a"] > weights["b"]
@@ -98,7 +101,11 @@ def test_ensemble_fit_predicts_calibrated_probabilities(tmp_path_factory):
     root = _write_training_root(tmp_path_factory.mktemp("ens"), n=300, seed=11)
     df = load_fused_reserve_table(root)
     spec = RESERVE_TASKS["prospectivity"]
-    X = prepare_reserve_matrix(df, spec.numerical_features, spec.categorical_features)
+    X = prepare_reserve_matrix(
+        df,
+        numerical_features=spec.numerical_features,
+        categorical_features=spec.categorical_features,
+    )
     y = df[spec.target].astype(int)
     train_idx, test_idx, groups = spatial_holdout_indices(df)
     ensemble, diagnostics = ReserveEnsemble.fit(X, y, groups, train_idx, quick=True)

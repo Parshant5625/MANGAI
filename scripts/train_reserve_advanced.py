@@ -34,10 +34,20 @@ def main() -> None:
 
     ensemble = train_prospectivity_ensemble(quick=args.quick)
 
+    # Validation-integrity audit summary (Phase 4.1). Every value is copied
+    # from the points the pipelines actually wrote — nothing is fabricated.
     summary_path = Path("models") / "reserve" / "evaluation" / "phase4_summary.json"
     summary_path.parent.mkdir(parents=True, exist_ok=True)
+    probe = base["prospectivity"]["metrics"]
+    group_report = {
+        "development_spatial_groups": probe.get("development_spatial_groups"),
+        "final_test_spatial_groups": probe.get("final_test_spatial_groups"),
+        "group_overlap": probe.get("group_overlap"),
+        "leakage_check_passed": probe.get("leakage_check_passed"),
+    }
     summary = {
         "phase": 4,
+        "phase_4_1_validation_integrity_audit": True,
         "baseline_versions": {name: result["version"] for name, result in base.items()},
         "baseline_algorithms": {name: result["algorithm"] for name, result in base.items()},
         "ensemble": {
@@ -45,6 +55,24 @@ def main() -> None:
             "weights": ensemble["weights"],
             "calibration_method": ensemble["calibration_method"],
             "metrics": ensemble["metrics"],
+        },
+        "validation_integrity": {
+            "validation_strategy": "spatial_block_holdout_with_isolated_final_test",
+            "development_sample_count": probe.get("development_sample_count"),
+            "final_test_sample_count": probe.get("final_test_sample_count"),
+            "development_spatial_groups": group_report["development_spatial_groups"],
+            "final_test_spatial_groups": group_report["final_test_spatial_groups"],
+            "group_overlap": group_report["group_overlap"],
+            "leakage_check_passed": group_report["leakage_check_passed"],
+            "ensemble_weight_selection_method": "GroupKFold OOF ROC-AUC on development set only",
+            "ensemble_calibration_method": ensemble["calibration_method"],
+            "conformal_calibration_method": (
+                "split_conformal_quantile_on_development_oof_residuals"
+            ),
+            "final_evaluation_isolation": all(
+                result["metrics"].get("final_evaluation_isolation") for result in base.values()
+            )
+            and ensemble["metrics"].get("final_evaluation_isolation") is True,
         },
         "evaluation_artifacts": ensemble["evaluation_artifacts"],
         "synthetic_data": True,
@@ -58,6 +86,16 @@ def main() -> None:
         f"[ensemble] version={ensemble['version']} calibration={ensemble['calibration_method']}"
     )
     print(f"  ensemble vs baseline: {ensemble['metrics'].get('ensemble_vs_baseline', {}).get('ensemble_preferred')}")
+    print("Validation integrity audit (Phase 4.1):")
+    integrity = summary["validation_integrity"]
+    for key in (
+        "development_sample_count",
+        "final_test_sample_count",
+        "group_overlap",
+        "leakage_check_passed",
+        "final_evaluation_isolation",
+    ):
+        print(f"  {key}={integrity[key]}")
     print(f"Summary written to: {summary_path}")
     print("PHASE 4 ADVANCED TRAINING COMPLETE")
 

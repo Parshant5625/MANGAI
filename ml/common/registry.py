@@ -89,13 +89,14 @@ def check_promotion_criteria(
     - the artifact file exists on disk (if ``artifact_path`` is set)
     """
     failures: list[str] = []
-    if not record.get("leakage_check_passed"):
+    metrics_payload = record.get("metrics", {})
+    if not (record.get("leakage_check_passed") or metrics_payload.get("leakage_check_passed")):
         failures.append("leakage_check_passed is not true")
-    validation = record.get("validation", "")
+    validation = record.get("validation") or metrics_payload.get("validation", "")
     if not str(validation).startswith("spatial_block_holdout"):
         failures.append(f"validation strategy {validation!r} is not spatial_block_holdout")
     for metric in required_metrics:
-        if record.get("metrics", {}).get(metric) is None and record.get(metric) is None:
+        if metrics_payload.get(metric) is None and record.get(metric) is None:
             failures.append(f"required metric {metric!r} is missing")
     artifact_path = record.get("artifact_path")
     if artifact_path and not Path(artifact_path).exists():
@@ -169,10 +170,24 @@ def load_registry_records(registry_dir: Path, *, model_name: str | None = None) 
 
 
 def compare_models(registry_dir: Path, *, model_name: str | None = None) -> list[dict[str, Any]]:
-    """Reusable model-comparison view across registry records."""
+    """Reusable model-comparison view across registry records.
+
+    ``created_at`` is taken from the record when present; legacy records
+    written before the field existed fall back to the registry file's own
+    modification time (real filesystem provenance, never a fabricated stamp).
+    """
     comparison = []
-    for record in load_registry_records(registry_dir, model_name=model_name):
+    if not registry_dir.exists():
+        return []
+    for path in sorted(registry_dir.glob(f"{model_name or '*'}-*.json")):
+        if model_name is None or path.name.startswith(f"{model_name}-"):
+            record = json.loads(path.read_text(encoding="utf-8"))
+        else:
+            continue
         metrics = record.get("metrics", {})
+        created_at = record.get("created_at") or datetime.fromtimestamp(
+            path.stat().st_mtime, UTC
+        ).isoformat()
         comparison.append(
             {
                 "model_name": record.get("model_name"),
@@ -189,6 +204,7 @@ def compare_models(registry_dir: Path, *, model_name: str | None = None) -> list
                 "artifact_exists": Path(record["artifact_path"]).exists() if record.get("artifact_path") else None,
                 "promoted_at": record.get("promoted_at"),
                 "previous_champion": record.get("previous_champion"),
+                "created_at": created_at,
             }
         )
     return comparison

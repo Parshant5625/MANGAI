@@ -48,7 +48,8 @@ from ml.reserve.features import (
 from ml.reserve.spatial import (
     assert_no_target_leakage,
     classification_metrics,
-    spatial_holdout_indices,
+    group_split_report,
+    spatial_dev_test_split,
 )
 from ml.reserve.support import SupportAssessor
 
@@ -188,8 +189,18 @@ class ReserveEnsemble:
 def train_prospectivity_ensemble(root: Path | None = None, quick: bool = False) -> dict:
     """Train the calibrated ensemble and compare it with the best baseline.
 
-    Uses the SAME spatial holdout as Phase 3. The ensemble is recorded as a
-    candidate model; it is NOT auto-promoted (see registry lifecycle).
+    Validation protocol (leakage-safe):
+
+    - One isolated spatial split separates the DEVELOPMENT set from the final
+      TEST set (``ml.reserve.spatial.spatial_dev_test_split``).
+    - Member models, ensemble weights and the monotone calibrator are all fit
+      from grouped-CV OOF predictions over the DEVELOPMENT set only.
+    - The ensemble-vs-baseline decision is made on development OOF predictions.
+    - The untouched spatial TEST set is used exactly once: for the final
+      calibrated metrics (ROC-AUC/PR-AUC/F1/Brier/reliability).
+
+    The ensemble is recorded as a candidate model; it is NOT auto-promoted
+    (see registry lifecycle).
     """
     from ml.common.registry import ModelVersionRecord, hash_schema, write_registry_record
     from ml.reserve.train_prospectivity import (
@@ -217,51 +228,82 @@ def train_prospectivity_ensemble(root: Path | None = None, quick: bool = False) 
     leakage_report = check_leakage(X, [spec.target], context="reserve/prospectivity_ensemble")
     leakage_report.raise_for_errors()
 
-    train_idx, test_idx, groups = spatial_holdout_indices(df)
-    ensemble, diagnostics = ReserveEnsemble.fit(X, y, groups, train_idx, quick=quick)
+    dev_idx, test_idx, groups = spatial_dev_test_split(df)
+    ensemble, diagnostics = ReserveEnsemble.fit(X, y, groups, dev_idx, quick=quick)
 
     X_test = X.iloc[test_idx]
     y_test = y.iloc[test_idx]
     raw_test = ensemble.raw_probabilities(X_test)
     calibrated_test = ensemble.calibrator.transform(raw_test)
 
+    # FINAL TEST metrics: computed exactly once, on the untouched test rows.
     metrics = classification_metrics(y_test, calibrated_test)
     metrics["brier_raw"] = brier_score(y_test, raw_test)
     metrics["brier_calibrated"] = brier_score(y_test, calibrated_test)
     metrics["raw_reliability"] = reliability_curve(y_test, raw_test)
     metrics["calibrated_reliability"] = reliability_curve(y_test, calibrated_test)
+    metrics["final_test_sample_count"] = int(len(test_idx))
 
-    # Baseline comparison on the SAME spatial holdout.
-    baseline_results: dict[str, dict[str, Any]] = {}
+    # Development-only baseline comparison.
+    # The "does the ensemble beat the best single baseline" decision is made on
+    # group-CV OOF predictions over the DEVELOPMENT set, so the untouched final
+    # test set never influences it.
+    y_dev = y.iloc[dev_idx].reset_index(drop=True)
+    baseline_oof: dict[str, np.ndarray] = {}
     for name, factory in get_candidates("classification", quick=quick).items():
-        baseline = factory()
-        baseline.fit(X.iloc[train_idx], y.iloc[train_idx])
-        baseline_probs = baseline.predict_proba(X_test)[:, 1]
-        baseline_metrics = classification_metrics(y_test, baseline_probs)
-        baseline_metrics["brier"] = brier_score(y_test, baseline_probs)
+        baseline_oof[name] = _grouped_oof_probabilities(factory, X, y, groups, dev_idx)
+
+    dev_ensemble_raw = sum(
+        diagnostics["weights"][name] * baseline_oof[name] for name in diagnostics["weights"]
+    )
+    dev_roc = float(roc_auc_score(y_dev, dev_ensemble_raw))
+
+    baseline_results: dict[str, dict[str, Any]] = {}
+    for name, oof in baseline_oof.items():
+        baseline_metrics = classification_metrics(y_dev, oof)
+        baseline_metrics["brier"] = brier_score(y_dev, oof)
         baseline_results[name] = baseline_metrics
     best_baseline = max(baseline_results, key=lambda name: baseline_results[name]["roc_auc"])
 
+    metrics["development_metrics"] = {
+        "protocol": "GroupKFold OOF predictions over development set only",
+        "ensemble_oof_roc_auc": dev_roc,
+        "member_oof_roc_auc": diagnostics["member_oof_roc_auc"],
+        "ensemble_weight_selection_method": (
+            "weights proportional to max(OOF ROC-AUC - 0.5, eps) over development set only"
+        ),
+        "calibration": {
+            "method": f"monotone {ensemble.calibrator.kind} fitted on development OOF probabilities",
+            "fitted_on": "development_set_oof",
+            "development_brier_after_calibration": float(
+                brier_score(y_dev, ensemble.calibrator.transform(dev_ensemble_raw))
+            ),
+        },
+    }
+
     metrics["ensemble_vs_baseline"] = {
-        "protocol": "same spatial holdout as Phase 3 baselines",
+        "protocol": "development set GroupKFold OOF comparison (final test untouched)",
         "best_baseline": best_baseline,
         "best_baseline_metrics": baseline_results[best_baseline],
-        "all_baselines": baseline_results,
-        "ensemble_preferred": bool(metrics["roc_auc"] >= baseline_results[best_baseline]["roc_auc"]),
+        "ensemble_development_oof_roc_auc": dev_roc,
+        "ensemble_preferred": bool(dev_roc >= baseline_results[best_baseline]["roc_auc"]),
         "note": (
-            "The ensemble is only preferred when its ROC-AUC is at least as good as "
-            "the best single baseline on the same spatial holdout. Complexity must "
-            "justify itself."
+            "The ensemble is only preferred when its development OOF ROC-AUC is at "
+            "least as good as the best single baseline. This decision uses the "
+            "development set ONLY; the final spatial test set is reserved for the "
+            "final metrics reported above."
         ),
     }
     metrics.update(
         {
             "validation": "spatial_block_holdout",
             "validation_details": {
-                "strategy": "GroupShuffleSplit over 5x5 latitude/longitude spatial blocks",
+                "strategy": "Spatial block holdout with ISOLATED FINAL TEST (GroupShuffleSplit over 5x5 blocks)",
                 "primary": True,
                 "held_out_blocks": int(groups.iloc[test_idx].nunique()),
-                "train_rows": int(len(train_idx)),
+                "development_rows": int(len(dev_idx)),
+                "final_test_rows": int(len(test_idx)),
+                "train_rows": int(len(dev_idx)),
                 "test_rows": int(len(test_idx)),
                 "random_state": RANDOM_STATE,
             },
@@ -270,12 +312,19 @@ def train_prospectivity_ensemble(root: Path | None = None, quick: bool = False) 
             "leakage_check_passed": bool(leakage_report.valid),
             "feature_names": list(X.columns),
             "training_rows": int(len(df)),
+            "final_test_sample_count": int(len(test_idx)),
+            "final_evaluation_isolation": True,
             "synthetic_data": True,
         }
     )
+    metrics.update(group_split_report(groups, dev_idx, test_idx))
 
     # Support statistics for inference-time data-support assessment.
-    assessor = SupportAssessor.fit(df, df["latitude"], df["longitude"])
+    # Fitted on the DEVELOPMENT set only — extrapolation reference stats must
+    # not learn any final-test information.
+    assessor = SupportAssessor.fit(
+        X.iloc[dev_idx], df.iloc[dev_idx]["latitude"], df.iloc[dev_idx]["longitude"]
+    )
 
     # Persist (versioned + latest serving copies). No native-XGBoost file —
     # the ensemble bundle is a joblib payload with member models inside.
@@ -301,8 +350,19 @@ def train_prospectivity_ensemble(root: Path | None = None, quick: bool = False) 
         "feature_names": list(X.columns),
         "feature_schema_hash": hash_schema({"features": list(X.columns)})[:16],
         "training_data_hash": training_data_hash(root),
-        "validation_strategy": metrics["validation"],
+        "validation_strategy": "spatial_block_holdout_with_isolated_final_test",
         "metrics": metrics,
+        "development_sample_count": metrics.get("development_sample_count"),
+        "final_test_sample_count": metrics.get("final_test_sample_count"),
+        "development_spatial_groups": metrics.get("development_spatial_groups"),
+        "final_test_spatial_groups": metrics.get("final_test_spatial_groups"),
+        "leakage_check_passed": metrics.get("leakage_check_passed"),
+        "ensemble_weight_selection_method": (
+            "GroupKFold OOF ROC-AUC on development set only (final test untouched)"
+        ),
+        "calibration_method": f"{ensemble.calibrator.kind} fitted on development OOF probabilities",
+        "conformal_calibration_method": None,
+        "final_evaluation_isolation": metrics.get("final_evaluation_isolation"),
         "random_seed": RANDOM_STATE,
         "quick_mode": quick,
         "support_stats": assessor.to_dict(),

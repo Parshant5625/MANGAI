@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from sklearn.metrics import (
@@ -27,6 +29,62 @@ def spatial_holdout_indices(
     dummy = np.zeros(len(df))
     train_idx, test_idx = next(splitter.split(df, dummy, groups))
     return train_idx, test_idx, groups
+
+
+def spatial_dev_test_split(
+    df: pd.DataFrame,
+    test_size: float = 0.2,
+    random_state: int = 42,
+    blocks: int = 5,
+) -> tuple[np.ndarray, np.ndarray, pd.Series]:
+    """Spatial split into a development set and a final untouched test set.
+
+    Returns ``(dev_idx, test_idx, groups)`` where *dev_idx* and *test_idx* share
+    **zero** spatial block groups.  The development set is used for all model
+    selection, weight selection, calibration, and conformal quantile fitting
+    (via grouped cross-validation).  The test set is reserved for final
+    evaluation only and is never touched during development.
+    """
+    dev_idx, test_idx, groups = spatial_holdout_indices(
+        df, test_size=test_size, random_state=random_state, blocks=blocks
+    )
+    assert_no_group_overlap(groups, dev_idx, test_idx)
+    return dev_idx, test_idx, groups
+
+
+def assert_no_group_overlap(
+    groups: pd.Series,
+    dev_idx,
+    test_idx,
+) -> None:
+    """Raise ``ValueError`` if any spatial group appears in both dev and test."""
+    dev_groups = set(groups.iloc[dev_idx])
+    test_groups = set(groups.iloc[test_idx])
+    overlap = dev_groups & test_groups
+    if overlap:
+        raise ValueError(
+            f"Spatial group overlap between development and final test: {sorted(overlap)}"
+        )
+
+
+def group_split_report(groups: pd.Series, dev_idx, test_idx) -> dict[str, Any]:
+    """Machine-readable group separation report for metadata and audits.
+
+    Returns the development/test spatial groups, their intersection (must be
+    empty) and a ``leakage_check_passed`` boolean. Persisted in model metadata
+    so every version carries a programmatic proof of test isolation.
+    """
+    dev_groups = sorted(str(group) for group in set(groups.iloc[dev_idx]))
+    test_groups = sorted(str(group) for group in set(groups.iloc[test_idx]))
+    overlap = sorted(set(dev_groups) & set(test_groups))
+    return {
+        "development_spatial_groups": dev_groups,
+        "final_test_spatial_groups": test_groups,
+        "group_overlap": overlap,
+        "leakage_check_passed": not overlap,
+        "development_sample_count": int(len(dev_idx)),
+        "final_test_sample_count": int(len(test_idx)),
+    }
 
 
 def random_holdout_indices(

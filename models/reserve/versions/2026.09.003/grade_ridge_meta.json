@@ -1,11 +1,11 @@
 {
-  "model_name": "reserve_prospectivity",
-  "version": "2026.09.004",
-  "task": "binary_classification",
-  "task_kind": "classification",
-  "algorithm": "XGBoost",
-  "target": "is_manganese",
-  "prediction_type": "manganese_occurrence_probability",
+  "model_name": "reserve_grade",
+  "version": "2026.09.003",
+  "task": "regression",
+  "task_kind": "regression",
+  "algorithm": "Ridge",
+  "target": "mn_pct",
+  "prediction_type": "mn_pct",
   "feature_names": [
     "elevation_m",
     "slope_deg",
@@ -37,29 +37,16 @@
   ],
   "validation_strategy": "spatial_block_holdout_with_isolated_final_test",
   "metrics": {
-    "roc_auc": 0.8840011220297881,
-    "pr_auc": 0.8318449704243221,
-    "precision": 0.8228346456692913,
-    "recall": 0.616519174041298,
-    "f1": 0.7048903878583473,
-    "confusion_matrix": {
-      "tn": 607,
-      "fp": 45,
-      "fn": 130,
-      "tp": 209
-    },
-    "threshold": 0.5,
-    "cv_roc_auc": 0.8737736295625738,
-    "cv_pr_auc": 0.8139104251192677,
-    "cv_precision": 0.836798781398288,
-    "cv_recall": 0.6229685370925335,
-    "cv_f1": 0.7134136734046577,
+    "mae": 5.834651902579735,
+    "rmse": 7.353399371410525,
+    "r2": 0.5049002330270889,
+    "cv_mae": 6.210185616601537,
+    "cv_rmse": 7.677179009303876,
+    "cv_r2": 0.5013428729475091,
     "development_metrics": {
-      "cv_roc_auc": 0.8737736295625738,
-      "cv_pr_auc": 0.8139104251192677,
-      "cv_precision": 0.836798781398288,
-      "cv_recall": 0.6229685370925335,
-      "cv_f1": 0.7134136734046577
+      "cv_mae": 6.210185616601537,
+      "cv_rmse": 7.677179009303876,
+      "cv_r2": 0.5013428729475091
     },
     "validation": "spatial_block_holdout",
     "validation_details": {
@@ -73,48 +60,34 @@
       "random_state": 42
     },
     "candidate_comparison": {
-      "logistic_regression": {
-        "cv_roc_auc": 0.8230419679709007,
-        "cv_pr_auc": 0.7358369739698131,
-        "cv_precision": 0.7901305110583842,
-        "cv_recall": 0.5745288848866013,
-        "cv_f1": 0.6649283221520766
+      "ridge": {
+        "cv_mae": 6.210185616601537,
+        "cv_rmse": 7.677179009303876,
+        "cv_r2": 0.5013428729475091
       },
       "random_forest": {
-        "cv_roc_auc": 0.7745990467774606,
-        "cv_pr_auc": 0.7019425970391662,
-        "cv_precision": 0.8079326780786564,
-        "cv_recall": 0.5583066669088079,
-        "cv_f1": 0.6597426809405386
+        "cv_mae": 6.245935515978614,
+        "cv_rmse": 7.720168686633059,
+        "cv_r2": 0.49574317180419286
       },
       "xgboost": {
-        "cv_roc_auc": 0.8737736295625738,
-        "cv_pr_auc": 0.8139104251192677,
-        "cv_precision": 0.836798781398288,
-        "cv_recall": 0.6229685370925335,
-        "cv_f1": 0.7134136734046577
+        "cv_mae": 6.360855770111084,
+        "cv_rmse": 7.884418726365065,
+        "cv_r2": 0.4740032196044922
       }
     },
-    "selected_algorithm": "xgboost",
-    "selection_metric": "cv_roc_auc",
+    "selected_algorithm": "ridge",
+    "selection_metric": "cv_rmse",
     "selection_protocol": "grouped_cv_on_development_set_only",
     "random_split_diagnostic": {
       "metrics": {
-        "roc_auc": 0.8895946948807505,
-        "pr_auc": 0.8320304767407195,
-        "precision": 0.883495145631068,
-        "recall": 0.6431095406360424,
-        "f1": 0.7443762781186094,
-        "confusion_matrix": {
-          "tn": 495,
-          "fp": 24,
-          "fn": 101,
-          "tp": 182
-        }
+        "mae": 6.16585143156126,
+        "rmse": 7.629754030354353,
+        "r2": 0.5263703982806253
       },
       "note": "Diagnostic computed on the DEVELOPMENT set only (quantifies spatial optimism in model selection). The final spatial test set is never used to compute any reported metric."
     },
-    "target": "is_manganese",
+    "target": "mn_pct",
     "leakage_exclusions": [
       "fe_pct",
       "is_manganese",
@@ -185,6 +158,17 @@
     "group_overlap": [],
     "development_sample_count": 4009,
     "synthetic_data": true,
+    "conformal": {
+      "method": "split_conformal",
+      "coverage": 0.9,
+      "n_calibration": 4009,
+      "calibration_sample_count": 4009,
+      "calibration_source": "development_set_oof_residuals_only",
+      "non_negative": false,
+      "empirical_coverage": 0.9202825428859738,
+      "final_test_sample_count": 991,
+      "note": "Coverage is empirical on the untouched synthetic spatial test set under grouped-exchangeability."
+    },
     "support_stats": {
       "means": {
         "elevation_m": 649.7186259226845,
@@ -1270,7 +1254,7 @@
   ],
   "leakage_check_passed": true,
   "final_evaluation_isolation": true,
-  "conformal_calibration_method": null,
+  "conformal_calibration_method": "split_conformal_quantile_on_development_oof_residuals",
   "random_seed": 42,
   "quick_mode": false,
   "synthetic_data": true,

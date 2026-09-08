@@ -1,65 +1,21 @@
 {
-  "model_name": "reserve_prospectivity",
+  "model_name": "reserve_thickness",
   "version": "2026.09.004",
-  "task": "binary_classification",
-  "task_kind": "classification",
-  "algorithm": "XGBoost",
-  "target": "is_manganese",
-  "prediction_type": "manganese_occurrence_probability",
-  "feature_names": [
-    "elevation_m",
-    "slope_deg",
-    "aspect_deg",
-    "depth_m",
-    "blue_b2",
-    "green_b3",
-    "red_b4",
-    "nir_b8",
-    "swir_b11",
-    "swir_b12",
-    "ndvi",
-    "ndwi",
-    "swir_ratio",
-    "bare_soil_index",
-    "land_surface_temperature",
-    "formation_Gondite",
-    "formation_Granite",
-    "formation_Laterite",
-    "formation_Manganiferous_Formation",
-    "formation_Quartzite",
-    "formation_Schist"
-  ],
-  "feature_schema_hash": "479dcab4682f8899",
+  "task": "regression",
+  "algorithm": "Ridge",
   "training_data_hash": "ee64a69a91fb9c77",
-  "training_data": [
-    "data/synthetic/geological.csv",
-    "data/synthetic/satellite_features.csv"
-  ],
-  "validation_strategy": "spatial_block_holdout_with_isolated_final_test",
+  "feature_schema_hash": "479dcab4682f8899",
   "metrics": {
-    "roc_auc": 0.8840011220297881,
-    "pr_auc": 0.8318449704243221,
-    "precision": 0.8228346456692913,
-    "recall": 0.616519174041298,
-    "f1": 0.7048903878583473,
-    "confusion_matrix": {
-      "tn": 607,
-      "fp": 45,
-      "fn": 130,
-      "tp": 209
-    },
-    "threshold": 0.5,
-    "cv_roc_auc": 0.8737736295625738,
-    "cv_pr_auc": 0.8139104251192677,
-    "cv_precision": 0.836798781398288,
-    "cv_recall": 0.6229685370925335,
-    "cv_f1": 0.7134136734046577,
+    "mae": 2.4090571148361066,
+    "rmse": 3.531982203995566,
+    "r2": 0.19157910437939707,
+    "cv_mae": 2.260586540488545,
+    "cv_rmse": 3.1985749581832965,
+    "cv_r2": 0.19763197936812346,
     "development_metrics": {
-      "cv_roc_auc": 0.8737736295625738,
-      "cv_pr_auc": 0.8139104251192677,
-      "cv_precision": 0.836798781398288,
-      "cv_recall": 0.6229685370925335,
-      "cv_f1": 0.7134136734046577
+      "cv_mae": 2.260586540488545,
+      "cv_rmse": 3.1985749581832965,
+      "cv_r2": 0.19763197936812346
     },
     "validation": "spatial_block_holdout",
     "validation_details": {
@@ -73,48 +29,34 @@
       "random_state": 42
     },
     "candidate_comparison": {
-      "logistic_regression": {
-        "cv_roc_auc": 0.8230419679709007,
-        "cv_pr_auc": 0.7358369739698131,
-        "cv_precision": 0.7901305110583842,
-        "cv_recall": 0.5745288848866013,
-        "cv_f1": 0.6649283221520766
+      "ridge": {
+        "cv_mae": 2.260586540488545,
+        "cv_rmse": 3.1985749581832965,
+        "cv_r2": 0.19763197936812346
       },
       "random_forest": {
-        "cv_roc_auc": 0.7745990467774606,
-        "cv_pr_auc": 0.7019425970391662,
-        "cv_precision": 0.8079326780786564,
-        "cv_recall": 0.5583066669088079,
-        "cv_f1": 0.6597426809405386
+        "cv_mae": 2.352346744337663,
+        "cv_rmse": 3.3007201011876077,
+        "cv_r2": 0.14582993073355172
       },
       "xgboost": {
-        "cv_roc_auc": 0.8737736295625738,
-        "cv_pr_auc": 0.8139104251192677,
-        "cv_precision": 0.836798781398288,
-        "cv_recall": 0.6229685370925335,
-        "cv_f1": 0.7134136734046577
+        "cv_mae": 2.2731565475463866,
+        "cv_rmse": 3.2178218318489167,
+        "cv_r2": 0.18825676441192626
       }
     },
-    "selected_algorithm": "xgboost",
-    "selection_metric": "cv_roc_auc",
+    "selected_algorithm": "ridge",
+    "selection_metric": "cv_rmse",
     "selection_protocol": "grouped_cv_on_development_set_only",
     "random_split_diagnostic": {
       "metrics": {
-        "roc_auc": 0.8895946948807505,
-        "pr_auc": 0.8320304767407195,
-        "precision": 0.883495145631068,
-        "recall": 0.6431095406360424,
-        "f1": 0.7443762781186094,
-        "confusion_matrix": {
-          "tn": 495,
-          "fp": 24,
-          "fn": 101,
-          "tp": 182
-        }
+        "mae": 2.3550615460220974,
+        "rmse": 3.37287488817384,
+        "r2": 0.21616566282968575
       },
       "note": "Diagnostic computed on the DEVELOPMENT set only (quantifies spatial optimism in model selection). The final spatial test set is never used to compute any reported metric."
     },
-    "target": "is_manganese",
+    "target": "ore_thickness_m",
     "leakage_exclusions": [
       "fe_pct",
       "is_manganese",
@@ -185,6 +127,17 @@
     "group_overlap": [],
     "development_sample_count": 4009,
     "synthetic_data": true,
+    "conformal": {
+      "method": "split_conformal",
+      "coverage": 0.9,
+      "n_calibration": 4009,
+      "calibration_sample_count": 4009,
+      "calibration_source": "development_set_oof_residuals_only",
+      "non_negative": true,
+      "empirical_coverage": 0.8829465186680121,
+      "final_test_sample_count": 991,
+      "note": "Coverage is empirical on the untouched synthetic spatial test set under grouped-exchangeability."
+    },
     "support_stats": {
       "means": {
         "elevation_m": 649.7186259226845,
@@ -1237,43 +1190,32 @@
       "max_features": 21
     }
   },
-  "development_sample_count": 4009,
-  "final_test_sample_count": 991,
-  "development_spatial_groups": [
-    "0_1",
-    "0_2",
-    "0_3",
-    "0_4",
-    "1_0",
-    "1_1",
-    "1_2",
-    "1_4",
-    "2_0",
-    "2_2",
-    "2_3",
-    "2_4",
-    "3_0",
-    "3_2",
-    "3_3",
-    "3_4",
-    "4_0",
-    "4_1",
-    "4_2",
-    "4_4"
+  "artifact_path": "models/reserve/versions/2026.09.004/thickness_ridge_model.joblib",
+  "status": "candidate",
+  "created_at": "2026-09-08T15:40:07.091417+00:00",
+  "target": "ore_thickness_m",
+  "feature_names": [
+    "elevation_m",
+    "slope_deg",
+    "aspect_deg",
+    "depth_m",
+    "blue_b2",
+    "green_b3",
+    "red_b4",
+    "nir_b8",
+    "swir_b11",
+    "swir_b12",
+    "ndvi",
+    "ndwi",
+    "swir_ratio",
+    "bare_soil_index",
+    "land_surface_temperature",
+    "formation_Gondite",
+    "formation_Granite",
+    "formation_Laterite",
+    "formation_Manganiferous_Formation",
+    "formation_Quartzite",
+    "formation_Schist"
   ],
-  "final_test_spatial_groups": [
-    "0_0",
-    "1_3",
-    "2_1",
-    "3_1",
-    "4_3"
-  ],
-  "leakage_check_passed": true,
-  "final_evaluation_isolation": true,
-  "conformal_calibration_method": null,
-  "random_seed": 42,
-  "quick_mode": false,
-  "synthetic_data": true,
-  "boundary_notice": "PROTOTYPE resource intelligence on synthetic demo data. NOT official mineral reserves; NOT field-validated.",
-  "status": "candidate"
+  "validation_strategy": "spatial_block_holdout"
 }

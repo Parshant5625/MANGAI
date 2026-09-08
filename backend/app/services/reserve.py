@@ -329,7 +329,18 @@ class ReserveService:
             self._resource_payload(
                 float(row["manganese_probability"]),
                 float(row["predicted_thickness_m"]),
-                float(row["confidence"]),
+                (
+                    float(row["thickness_interval_lower"])
+                    if "thickness_interval_lower" in row.index
+                    and pd.notna(row.get("thickness_interval_lower"))
+                    else None
+                ),
+                (
+                    float(row["thickness_interval_upper"])
+                    if "thickness_interval_upper" in row.index
+                    and pd.notna(row.get("thickness_interval_upper"))
+                    else None
+                ),
                 str(row["sample_id"]),
             )
             for _, row in high.iterrows()

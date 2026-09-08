@@ -12,7 +12,7 @@ import pandas as pd
 from xgboost import XGBClassifier, XGBRegressor
 
 from ml.common.registry import ModelVersionRecord, hash_file, hash_schema, write_registry_record
-from ml.reserve.evaluate import get_candidates, score_candidates, select_best
+from ml.reserve.evaluate import eval_on_test, get_candidates, score_candidates, select_best
 from ml.reserve.features import (
     RESERVE_TASKS,
     load_fused_reserve_table,
@@ -22,10 +22,11 @@ from ml.reserve.features import (
 from ml.reserve.spatial import (
     assert_no_target_leakage,
     classification_metrics,
+    group_split_report,
     grouped_cv_scores,
     random_holdout_indices,
     regression_metrics,
-    spatial_holdout_indices,
+    spatial_dev_test_split,
 )
 from ml.reserve.support import SupportAssessor
 
@@ -92,9 +93,16 @@ def _train_task(root: Path | None, task_name: str, quick: bool = False) -> dict:
     """Train one reserve baseline end-to-end.
 
     Steps: load fused data -> build task features -> leakage assertions ->
-    spatial holdout + grouped CV candidate comparison -> select winner ->
-    random-split diagnostic (recorded, never primary) -> persist versioned
-    artifacts + metadata -> write registry record.
+    isolated spatial dev/test split -> grouped CV candidate comparison on the
+    DEVELOPMENT set only -> select winner -> fit on development set -> final
+    evaluation once, on the untouched spatial TEST set -> random-split
+    diagnostic restricted to development data -> persist versioned artifacts +
+    metadata including the group-overlap proof -> write registry record.
+
+    Leakage invariant: ``test_idx`` rows are never used for candidate
+    selection, hyperparameter choice, CV scoring, calibration, conformal
+    quantile fitting, feature selection, or preprocessing fitting. They are
+    consumed exactly once, by the final evaluation.
     """
     root = root or project_root()
     spec = RESERVE_TASKS[task_name]
@@ -116,68 +124,90 @@ def _train_task(root: Path | None, task_name: str, quick: bool = False) -> dict:
     leakage_report = check_leakage(X, [spec.target], context=f"reserve/{task_name}")
     leakage_report.raise_for_errors()
 
-    train_idx, test_idx, groups = spatial_holdout_indices(df)
-    comparison = score_candidates(
-        spec.kind, X, y, groups, train_idx, test_idx, quick=quick
-    )
+    dev_idx, test_idx, groups = spatial_dev_test_split(df)
+    comparison = score_candidates(spec.kind, X, y, groups, dev_idx, quick=quick)
     best_name = select_best(comparison, spec.kind)
     model = get_candidates(spec.kind, quick=quick)[best_name]()
 
-    # Spatial-block holdout is the PRIMARY validation.
-    model.fit(X.iloc[train_idx], y.iloc[train_idx])
-    if spec.kind == "classification":
-        probabilities = model.predict_proba(X.iloc[test_idx])[:, 1]
-        metrics = classification_metrics(y.iloc[test_idx], probabilities)
-    else:
-        metrics = regression_metrics(y.iloc[test_idx], model.predict(X.iloc[test_idx]))
+    # Fit the model on the DEVELOPMENT set only.
+    model.fit(X.iloc[dev_idx], y.iloc[dev_idx])
+
+    # FINAL evaluation happens exactly once, on the untouched spatial test set,
+    # AFTER every decision (candidate choice, hyperparameters, calibration,
+    # conformal quantile, preprocessing, feature selection) has been frozen.
+    metrics = eval_on_test(spec.kind, model, X, y, test_idx)
+
+    # Development-model-selection metrics: grouped CV restricted to dev rows.
+    # The final test set never participates in these scores either — they are
+    # reported as development metrics.
     cv_scores = grouped_cv_scores(
-        get_candidates(spec.kind, quick=quick)[best_name], X, y, groups, spec.kind
+        get_candidates(spec.kind, quick=quick)[best_name],
+        X.iloc[dev_idx],
+        y.iloc[dev_idx],
+        groups.iloc[dev_idx],
+        spec.kind,
     )
     metrics.update(cv_scores)
+    metrics["development_metrics"] = dict(cv_scores)
 
-    # Random i.i.d. split — DIAGNOSTIC ONLY (quantifies spatial optimism).
-    random_train_idx, random_test_idx = random_holdout_indices(df)
+    # Random i.i.d. split — DIAGNOSTIC ONLY, restricted to the DEVELOPMENT set
+    # so it quantifies spatial optimism in model selection without ever
+    # touching the final test rows.
+    dev_df = df.iloc[dev_idx].reset_index(drop=True)
+    X_dev = X.iloc[dev_idx].reset_index(drop=True)
+    y_dev = y.iloc[dev_idx].reset_index(drop=True)
+    random_train_idx, random_test_idx = random_holdout_indices(dev_df)
     diagnostic_model = get_candidates(spec.kind, quick=quick)[best_name]()
-    diagnostic_model.fit(X.iloc[random_train_idx], y.iloc[random_train_idx])
+    diagnostic_model.fit(X_dev.iloc[random_train_idx], y_dev.iloc[random_train_idx])
     if spec.kind == "classification":
         random_metrics = classification_metrics(
-            y.iloc[random_test_idx], diagnostic_model.predict_proba(X.iloc[random_test_idx])[:, 1]
+            y_dev.iloc[random_test_idx],
+            diagnostic_model.predict_proba(X_dev.iloc[random_test_idx])[:, 1],
         )
     else:
         random_metrics = regression_metrics(
-            y.iloc[random_test_idx], diagnostic_model.predict(X.iloc[random_test_idx])
+            y_dev.iloc[random_test_idx], diagnostic_model.predict(X_dev.iloc[random_test_idx])
         )
     random_split_diagnostic = {
         "metrics": random_metrics,
         "note": (
-            "Random i.i.d. split allows spatially adjacent samples to leak between "
-            "train and validation. Reported for comparison only — the spatial-block "
-            "holdout above is the primary validation."
+            "Diagnostic computed on the DEVELOPMENT set only (quantifies spatial "
+            "optimism in model selection). The final spatial test set is never used "
+            "to compute any reported metric."
         ),
     }
 
     feature_columns = list(X.columns)
     metrics["validation"] = "spatial_block_holdout"
     metrics["validation_details"] = {
-        "strategy": "GroupShuffleSplit over 5x5 latitude/longitude spatial blocks",
+        "strategy": "Spatial block holdout with ISOLATED FINAL TEST (GroupShuffleSplit over 5x5 blocks)",
         "primary": True,
         "held_out_blocks": int(groups.iloc[test_idx].nunique()),
-        "train_rows": int(len(train_idx)),
+        "development_rows": int(len(dev_idx)),
+        "final_test_rows": int(len(test_idx)),
+        "train_rows": int(len(dev_idx)),
         "test_rows": int(len(test_idx)),
         "random_state": RANDOM_STATE,
     }
     metrics["candidate_comparison"] = comparison
     metrics["selected_algorithm"] = best_name
-    metrics["selection_metric"] = spec.primary_metric
+    metrics["selection_metric"] = f"cv_{spec.primary_metric}"
+    metrics["selection_protocol"] = "grouped_cv_on_development_set_only"
     metrics["random_split_diagnostic"] = random_split_diagnostic
     metrics["target"] = spec.target
     metrics["leakage_exclusions"] = spec.forbidden_columns
     metrics["leakage_check_passed"] = bool(leakage_report.valid)
     metrics["feature_names"] = feature_columns
     metrics["training_rows"] = int(len(df))
+    metrics["final_test_sample_count"] = int(len(test_idx))
+    metrics["final_evaluation_isolation"] = True
+    group_report = group_split_report(groups, dev_idx, test_idx)
+    metrics.update(group_report)
     metrics["synthetic_data"] = True
 
-    # Conformal prediction intervals for regression tasks (grouped OOF, no leakage).
+    # Conformal prediction intervals for regression tasks.
+    # Quantile is fitted on grouped-OOF residuals over the DEVELOPMENT set
+    # only; empirical coverage is measured once, on the untouched test set.
     conformal_state = None
     if spec.kind == "regression":
         conformal_state = _fit_conformal(
@@ -185,22 +215,29 @@ def _train_task(root: Path | None, task_name: str, quick: bool = False) -> dict:
             X,
             y,
             groups,
-            train_idx,
+            dev_idx,
             non_negative=(spec.target == "ore_thickness_m"),
         )
         metrics["conformal"] = {
             "method": "split_conformal",
             "coverage": conformal_state.coverage,
             "n_calibration": conformal_state.n_calibration,
+            "calibration_sample_count": conformal_state.n_calibration,
+            "calibration_source": "development_set_oof_residuals_only",
             "non_negative": conformal_state.non_negative,
             "empirical_coverage": conformal_state.evaluate_coverage(
                 model.predict(X.iloc[test_idx]), y.iloc[test_idx]
             ),
-            "note": "Coverage is empirical on the synthetic spatial holdout under grouped-exchangeability.",
+            "final_test_sample_count": int(len(test_idx)),
+            "note": "Coverage is empirical on the untouched synthetic spatial test set under grouped-exchangeability.",
         }
 
     # Data-support statistics for inference-time extrapolation detection.
-    support_assessor = SupportAssessor.fit(X, df["latitude"], df["longitude"])
+    # Fitted on the DEVELOPMENT set only — extrapolation reference stats must
+    # not learn any final-test information.
+    support_assessor = SupportAssessor.fit(
+        X.iloc[dev_idx], df.iloc[dev_idx]["latitude"], df.iloc[dev_idx]["longitude"]
+    )
     metrics["support_stats"] = support_assessor.to_dict()
 
     result = _persist_model(
@@ -228,7 +265,12 @@ def _train_task(root: Path | None, task_name: str, quick: bool = False) -> dict:
 
 
 def _fit_conformal(factory, X, y, groups, train_idx, *, non_negative: bool):
-    """Grouped-OOF conformal calibration on the training blocks (no leakage)."""
+    """Grouped-OOF conformal calibration on the DEVELOPMENT blocks (no leakage).
+
+    The conformal quantile is the level-``coverage`` empirical quantile of
+    absolute residuals produced by ``GroupKFold`` over the development set.
+    The final spatial test set is never used to fit the quantile.
+    """
     from sklearn.model_selection import GroupKFold
 
     from ml.reserve.conformal import SplitConformalRegressor
@@ -297,8 +339,19 @@ def _persist_model(
         "feature_schema_hash": hash_schema({"features": feature_columns})[:16],
         "training_data_hash": data_hash,
         "training_data": ["data/synthetic/geological.csv", "data/synthetic/satellite_features.csv"],
-        "validation_strategy": metrics["validation"],
+        "validation_strategy": "spatial_block_holdout_with_isolated_final_test",
         "metrics": metrics,
+        "development_sample_count": metrics.get("development_sample_count"),
+        "final_test_sample_count": metrics.get("final_test_sample_count"),
+        "development_spatial_groups": metrics.get("development_spatial_groups"),
+        "final_test_spatial_groups": metrics.get("final_test_spatial_groups"),
+        "leakage_check_passed": metrics.get("leakage_check_passed"),
+        "final_evaluation_isolation": metrics.get("final_evaluation_isolation"),
+        "conformal_calibration_method": (
+            "split_conformal_quantile_on_development_oof_residuals"
+            if spec.kind == "regression"
+            else None
+        ),
         "random_seed": RANDOM_STATE,
         "quick_mode": quick,
         "synthetic_data": True,

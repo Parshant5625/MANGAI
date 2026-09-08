@@ -119,7 +119,7 @@ def compute_feature_drift(
         psi = _psi(ref_finite, cur_finite, bins=psi_bins)
 
         metric_values = {
-            "missingness_delta": missing_delta,
+            "missingness": missing_delta,
             "mean_shift": mean_shift,
             "median_shift": median_shift,
             "percentile_shift": percentile_shift,
@@ -134,7 +134,7 @@ def compute_feature_drift(
         features[column] = {
             "kind": "numeric",
             "metrics": {name: round(value, 4) for name, value in metric_values.items()},
-            "thresholds": {name: thresholds[name] for name in metric_values},
+            "thresholds": {name: thresholds.get(name, float("inf")) for name in metric_values},
             "status": status,
         }
 

@@ -76,8 +76,12 @@ def _nearest_covariates(grid: pd.DataFrame, observations: pd.DataFrame) -> pd.Da
     grid["_lon_m"] = grid["longitude"] * LON_METRES
     nearest_idx = []
     distances_m = []
-    for row in grid.itertuples(index=False):
-        d2 = (obs["_lat_m"] - row._lat_m) ** 2 + (obs["_lon_m"] - row._lon_m) ** 2
+    # ``itertuples(..., name=None)`` yields plain tuples so leading-underscore
+    # column names (``_lat_m``/``_lon_m``) stay positionally addressable across
+    # pandas 2.x and 3.x (pandas 3 renamed them to ``_2``/``_3`` in namedtuples).
+    for row in grid.itertuples(index=False, name=None):
+        lat_m, lon_m = row[2], row[3]
+        d2 = (obs["_lat_m"] - lat_m) ** 2 + (obs["_lon_m"] - lon_m) ** 2
         idx = int(d2.idxmin())
         nearest_idx.append(idx)
         distances_m.append(float(d2.iloc[idx] ** 0.5))
@@ -198,10 +202,26 @@ def _score_cell(
         "nearest_observation_m": round(float(row.nearest_observation_m), 1),
     }
     if not row.context_available:
-        base["data_support"] = {
-            "state": "no_context",
-            "note": "No observation within search radius; prediction withheld rather than fabricated.",
-        }
+        # Withheld prediction: the full cell contract is still emitted so API
+        # consumers can rely on every key, but every model output is ``None``.
+        base.update(
+            {
+                "probability": None,
+                "calibrated_probability": None,
+                "base_probabilities": None,
+                "predicted_grade_pct": None,
+                "grade_interval": None,
+                "predicted_thickness_m": None,
+                "thickness_interval": None,
+                "resource_potential": None,
+                "extrapolation_level": None,
+                "model_version": None,
+                "data_support": {
+                    "state": "no_context",
+                    "note": "No observation within search radius; prediction withheld rather than fabricated.",
+                },
+            }
+        )
         return base
 
     cell_frame = pd.DataFrame(
@@ -223,7 +243,11 @@ def _score_cell(
             }
         ]
     )
-    features = {name: float(cell_frame[name].iloc[0]) for name in cell_frame.columns}
+    features = {
+        name: float(cell_frame[name].iloc[0])
+        for name in cell_frame.columns
+        if pd.api.types.is_numeric_dtype(cell_frame[name])
+    }
 
     probability: float | None = None
     calibrated_probability: float | None = None

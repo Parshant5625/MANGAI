@@ -1,67 +1,164 @@
 {
-  "mae": 5.834651902579735,
-  "rmse": 7.353399371410525,
-  "r2": 0.5049002330270889,
-  "cv_mae": 6.210185616601537,
-  "cv_rmse": 7.677179009303876,
-  "cv_r2": 0.5013428729475091,
-  "development_metrics": {
-    "cv_mae": 6.210185616601537,
-    "cv_rmse": 7.677179009303876,
-    "cv_r2": 0.5013428729475091
-  },
-  "validation": "spatial_block_holdout",
-  "validation_details": {
-    "strategy": "Spatial block holdout with ISOLATED FINAL TEST (GroupShuffleSplit over 5x5 blocks)",
-    "primary": true,
-    "held_out_blocks": 5,
-    "development_rows": 4009,
-    "final_test_rows": 991,
-    "train_rows": 4009,
-    "test_rows": 991,
-    "random_state": 42
-  },
-  "candidate_comparison": {
-    "ridge": {
-      "cv_mae": 6.210185616601537,
-      "cv_rmse": 7.677179009303876,
-      "cv_r2": 0.5013428729475091
-    },
-    "random_forest": {
-      "cv_mae": 6.245935515978614,
-      "cv_rmse": 7.720168686633059,
-      "cv_r2": 0.49574317180419286
-    },
-    "xgboost": {
-      "cv_mae": 6.360855770111084,
-      "cv_rmse": 7.884418726365065,
-      "cv_r2": 0.4740032196044922
-    }
-  },
-  "selected_algorithm": "ridge",
-  "selection_metric": "cv_rmse",
-  "selection_protocol": "grouped_cv_on_development_set_only",
-  "random_split_diagnostic": {
-    "metrics": {
-      "mae": 6.16585143156126,
-      "rmse": 7.629754030354353,
-      "r2": 0.5263703982806253
-    },
-    "note": "Diagnostic computed on the DEVELOPMENT set only (quantifies spatial optimism in model selection). The final spatial test set is never used to compute any reported metric."
-  },
-  "target": "mn_pct",
-  "leakage_exclusions": [
-    "fe_pct",
-    "is_manganese",
-    "mn_pct",
-    "ore_thickness_m",
-    "production_gap_mt",
-    "production_mt",
-    "shortfall",
-    "sio2_pct",
-    "target_mt"
+  "model_name": "reserve_prospectivity_ensemble",
+  "version": "2026.09.002",
+  "task": "binary_classification",
+  "task_kind": "classification",
+  "algorithm": "WeightedSoftVotingEnsemble+Calibration",
+  "target": "is_manganese",
+  "prediction_type": "calibrated_manganese_occurrence_probability",
+  "members": [
+    "logistic_regression",
+    "random_forest",
+    "xgboost"
   ],
-  "leakage_check_passed": true,
+  "member_weights": {
+    "logistic_regression": 0.332363978886401,
+    "random_forest": 0.2822953757455011,
+    "xgboost": 0.38534064536809787
+  },
+  "calibrator": {
+    "kind": "isotonic",
+    "x_thresholds": [
+      0.042801366133105825,
+      0.08248603925593889,
+      0.08261291711946327,
+      0.09183575055025738,
+      0.09190821801960647,
+      0.1026707199362385,
+      0.10280624086877468,
+      0.11376675038282574,
+      0.11378934979855239,
+      0.11765467119510292,
+      0.11766502144496455,
+      0.11829380010499993,
+      0.11830940893616149,
+      0.14582407607597758,
+      0.14585137452411112,
+      0.14628892353935816,
+      0.14631920266005036,
+      0.15802032545794295,
+      0.15807618780053134,
+      0.1768074657912077,
+      0.17689030020039942,
+      0.20864137513334832,
+      0.20878422674774386,
+      0.22062422269565485,
+      0.22064839792300767,
+      0.22518602038756003,
+      0.22527397273192812,
+      0.2309704315259945,
+      0.23098993779644453,
+      0.2635177723204428,
+      0.26362015494054275,
+      0.2724993053272455,
+      0.27255444559159325,
+      0.2759640377382846,
+      0.27615146110402833,
+      0.27648102229495375,
+      0.27651114570420315,
+      0.31867586730914244,
+      0.31877123586670936,
+      0.3368335575802468,
+      0.3373322272354925,
+      0.3494003641949359,
+      0.3497856903727925,
+      0.3514150347916103,
+      0.351467314647834,
+      0.6711539819890159,
+      0.6720147688395748,
+      0.6802654386506828,
+      0.6812440441795953,
+      0.7027840866758058,
+      0.7049223975149757,
+      0.7374220336595134,
+      0.737452479643924,
+      0.8155278102232015,
+      0.8156421956011106,
+      0.8197723264403394,
+      0.8199136749098725,
+      0.8517462246972234,
+      0.8519032306795582,
+      0.8571377821870966,
+      0.8572019611740878,
+      0.8618043103391455,
+      0.8619794194684463,
+      0.8964417533840575,
+      0.8965927300935685,
+      0.930934637695525,
+      0.9332347062495997,
+      0.967446166347595
+    ],
+    "y_thresholds": [
+      0.0,
+      0.0,
+      0.043478260869565216,
+      0.043478260869565216,
+      0.046153846153846156,
+      0.046153846153846156,
+      0.056910569105691054,
+      0.056910569105691054,
+      0.0821917808219178,
+      0.0821917808219178,
+      0.09090909090909091,
+      0.09090909090909091,
+      0.09336099585062241,
+      0.09336099585062241,
+      0.10526315789473684,
+      0.10526315789473684,
+      0.10762331838565023,
+      0.10762331838565023,
+      0.11144578313253012,
+      0.11144578313253012,
+      0.16129032258064516,
+      0.16129032258064516,
+      0.18571428571428572,
+      0.18571428571428572,
+      0.23636363636363636,
+      0.23636363636363636,
+      0.2714285714285714,
+      0.2714285714285714,
+      0.30677290836653387,
+      0.30677290836653387,
+      0.3333333333333333,
+      0.3333333333333333,
+      0.35,
+      0.35,
+      0.4,
+      0.4,
+      0.4106280193236715,
+      0.4106280193236715,
+      0.43859649122807015,
+      0.43859649122807015,
+      0.5666666666666667,
+      0.5666666666666667,
+      0.5714285714285714,
+      0.5714285714285714,
+      0.583916083916084,
+      0.583916083916084,
+      0.6,
+      0.6,
+      0.6538461538461539,
+      0.6538461538461539,
+      0.6792452830188679,
+      0.6792452830188679,
+      0.7914893617021277,
+      0.7914893617021277,
+      0.8666666666666667,
+      0.8666666666666667,
+      0.8670886075949367,
+      0.8670886075949367,
+      0.8918918918918919,
+      0.8918918918918919,
+      0.9166666666666666,
+      0.9166666666666666,
+      0.9219512195121952,
+      0.9219512195121952,
+      0.9509803921568627,
+      0.9509803921568627,
+      1.0,
+      1.0
+    ]
+  },
   "feature_names": [
     "elevation_m",
     "slope_deg",
@@ -85,9 +182,318 @@
     "formation_Quartzite",
     "formation_Schist"
   ],
-  "training_rows": 5000,
+  "feature_schema_hash": "479dcab4682f8899",
+  "training_data_hash": "ee64a69a91fb9c77",
+  "validation_strategy": "spatial_block_holdout_with_isolated_final_test",
+  "metrics": {
+    "roc_auc": 0.8693038891000237,
+    "pr_auc": 0.7891579658084144,
+    "precision": 0.7632508833922261,
+    "recall": 0.6371681415929203,
+    "f1": 0.6945337620578779,
+    "confusion_matrix": {
+      "tn": 585,
+      "fp": 67,
+      "fn": 123,
+      "tp": 216
+    },
+    "brier_raw": 0.1398016688217734,
+    "brier_calibrated": 0.13029135867738245,
+    "raw_reliability": {
+      "n_bins": 10,
+      "n_samples": 991,
+      "brier": 0.1398016688217734,
+      "bins": [
+        {
+          "bin": 0,
+          "lower": 0.0,
+          "upper": 0.1,
+          "count": 66,
+          "mean_predicted": 0.08623144943684145,
+          "observed_rate": 0.06060606060606061
+        },
+        {
+          "bin": 1,
+          "lower": 0.1,
+          "upper": 0.2,
+          "count": 421,
+          "mean_predicted": 0.1496525846835817,
+          "observed_rate": 0.09738717339667459
+        },
+        {
+          "bin": 2,
+          "lower": 0.2,
+          "upper": 0.30000000000000004,
+          "count": 182,
+          "mean_predicted": 0.23788719157195098,
+          "observed_rate": 0.2857142857142857
+        },
+        {
+          "bin": 3,
+          "lower": 0.30000000000000004,
+          "upper": 0.4,
+          "count": 66,
+          "mean_predicted": 0.33441321163828047,
+          "observed_rate": 0.6363636363636364
+        },
+        {
+          "bin": 4,
+          "lower": 0.4,
+          "upper": 0.5,
+          "count": 27,
+          "mean_predicted": 0.4484522704329082,
+          "observed_rate": 0.7037037037037037
+        },
+        {
+          "bin": 5,
+          "lower": 0.5,
+          "upper": 0.6000000000000001,
+          "count": 9,
+          "mean_predicted": 0.54245817726314,
+          "observed_rate": 0.4444444444444444
+        },
+        {
+          "bin": 6,
+          "lower": 0.6000000000000001,
+          "upper": 0.7000000000000001,
+          "count": 19,
+          "mean_predicted": 0.6551717787716493,
+          "observed_rate": 0.3157894736842105
+        },
+        {
+          "bin": 7,
+          "lower": 0.7000000000000001,
+          "upper": 0.8,
+          "count": 71,
+          "mean_predicted": 0.7634996489803954,
+          "observed_rate": 0.7323943661971831
+        },
+        {
+          "bin": 8,
+          "lower": 0.8,
+          "upper": 0.9,
+          "count": 117,
+          "mean_predicted": 0.8473799233993742,
+          "observed_rate": 0.905982905982906
+        },
+        {
+          "bin": 9,
+          "lower": 0.9,
+          "upper": 1.0,
+          "count": 13,
+          "mean_predicted": 0.9152423658949521,
+          "observed_rate": 1.0
+        }
+      ]
+    },
+    "calibrated_reliability": {
+      "n_bins": 10,
+      "n_samples": 991,
+      "brier": 0.13029135867738245,
+      "bins": [
+        {
+          "bin": 0,
+          "lower": 0.0,
+          "upper": 0.1,
+          "count": 255,
+          "mean_predicted": 0.06730121777146303,
+          "observed_rate": 0.07058823529411765
+        },
+        {
+          "bin": 1,
+          "lower": 0.1,
+          "upper": 0.2,
+          "count": 298,
+          "mean_predicted": 0.14106497853254607,
+          "observed_rate": 0.12080536912751678
+        },
+        {
+          "bin": 2,
+          "lower": 0.2,
+          "upper": 0.30000000000000004,
+          "count": 19,
+          "mean_predicted": 0.26035543403964456,
+          "observed_rate": 0.15789473684210525
+        },
+        {
+          "bin": 3,
+          "lower": 0.30000000000000004,
+          "upper": 0.4,
+          "count": 74,
+          "mean_predicted": 0.31319137862962565,
+          "observed_rate": 0.36486486486486486
+        },
+        {
+          "bin": 4,
+          "lower": 0.4,
+          "upper": 0.5,
+          "count": 62,
+          "mean_predicted": 0.416492376335884,
+          "observed_rate": 0.6290322580645161
+        },
+        {
+          "bin": 5,
+          "lower": 0.5,
+          "upper": 0.6000000000000001,
+          "count": 78,
+          "mean_predicted": 0.5825742633434945,
+          "observed_rate": 0.5384615384615384
+        },
+        {
+          "bin": 6,
+          "lower": 0.6000000000000001,
+          "upper": 0.7000000000000001,
+          "count": 18,
+          "mean_predicted": 0.6707789066279632,
+          "observed_rate": 0.6111111111111112
+        },
+        {
+          "bin": 7,
+          "lower": 0.7000000000000001,
+          "upper": 0.8,
+          "count": 74,
+          "mean_predicted": 0.7914893617021277,
+          "observed_rate": 0.7837837837837838
+        },
+        {
+          "bin": 8,
+          "lower": 0.8,
+          "upper": 0.9,
+          "count": 51,
+          "mean_predicted": 0.868489710857544,
+          "observed_rate": 0.8823529411764706
+        },
+        {
+          "bin": 9,
+          "lower": 0.9,
+          "upper": 1.0,
+          "count": 62,
+          "mean_predicted": 0.9297405472465609,
+          "observed_rate": 0.967741935483871
+        }
+      ]
+    },
+    "final_test_sample_count": 991,
+    "development_metrics": {
+      "protocol": "GroupKFold OOF predictions over development set only",
+      "ensemble_oof_roc_auc": 0.8593433150693599,
+      "member_oof_roc_auc": {
+        "logistic_regression": 0.8217743615699526,
+        "random_forest": 0.7733010195900478,
+        "xgboost": 0.8730631116094949
+      },
+      "ensemble_weight_selection_method": "weights proportional to max(OOF ROC-AUC - 0.5, eps) over development set only",
+      "calibration": {
+        "method": "monotone isotonic fitted on development OOF probabilities",
+        "fitted_on": "development_set_oof",
+        "development_brier_after_calibration": 0.1340710426525455
+      }
+    },
+    "ensemble_vs_baseline": {
+      "protocol": "development set GroupKFold OOF comparison (final test untouched)",
+      "best_baseline": "xgboost",
+      "best_baseline_metrics": {
+        "roc_auc": 0.8730631116094949,
+        "pr_auc": 0.8109030666737654,
+        "precision": 0.8355513307984791,
+        "recall": 0.6225212464589235,
+        "f1": 0.713474025974026,
+        "confusion_matrix": {
+          "tn": 2424,
+          "fp": 173,
+          "fn": 533,
+          "tp": 879
+        },
+        "brier": 0.13035457003113216
+      },
+      "ensemble_development_oof_roc_auc": 0.8593433150693599,
+      "ensemble_preferred": false,
+      "note": "The ensemble is only preferred when its development OOF ROC-AUC is at least as good as the best single baseline. This decision uses the development set ONLY; the final spatial test set is reserved for the final metrics reported above."
+    },
+    "validation": "spatial_block_holdout",
+    "validation_details": {
+      "strategy": "Spatial block holdout with ISOLATED FINAL TEST (GroupShuffleSplit over 5x5 blocks)",
+      "primary": true,
+      "held_out_blocks": 5,
+      "development_rows": 4009,
+      "final_test_rows": 991,
+      "train_rows": 4009,
+      "test_rows": 991,
+      "random_state": 42
+    },
+    "target": "is_manganese",
+    "leakage_exclusions": [
+      "fe_pct",
+      "is_manganese",
+      "mn_pct",
+      "ore_thickness_m",
+      "production_gap_mt",
+      "production_mt",
+      "shortfall",
+      "sio2_pct",
+      "target_mt"
+    ],
+    "leakage_check_passed": true,
+    "feature_names": [
+      "elevation_m",
+      "slope_deg",
+      "aspect_deg",
+      "depth_m",
+      "blue_b2",
+      "green_b3",
+      "red_b4",
+      "nir_b8",
+      "swir_b11",
+      "swir_b12",
+      "ndvi",
+      "ndwi",
+      "swir_ratio",
+      "bare_soil_index",
+      "land_surface_temperature",
+      "formation_Gondite",
+      "formation_Granite",
+      "formation_Laterite",
+      "formation_Manganiferous_Formation",
+      "formation_Quartzite",
+      "formation_Schist"
+    ],
+    "training_rows": 5000,
+    "final_evaluation_isolation": true,
+    "synthetic_data": true,
+    "development_spatial_groups": [
+      "0_1",
+      "0_2",
+      "0_3",
+      "0_4",
+      "1_0",
+      "1_1",
+      "1_2",
+      "1_4",
+      "2_0",
+      "2_2",
+      "2_3",
+      "2_4",
+      "3_0",
+      "3_2",
+      "3_3",
+      "3_4",
+      "4_0",
+      "4_1",
+      "4_2",
+      "4_4"
+    ],
+    "final_test_spatial_groups": [
+      "0_0",
+      "1_3",
+      "2_1",
+      "3_1",
+      "4_3"
+    ],
+    "group_overlap": [],
+    "development_sample_count": 4009
+  },
+  "development_sample_count": 4009,
   "final_test_sample_count": 991,
-  "final_evaluation_isolation": true,
   "development_spatial_groups": [
     "0_1",
     "0_2",
@@ -117,20 +523,13 @@
     "3_1",
     "4_3"
   ],
-  "group_overlap": [],
-  "development_sample_count": 4009,
-  "synthetic_data": true,
-  "conformal": {
-    "method": "split_conformal",
-    "coverage": 0.9,
-    "n_calibration": 4009,
-    "calibration_sample_count": 4009,
-    "calibration_source": "development_set_oof_residuals_only",
-    "non_negative": false,
-    "empirical_coverage": 0.9202825428859738,
-    "final_test_sample_count": 991,
-    "note": "Coverage is empirical on the untouched synthetic spatial test set under grouped-exchangeability."
-  },
+  "leakage_check_passed": true,
+  "ensemble_weight_selection_method": "GroupKFold OOF ROC-AUC on development set only (final test untouched)",
+  "calibration_method": "isotonic fitted on development OOF probabilities",
+  "conformal_calibration_method": null,
+  "final_evaluation_isolation": true,
+  "random_seed": 42,
+  "quick_mode": false,
   "support_stats": {
     "means": {
       "elevation_m": 649.7186259226845,
@@ -1181,5 +1580,8 @@
       }
     ],
     "max_features": 21
-  }
+  },
+  "synthetic_data": true,
+  "boundary_notice": "PROTOTYPE resource intelligence on synthetic demo data. NOT official mineral reserves; NOT field-validated.",
+  "status": "candidate"
 }
