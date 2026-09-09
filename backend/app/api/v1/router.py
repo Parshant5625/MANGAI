@@ -12,6 +12,7 @@ from backend.app.schemas import (
     EquipmentResponse,
     ModelComparisonResponse,
     ModelRegistryResponse,
+    OperationsSummaryResponse,
     OverviewResponse,
     ProductionForecastResponse,
     ProductionPredictionRequest,
@@ -27,6 +28,7 @@ from backend.app.schemas import (
 from backend.app.services.data_quality import DataQualityService
 from backend.app.services.model_registry import ModelRegistryService
 from backend.app.services.operations import OperationsService
+from backend.app.services.operations_summary import OperationsSummaryService
 from backend.app.services.overview import OverviewService
 from backend.app.services.production import ProductionService
 from backend.app.services.recommendations import RecommendationService
@@ -40,11 +42,7 @@ SiteId = Annotated[str | None, Query(min_length=1, max_length=128, pattern=ID_PA
 def _validate_site_id(site_id: str | None) -> str | None:
     settings = get_settings()
     if settings.data_mode == "demo" and site_id is not None and site_id != settings.demo_site_id:
-        raise NotFoundError(
-            "SITE_NOT_FOUND",
-            f"Site not found: {site_id}",
-            details={"site_id": site_id},
-        )
+        raise NotFoundError("SITE_NOT_FOUND", f"Site not found: {site_id}", details={"site_id": site_id})
     return site_id
 
 
@@ -61,12 +59,7 @@ def get_reserve_prospectivity(
     limit: Annotated[int, Query(ge=1, le=2000)] = 500,
 ) -> dict:
     try:
-        return ReserveService().get_prospectivity(
-            site_id=_validate_site_id(site_id),
-            bbox=bbox,
-            min_probability=min_probability,
-            limit=limit,
-        )
+        return ReserveService().get_prospectivity(site_id=_validate_site_id(site_id), bbox=bbox, min_probability=min_probability, limit=limit)
     except ValueError as exc:
         raise ValidationFailedError("INVALID_BBOX", str(exc), details={"bbox": bbox}) from exc
 
@@ -89,20 +82,12 @@ def get_reserve_grid(
     coverage: Annotated[float, Query(ge=0.5, le=0.99)] = 0.9,
 ) -> dict:
     try:
-        return ReserveService().prediction_grid(
-            site_id=_validate_site_id(site_id),
-            bbox=bbox,
-            cells_per_side=cells,
-            coverage=coverage,
-        )
+        return ReserveService().prediction_grid(site_id=_validate_site_id(site_id), bbox=bbox, cells_per_side=cells, coverage=coverage)
     except ValueError as exc:
         raise ValidationFailedError("INVALID_BBOX", str(exc), details={"bbox": bbox}) from exc
 
 
 @router.get("/reserves/{reserve_id}", tags=["reserve"])
-# NOTE: declared AFTER the literal "/reserves/grid" route on purpose — FastAPI
-# matches routes in declaration order, so the literal path must come first or
-# the "{reserve_id}" catch-all swallows "grid" and returns 404.
 def get_reserve_detail(
     reserve_id: Annotated[str, Path(min_length=1, max_length=128, pattern=ID_PATTERN)],
     site_id: SiteId = None,
@@ -110,18 +95,11 @@ def get_reserve_detail(
     try:
         return ReserveService().get_detail(reserve_id, site_id=_validate_site_id(site_id))
     except KeyError as exc:
-        raise NotFoundError(
-            "RESERVE_CELL_NOT_FOUND",
-            f"Reserve cell not found: {reserve_id}",
-            details={"reserve_id": reserve_id},
-        ) from exc
+        raise NotFoundError("RESERVE_CELL_NOT_FOUND", f"Reserve cell not found: {reserve_id}", details={"reserve_id": reserve_id}) from exc
 
 
 @router.get("/production/forecast", response_model=ProductionForecastResponse, tags=["production"])
-def get_production_forecast(
-    site_id: SiteId = None,
-    horizon: Annotated[int, Query(ge=1, le=30)] = 7,
-) -> dict:
+def get_production_forecast(site_id: SiteId = None, horizon: Annotated[int, Query(ge=1, le=30)] = 7) -> dict:
     return ProductionService().forecast(site_id=_validate_site_id(site_id), horizon=horizon)
 
 
@@ -149,6 +127,14 @@ def get_weather(site_id: SiteId = None) -> dict:
 @router.get("/blasting", response_model=BlastingResponse, tags=["operations"])
 def get_blasting(site_id: SiteId = None) -> dict:
     return OperationsService().blasting(site_id=_validate_site_id(site_id))
+
+
+@router.get("/operations/summary", response_model=OperationsSummaryResponse, tags=["operations"])
+def get_operations_summary(
+    site_id: SiteId = None,
+    days: Annotated[int, Query(ge=7, le=365)] = 30,
+) -> dict:
+    return OperationsSummaryService().summary(site_id=_validate_site_id(site_id), days=days)
 
 
 @router.get("/recommendations", response_model=RecommendationResponse, tags=["recommendations"])
