@@ -18,6 +18,7 @@ import {
 import { compactNumber, number, percent, signedNumber } from "./utils/format";
 import { ReserveMap } from "./components/ReserveMap";
 import { OverviewPage } from "./pages/OverviewPage";
+import { OperationsPage } from "./pages/OperationsPage";
 import {
   Activity,
   AlertTriangle,
@@ -47,12 +48,13 @@ import {
   YAxis
 } from "recharts";
 
-type PageKey = "overview" | "reserve" | "production" | "equipment" | "weather" | "recommendations" | "health" | "settings";
+type PageKey = "overview" | "reserve" | "production" | "operations" | "equipment" | "weather" | "recommendations" | "health" | "settings";
 
 const pages: Array<{ key: PageKey; label: string; icon: typeof Activity }> = [
   { key: "overview", label: "Overview", icon: Gauge },
   { key: "reserve", label: "Reserve", icon: Map },
   { key: "production", label: "Production", icon: BarChart3 },
+  { key: "operations", label: "Operations", icon: ShieldCheck },
   { key: "equipment", label: "Equipment", icon: Wrench },
   { key: "weather", label: "Weather", icon: CloudRain },
   { key: "recommendations", label: "Actions", icon: ClipboardList },
@@ -158,6 +160,7 @@ function App() {
             {activePage === "production" && (
               <ProductionPage forecast={production.data} history={productionHistory.data?.records ?? []} />
             )}
+            {activePage === "operations" && <OperationsPage />}
             {activePage === "equipment" && equipment.data && <EquipmentPage equipment={equipment.data} />}
             {activePage === "weather" && weather.data && blasting.data && (
               <WeatherBlastingPage weather={weather.data} blasting={blasting.data} />
