@@ -20,12 +20,15 @@ def test_fused_data_is_one_row_per_date() -> None:
 
 
 def test_future_targets_shift_forward_without_leakage() -> None:
+    # The feature pipeline requires a 30-day historical window plus the
+    # forecast horizon. Use enough rows to leave observations for all three
+    # chronological partitions after those warm-up rows are removed.
     df = pd.DataFrame(
         {
-            "date": pd.date_range("2024-01-01", periods=40),
-            "production_mt": range(40),
-            "target_mt": [10] * 40,
-            "rainfall_mm": [1.0] * 40,
+            "date": pd.date_range("2024-01-01", periods=100),
+            "production_mt": range(100),
+            "target_mt": [10] * 100,
+            "rainfall_mm": [1.0] * 100,
         }
     )
     target = add_future_targets(df, 7)
