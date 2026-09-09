@@ -9,6 +9,7 @@ import pandas as pd
 from sklearn.base import clone
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.metrics import average_precision_score, brier_score_loss
 from sklearn.pipeline import make_pipeline
@@ -18,7 +19,26 @@ from xgboost import XGBClassifier, XGBRegressor
 from ml.common.metrics import mae, r2, rmse
 from ml.common.registry import ModelVersionRecord, hash_file, hash_schema, write_registry_record
 from ml.production.features import FEATURE_COLUMNS, build_daily_features
-from ml.production.pipeline import HORIZONS, add_future_targets, assert_no_target_leakage, chronological_splits, load_fused_production_data
+from ml.production.pipeline import (
+    HORIZONS,
+    add_future_targets,
+    assert_no_target_leakage,
+    chronological_splits,
+    load_fused_production_data,
+)
+
+
+class CalibratedShortfallModel:
+    """Classifier wrapper exposing sklearn-style predict_proba after validation calibration."""
+
+    def __init__(self, classifier, calibrator):
+        self.classifier = classifier
+        self.calibrator = calibrator
+
+    def predict_proba(self, x: pd.DataFrame) -> np.ndarray:
+        raw = np.asarray(self.classifier.predict_proba(x)[:, 1], dtype=float)
+        probability = np.clip(self.calibrator.predict(raw), 0.0, 1.0)
+        return np.column_stack((1.0 - probability, probability))
 
 
 def _candidate_regressors(seed: int = 42) -> dict[str, object]:
@@ -74,8 +94,13 @@ def _train_horizon(root: Path, fused, horizon: int) -> dict:
         clf_scores[name] = average_precision_score(validation["shortfall_label"], fitted.predict_proba(validation[FEATURE_COLUMNS])[:, 1])
     best_clf_name = max(clf_scores, key=clf_scores.get)
     classifier = clone(classifiers[best_clf_name]).fit(train[FEATURE_COLUMNS], train["shortfall_label"])
-    calibrated = CalibratedClassifierCV(classifier, method="isotonic", cv="prefit")
-    calibrated.fit(validation[FEATURE_COLUMNS], validation["shortfall_label"])
+
+    # Calibrate only on the development validation partition. This avoids the
+    # deprecated sklearn `cv="prefit"` API while keeping the final test set isolated.
+    validation_raw_prob = classifier.predict_proba(validation[FEATURE_COLUMNS])[:, 1]
+    calibrator = IsotonicRegression(out_of_bounds="clip")
+    calibrator.fit(validation_raw_prob, validation["shortfall_label"])
+    calibrated = CalibratedShortfallModel(classifier, calibrator)
     test_prob = calibrated.predict_proba(test[FEATURE_COLUMNS])[:, 1]
 
     artifact_dir = root / "models" / "production"
@@ -102,6 +127,7 @@ def _train_horizon(root: Path, fused, horizon: int) -> dict:
         "test_shortfall_pr_auc": round(float(average_precision_score(test["shortfall_label"], test_prob)), 4),
         "test_shortfall_brier": round(float(brier_score_loss(test["shortfall_label"], test_prob)), 4),
         "conformal_quantile_90": round(conformal_q, 4),
+        "calibration": "isotonic_on_validation_only",
         "synthetic_data": True,
     }
     version = f"2026.09.{horizon + 1:03d}"
