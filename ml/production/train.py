@@ -7,7 +7,6 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.base import clone
-from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression, Ridge
