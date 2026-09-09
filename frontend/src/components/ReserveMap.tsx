@@ -23,8 +23,11 @@ export function ReserveMap({
   const mapRef = useRef<MapLibreMap | null>(null);
   const cellsRef = useRef(cells);
   const onSelectRef = useRef(onSelect);
-  cellsRef.current = cells;
-  onSelectRef.current = onSelect;
+
+  useEffect(() => {
+    cellsRef.current = cells;
+    onSelectRef.current = onSelect;
+  }, [cells, onSelect]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) {
