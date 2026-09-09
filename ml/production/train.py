@@ -5,6 +5,7 @@ from pathlib import Path
 
 import joblib
 import numpy as np
+import pandas as pd
 from sklearn.base import clone
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -66,7 +67,6 @@ def _train_horizon(root: Path, fused, horizon: int) -> dict:
 
     conformal_q = float(np.quantile(np.abs(y_val.to_numpy() - np.asarray(val_pred)), 0.90, method="higher"))
 
-    y_all = features["shortfall_label"].astype(int)
     classifiers = _candidate_classifiers()
     clf_scores = {}
     for name, model in classifiers.items():
