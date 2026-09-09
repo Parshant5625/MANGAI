@@ -12,9 +12,8 @@ from backend.app.services.demo_data import DemoDataStore, demo_envelope
 class OperationsSummaryService:
     """Cross-domain operational analytics.
 
-    This service is deliberately descriptive/associational. Correlation is not
-    presented as a causal production impact and no recommendation is generated here.
-    All joins are reduced to one row per date before cross-domain merging.
+    Analytics are descriptive/associational. Correlation is not presented as
+    causation and this service does not generate operational recommendations.
     """
 
     def __init__(self, store: DemoDataStore | None = None) -> None:
@@ -24,8 +23,7 @@ class OperationsSummaryService:
     @staticmethod
     def _one_site(df: pd.DataFrame, site_id: str | None) -> pd.DataFrame:
         if site_id and "site_id" in df.columns:
-            scoped = df[df["site_id"].astype(str) == str(site_id)].copy()
-            return scoped
+            return df[df["site_id"].astype(str) == str(site_id)].copy()
         return df.copy()
 
     @staticmethod
@@ -74,14 +72,7 @@ class OperationsSummaryService:
             interpretation = f"Higher {metric.lower()} is associated with lower observed production in this window."
         else:
             interpretation = f"No material linear association between {metric.lower()} and observed production in this window."
-        return {
-            "driver": driver,
-            "metric": metric,
-            "correlation": round(corr, 4),
-            "sample_size": n,
-            "direction": direction,
-            "interpretation": interpretation,
-        }
+        return {"driver": driver, "metric": metric, "correlation": round(corr, 4), "sample_size": n, "direction": direction, "interpretation": interpretation}
 
     @staticmethod
     def _risk_level(score: float) -> str:
@@ -93,27 +84,31 @@ class OperationsSummaryService:
 
     def summary(self, site_id: str | None = None, days: int = 30) -> dict[str, Any]:
         days = max(7, min(int(days), 365))
-        production = self._one_site(self.store.production(), site_id)
-        weather = self._one_site(self.store.weather(), site_id)
-        equipment = self._one_site(self.store.equipment(), site_id)
-        blasting = self._one_site(self.store.blasting(), site_id)
-
-        production = self._daily_numeric(production, "date", ["production_mt", "target_mt"], "mean")
+        production = self._daily_numeric(self._one_site(self.store.production(), site_id), "date", ["production_mt", "target_mt"])
         production["production_mt"] = production["production_mt"].fillna(0.0)
         production["target_mt"] = production["target_mt"].fillna(0.0)
         production["gap_mt"] = production["production_mt"] - production["target_mt"]
         latest = production["date"].max()
         if pd.isna(latest):
             raise ValueError("production dataset contains no valid dates")
-        start = latest - pd.Timedelta(days=days - 1)
-        production = production[production["date"] >= start].copy()
 
-        weather_d = self._daily_numeric(weather, "date", ["rainfall_mm", "soil_moisture", "temperature_c"], "mean")
-        equipment_d = self._daily_numeric(equipment, "date", ["downtime_hours", "utilization", "maintenance"], "sum")
-        if not equipment_d.empty:
-            util = self._daily_numeric(equipment, "date", ["utilization"], "mean")
-            equipment_d = equipment_d.drop(columns=["utilization"], errors="ignore").merge(util, on="date", how="left", validate="one_to_one")
-        blasting_d = self._daily_numeric(blasting, "date", ["blasting_delay_hours", "planned_blasts"], "sum")
+        # The analysis is anchored to the production observation window.  This
+        # prevents later rows in weather/equipment/blasting datasets from moving
+        # the reporting cutoff or leaking future operational observations into
+        # the result.
+        start = latest - pd.Timedelta(days=days - 1)
+        production = production[production["date"].between(start, latest)].copy()
+
+        weather_d = self._daily_numeric(self._one_site(self.store.weather(), site_id), "date", ["rainfall_mm", "soil_moisture", "temperature_c"])
+        equipment_d = self._daily_numeric(self._one_site(self.store.equipment(), site_id), "date", ["downtime_hours", "maintenance"], "sum")
+        util_d = self._daily_numeric(self._one_site(self.store.equipment(), site_id), "date", ["utilization"], "mean")
+        equipment_d = equipment_d.merge(util_d, on="date", how="outer", validate="one_to_one")
+        blasting_d = self._daily_numeric(self._one_site(self.store.blasting(), site_id), "date", ["blasting_delay_hours", "planned_blasts"], "sum")
+
+        # Restrict every operational source to the same production cutoff.
+        weather_d = weather_d[weather_d["date"].between(start, latest)]
+        equipment_d = equipment_d[equipment_d["date"].between(start, latest)]
+        blasting_d = blasting_d[blasting_d["date"].between(start, latest)]
 
         merged = production.merge(weather_d, on="date", how="left", validate="one_to_one")
         merged = merged.merge(equipment_d, on="date", how="left", validate="one_to_one")
@@ -125,17 +120,15 @@ class OperationsSummaryService:
             self._association(merged, "BLASTING_DELAY", "blasting delay hours", "blasting_delay_hours"),
             self._association(merged, "RAINFALL", "rainfall", "rainfall_mm"),
         ]
-
         operations = self._operations_snapshot(merged, equipment_d, weather_d, blasting_d)
-        signals = self._signals(merged, operations, associations)
-        weighted = float(sum(signal["score"] for signal in signals) / max(len(signals), 1))
-        overall_score = round(min(1.0, weighted), 3)
-
+        signals = self._signals(operations, associations)
+        overall_score = round(min(1.0, float(np.mean([signal["score"] for signal in signals]))), 3)
+        production_dates = set(production["date"])
         coverage = {
             "production": int(production["date"].nunique()),
-            "weather": int(weather_d["date"].isin(production["date"]).sum()),
-            "equipment": int(equipment_d["date"].isin(production["date"]).sum()),
-            "blasting": int(blasting_d["date"].isin(production["date"]).sum()),
+            "weather": int(weather_d["date"].isin(production_dates).sum()),
+            "equipment": int(equipment_d["date"].isin(production_dates).sum()),
+            "blasting": int(blasting_d["date"].isin(production_dates).sum()),
             "aligned_days": int(len(merged)),
         }
         return {
@@ -170,7 +163,7 @@ class OperationsSummaryService:
         blast_recent = blasting_d[blasting_d["date"] > latest - pd.Timedelta(days=7)]
         utilization = float(eq_recent["utilization"].mean()) if not eq_recent.empty else 0.0
         downtime = float(eq_recent["downtime_hours"].sum()) if not eq_recent.empty else 0.0
-        availability = max(0.0, 1.0 - min(1.0, downtime / (24.0 * max(eq_recent["date"].nunique(), 1) * max(1, 1)))) if not eq_recent.empty else 0.0
+        availability = max(0.0, 1.0 - min(1.0, downtime / (24.0 * max(eq_recent["date"].nunique(), 1)))) if not eq_recent.empty else 0.0
         return {
             "fleet_availability": availability,
             "fleet_utilization": utilization,
@@ -182,20 +175,20 @@ class OperationsSummaryService:
         }
 
     @classmethod
-    def _signals(cls, merged: pd.DataFrame, snapshot: dict[str, float | int], associations: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        downtime = float(snapshot["fleet_availability"])
+    def _signals(cls, snapshot: dict[str, float | int], associations: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        availability = float(snapshot["fleet_availability"])
         utilization = float(snapshot["fleet_utilization"])
         rainfall = float(snapshot["rainfall_7d_mm"])
         soil = float(snapshot["soil_moisture"])
         blast_delay = float(snapshot["blasting_delay_7d_hours"])
         blast_count = int(snapshot["planned_blasts_7d"])
-        equipment_score = min(1.0, 0.65 * (1 - downtime) + 0.35 * max(0.0, min(1.0, (0.65 - utilization) / 0.65)))
+        equipment_score = min(1.0, 0.65 * (1 - availability) + 0.35 * max(0.0, min(1.0, (0.65 - utilization) / 0.65)))
         weather_score = min(1.0, 0.65 * min(1.0, rainfall / 90.0) + 0.35 * min(1.0, soil / 0.55))
         blast_score = min(1.0, 0.7 * min(1.0, blast_delay / 12.0) + 0.3 * min(1.0, blast_count / 5.0))
         corr_map = {item["driver"]: item for item in associations}
         cross = min(1.0, 0.4 * equipment_score + 0.3 * weather_score + 0.3 * blast_score)
         return [
-            {"source": "EQUIPMENT", "level": cls._risk_level(equipment_score), "score": round(equipment_score, 3), "title": "Fleet availability and utilization signal", "evidence": {"fleet_availability": round(downtime, 3), "fleet_utilization": round(utilization, 3), "production_association": corr_map["EQUIPMENT_DOWNTIME"]["correlation"]}},
+            {"source": "EQUIPMENT", "level": cls._risk_level(equipment_score), "score": round(equipment_score, 3), "title": "Fleet availability and utilization signal", "evidence": {"fleet_availability": round(availability, 3), "fleet_utilization": round(utilization, 3), "production_association": corr_map["EQUIPMENT_DOWNTIME"]["correlation"]}},
             {"source": "WEATHER", "level": cls._risk_level(weather_score), "score": round(weather_score, 3), "title": "Weather exposure signal", "evidence": {"rainfall_7d_mm": round(rainfall, 2), "soil_moisture": round(soil, 3), "production_association": corr_map["RAINFALL"]["correlation"]}},
             {"source": "BLASTING", "level": cls._risk_level(blast_score), "score": round(blast_score, 3), "title": "Blasting schedule and delay signal", "evidence": {"planned_blasts_7d": blast_count, "delay_hours_7d": round(blast_delay, 2), "production_association": corr_map["BLASTING_DELAY"]["correlation"]}},
             {"source": "CROSS_DOMAIN", "level": cls._risk_level(cross), "score": round(cross, 3), "title": "Combined operational exposure", "evidence": {"components": {"equipment": round(equipment_score, 3), "weather": round(weather_score, 3), "blasting": round(blast_score, 3)}, "method": "weighted risk-signal aggregation"}},
