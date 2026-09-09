@@ -188,8 +188,9 @@ def predict_regressor_with_interval(df: pd.DataFrame, model_dir: Path, name: str
     """Point prediction + conformal interval for a regression model.
 
     Returns ``(point_series, interval_factory)`` where ``interval_factory(point)``
-    yields ``{lower, upper, level, method, coverage, non_negative}``. Either
-    element is ``None`` when the artifact / conformal state is unavailable.
+    accepts either a scalar or a pandas Series and yields lower/upper bounds
+    aligned to the input. This keeps the serving API vectorized while retaining
+    the scalar ``SplitConformalRegressor.interval`` contract.
     """
     model_path = resolve_model_path(model_dir, name)
     if model_path is None:
@@ -202,7 +203,20 @@ def predict_regressor_with_interval(df: pd.DataFrame, model_dir: Path, name: str
         conformal.coverage = coverage
         conformal.quantile = _rescale_quantile(conformal, coverage)
 
-    def interval_factory(prediction: float) -> dict:
+    def interval_factory(prediction):
+        if isinstance(prediction, pd.Series):
+            lower = prediction.astype(float) - conformal.quantile
+            upper = prediction.astype(float) + conformal.quantile
+            if conformal.non_negative:
+                lower = lower.clip(lower=0.0)
+            return {
+                "lower": lower,
+                "upper": upper,
+                "level": conformal.coverage,
+                "method": "split_conformal",
+                "coverage": conformal.coverage,
+                "non_negative": conformal.non_negative,
+            }
         return conformal.interval(float(prediction))
 
     return point, interval_factory
