@@ -38,14 +38,15 @@ def test_summary_is_deterministic_and_one_row_per_date():
     assert service.summary(days=30) == result
 
 
-def test_summary_window_does_not_use_future_rows():
+def test_summary_window_does_not_use_rows_after_as_of():
     store = FakeStore()
     service = OperationsSummaryService(store=store)
     baseline = service.summary(days=7)
+    as_of = baseline["latest_date"]
     store._production.loc[len(store._production)] = [pd.Timestamp("2026-02-01"), 9999.0, 1.0]
     store._weather.loc[len(store._weather)] = [pd.Timestamp("2026-02-01"), 9999.0, 0.99, 70.0]
-    changed = service.summary(days=7)
-    assert changed["latest_date"] == "2026-01-30"
+    changed = service.summary(days=7, as_of=as_of)
+    assert changed["latest_date"] == baseline["latest_date"]
     assert changed["production_records"] == baseline["production_records"]
     assert changed["production_mt_mean"] == baseline["production_mt_mean"]
 
