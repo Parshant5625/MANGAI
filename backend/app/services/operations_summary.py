@@ -82,20 +82,34 @@ class OperationsSummaryService:
             return "MEDIUM"
         return "LOW"
 
-    def summary(self, site_id: str | None = None, days: int = 30) -> dict[str, Any]:
+    def summary(
+        self,
+        site_id: str | None = None,
+        days: int = 30,
+        as_of: str | pd.Timestamp | None = None,
+    ) -> dict[str, Any]:
         days = max(7, min(int(days), 365))
         production = self._daily_numeric(self._one_site(self.store.production(), site_id), "date", ["production_mt", "target_mt"])
         production["production_mt"] = production["production_mt"].fillna(0.0)
         production["target_mt"] = production["target_mt"].fillna(0.0)
         production["gap_mt"] = production["production_mt"] - production["target_mt"]
-        latest = production["date"].max()
-        if pd.isna(latest):
+        latest_observed = production["date"].max()
+        if pd.isna(latest_observed):
             raise ValueError("production dataset contains no valid dates")
 
-        # The analysis is anchored to the production observation window.  This
-        # prevents later rows in weather/equipment/blasting datasets from moving
-        # the reporting cutoff or leaking future operational observations into
-        # the result.
+        # An explicit as-of date makes historical reporting reproducible and
+        # prevents observations added after that cutoff from entering the
+        # requested analysis window. Without as_of, the latest observed
+        # production date is intentionally used as the live reporting cutoff.
+        if as_of is not None:
+            cutoff = pd.to_datetime(as_of, errors="coerce")
+            if pd.isna(cutoff):
+                raise ValueError("as_of must be a valid date")
+            cutoff = cutoff.normalize()
+            latest = min(latest_observed, cutoff)
+        else:
+            latest = latest_observed
+
         start = latest - pd.Timedelta(days=days - 1)
         production = production[production["date"].between(start, latest)].copy()
 
