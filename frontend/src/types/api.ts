@@ -187,3 +187,42 @@ export interface DataQualityResponse extends DemoEnvelope {
     details: Record<string, unknown>;
   }>;
 }
+
+export interface OperationsAssociation {
+  driver: string;
+  metric: string;
+  correlation: number;
+  sample_size: number;
+  direction: string;
+  interpretation: string;
+}
+
+export interface OperationsRiskSignal {
+  source: string;
+  level: "LOW" | "MEDIUM" | "HIGH";
+  score: number;
+  title: string;
+  evidence: Record<string, unknown>;
+}
+
+export interface OperationsSummaryResponse extends DemoEnvelope {
+  site_id: string;
+  latest_date: string;
+  analysis_window_days: number;
+  production_records: number;
+  production_mt_mean: number;
+  target_mt_mean: number;
+  gap_mt_mean: number;
+  fleet_availability: number;
+  fleet_utilization: number;
+  rainfall_7d_mm: number;
+  soil_moisture: number;
+  planned_blasts_7d: number;
+  blasting_delay_7d_hours: number;
+  production_associations: OperationsAssociation[];
+  risk_signals: OperationsRiskSignal[];
+  overall_operational_risk: "LOW" | "MEDIUM" | "HIGH";
+  overall_risk_score: number;
+  data_coverage: Record<string, number>;
+  methodology_note: string;
+}
