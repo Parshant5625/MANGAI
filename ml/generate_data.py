@@ -1,8 +1,19 @@
 import os
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+from backend.app.core.config import get_settings
+from ml.common.contracts import (
+    BLASTING_CONTRACT,
+    BOREHOLE_CONTRACT,
+    EQUIPMENT_CONTRACT,
+    GEOLOGICAL_CONTRACT,
+    PRODUCTION_CONTRACT,
+    SATELLITE_CONTRACT,
+    WEATHER_CONTRACT,
+)
+from ml.common.validation import validate_borehole_intervals, validate_dataset
 
 # ============================================================
 # CONFIGURATION
@@ -10,10 +21,25 @@ import pandas as pd
 
 np.random.seed(42)
 
-ROOT = Path(__file__).resolve().parents[1]
-OUTPUT_DIR = ROOT / "data" / "synthetic"
+SETTINGS = get_settings()
+OUTPUT_DIR = SETTINGS.resolved_data_dir / "synthetic"
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 COMPACT = os.environ.get("MANGAI_COMPACT_DATA") == "1"
+
+
+def _clip_to_contract(df, contract):
+    """Clip numeric columns to contract ranges (returns a safe copy)."""
+    df = df.copy()
+    for column in contract.columns:
+        if column.name not in df.columns:
+            continue
+        if column.dtype in ("float", "int") and (
+            column.min_value is not None or column.max_value is not None
+        ):
+            df[column.name] = df[column.name].clip(
+                lower=column.min_value, upper=column.max_value
+            )
+    return df
 
 
 # ============================================================
@@ -127,7 +153,6 @@ def generate_satellite_data(geological_df):
 
     n = len(geological_df)
 
-    mn = geological_df["mn_pct"].values
     manganese = geological_df["is_manganese"].values
 
     # Spectral bands
@@ -372,9 +397,9 @@ def generate_equipment_data():
         ("EX001", "Excavator", 100),
         ("EX002", "Excavator", 110),
         ("EX003", "Excavator", 95),
-        ("DT001", "Dumper", 60),
-        ("DT002", "Dumper", 65),
-        ("DT003", "Dumper", 70),
+        ("DT001", "Haul_Truck", 60),
+        ("DT002", "Haul_Truck", 65),
+        ("DT003", "Haul_Truck", 70),
         ("DR001", "Drill", 50),
         ("DR002", "Drill", 55),
     ]
@@ -466,11 +491,11 @@ def generate_blasting_data():
 
     delay_reason = np.random.choice(
         [
-            "None",
+            "No_Delay",
             "Weather",
             "Equipment",
-            "Safety_Clearance",
-            "Material_Availability"
+            "Safety",
+            "Logistics"
         ],
         n,
         p=[
@@ -501,8 +526,6 @@ def generate_production_data(
 ):
 
     print("Generating production data...")
-
-    dates = weather_df["date"]
 
     # Daily aggregate equipment information
     equipment_daily = (
@@ -617,14 +640,26 @@ def main():
         blasting
     )
 
-    # Save datasets
-    geological.to_csv(OUTPUT_DIR / "geological.csv", index=False)
-    satellite.to_csv(OUTPUT_DIR / "satellite_features.csv", index=False)
-    boreholes.to_csv(OUTPUT_DIR / "boreholes.csv", index=False)
-    weather.to_csv(OUTPUT_DIR / "weather.csv", index=False)
-    equipment.to_csv(OUTPUT_DIR / "equipment.csv", index=False)
-    blasting.to_csv(OUTPUT_DIR / "blasting.csv", index=False)
-    production.to_csv(OUTPUT_DIR / "production.csv", index=False)
+    # Contract validation + range clipping before persisting
+    datasets = {
+        "geological": (geological, GEOLOGICAL_CONTRACT),
+        "satellite_features": (satellite, SATELLITE_CONTRACT),
+        "boreholes": (boreholes, BOREHOLE_CONTRACT),
+        "weather": (weather, WEATHER_CONTRACT),
+        "equipment": (equipment, EQUIPMENT_CONTRACT),
+        "blasting": (blasting, BLASTING_CONTRACT),
+        "production": (production, PRODUCTION_CONTRACT),
+    }
+    for name, (frame, contract) in datasets.items():
+        frame = _clip_to_contract(frame, contract)
+        result = validate_dataset(frame, contract)
+        result.raise_for_errors()
+        if name == "boreholes":
+            validate_borehole_intervals(frame).raise_for_errors()
+        if name == "production":
+            frame = frame.drop(columns=["delay_reason", "shortfall"])
+        frame.to_csv(OUTPUT_DIR / f"{name}.csv", index=False)
+        print(f"Validated {name}: {len(frame)} rows, contract={contract.name}")
 
     print("\n===================================")
     print("MANGAI DATA GENERATION COMPLETE")

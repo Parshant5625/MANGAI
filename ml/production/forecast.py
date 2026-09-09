@@ -5,71 +5,76 @@ from pathlib import Path
 
 import joblib
 import pandas as pd
-from xgboost import XGBRegressor
 
 from ml.production.features import FEATURE_COLUMNS, build_daily_features
+from ml.production.pipeline import HORIZONS
 
 
 def naive_rolling_forecast(production: pd.DataFrame, horizon_days: int = 7, window: int = 28) -> float:
     df = production.copy().sort_values("date")
-    daily = float(df["production_mt"].tail(window).mean())
-    return daily * horizon_days
+    return float(df["production_mt"].tail(window).mean()) * horizon_days
 
 
-@lru_cache(maxsize=2)
-def _load_production_model(path: str) -> tuple[XGBRegressor, list[str]]:
-    model = XGBRegressor()
-    model.load_model(path)
-    columns = joblib.load(Path(path).with_name("forecast_features.pkl"))
-    return model, columns
+def supported_horizon(horizon_days: int) -> int:
+    return min(HORIZONS, key=lambda h: abs(h - int(horizon_days)))
 
 
-def _predict_latest(features: pd.DataFrame, model: XGBRegressor, columns: list[str]) -> float:
-    latest = features.iloc[[-1]].reindex(columns=columns, fill_value=0)
-    return float(model.predict(latest)[0])
+@lru_cache(maxsize=16)
+def _load_model(path: str):
+    return joblib.load(path)
+
+
+def _latest_features(production: pd.DataFrame) -> pd.DataFrame:
+    features = build_daily_features(production)
+    if features.empty:
+        return features
+    return features.iloc[[-1]].reindex(columns=FEATURE_COLUMNS)
 
 
 def xgb_daily_forecast(production: pd.DataFrame, model_dir: Path) -> float | None:
-    artifact = model_dir / "production" / "forecast_xgboost.json"
-    if not artifact.exists():
+    path = model_dir / "production" / "forecast_1d.pkl"
+    if not path.exists():
         return None
-    model, columns = _load_production_model(str(artifact))
-    features = build_daily_features(production)
+    features = _latest_features(production)
     if features.empty:
         return None
-    return _predict_latest(features, model, columns)
+    return max(0.0, float(_load_model(str(path)).predict(features)[0]))
 
 
-def xgb_horizon_forecast(production: pd.DataFrame, model_dir: Path, horizon_days: int) -> list[dict] | None:
-    artifact = model_dir / "production" / "forecast_xgboost.json"
-    if not artifact.exists():
+def production_forecast(production: pd.DataFrame, model_dir: Path, horizon_days: int) -> dict | None:
+    trained_horizon = supported_horizon(horizon_days)
+    path = model_dir / "production" / f"forecast_{trained_horizon}d.pkl"
+    if not path.exists():
         return None
-    model, columns = _load_production_model(str(artifact))
-    history = production.copy().sort_values("date")
-    last = history.iloc[-1]
-    target_daily = float(history["target_mt"].tail(28).mean())
-    series = []
-    for step in range(horizon_days):
-        features = build_daily_features(history)
-        if features.empty:
-            return None
-        daily = max(0.0, _predict_latest(features, model, columns))
-        next_date = pd.Timestamp(history["date"].max()) + pd.Timedelta(days=1)
-        next_row = last.copy()
-        next_row["date"] = next_date
-        next_row["production_mt"] = daily
-        next_row["target_mt"] = target_daily
-        history = pd.concat([history, pd.DataFrame([next_row])], ignore_index=True)
-        series.append(
-            {
-                "date": next_date.date().isoformat(),
-                "horizon_day": step + 1,
-                "forecast_mt": round(daily, 2),
-                "target_mt": round(target_daily, 2),
-            }
-        )
-    return series
+    features = _latest_features(production)
+    if features.empty:
+        return None
+    model = _load_model(str(path))
+    predicted_daily = max(0.0, float(model.predict(features)[0]))
+    return {"forecast_daily_mt": predicted_daily, "trained_horizon_days": trained_horizon}
 
 
-def shortfall_gap(forecast_mt: float, target_mt: float) -> float:
-    return forecast_mt - target_mt
+def shortfall_probability(production: pd.DataFrame, model_dir: Path, horizon_days: int) -> tuple[float, int] | None:
+    trained_horizon = supported_horizon(horizon_days)
+    path = model_dir / "production" / f"shortfall_{trained_horizon}d.pkl"
+    if not path.exists():
+        return None
+    features = _latest_features(production)
+    if features.empty:
+        return None
+    probability = float(_load_model(str(path)).predict_proba(features)[:, 1][0])
+    return max(0.0, min(1.0, probability)), trained_horizon
+
+
+def conformal_width(model_dir: Path, horizon_days: int) -> float | None:
+    """Read the validation-only conformal radius from the training report."""
+    report = model_dir / "production" / "training_report.json"
+    if not report.exists():
+        return None
+    import json
+
+    payload = json.loads(report.read_text(encoding="utf-8"))
+    trained_horizon = str(supported_horizon(horizon_days))
+    model_metrics = payload.get("models", {}).get(trained_horizon, {})
+    value = model_metrics.get("conformal_quantile_90")
+    return float(value) if value is not None else None

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import pandas as pd
 
 from ml.common.preprocessing import one_hot_align
-
 
 RESERVE_NUMERICAL_FEATURES = [
     "elevation_m",
@@ -27,16 +27,88 @@ RESERVE_NUMERICAL_FEATURES = [
 RESERVE_CATEGORICAL_FEATURES = ["formation"]
 LEAKAGE_EXCLUSIONS = ["mn_pct", "fe_pct", "sio2_pct", "is_manganese", "ore_thickness_m"]
 
+# Conservative target-derived shortfall columns must never enter any reserve
+# feature matrix either. They are not produced by the fusion layer, but the
+# assertion is cheap insurance against future schema drift.
+RESERVE_FORBIDDEN_COLUMNS = sorted(
+    {
+        *LEAKAGE_EXCLUSIONS,
+        "production_mt",
+        "target_mt",
+        "production_gap_mt",
+        "shortfall",
+    }
+)
+
+
+@dataclass(frozen=True)
+class ReserveTaskSpec:
+    """Explicit per-task configuration for the three reserve baselines.
+
+    Feature lists are curated (geological / satellite / terrain groups) —
+    numeric columns are never included automatically.
+    """
+
+    name: str
+    kind: str  # "classification" | "regression"
+    target: str
+    numerical_features: list[str]
+    categorical_features: list[str]
+    forbidden_columns: list[str]
+    primary_metric: str  # selection metric reported to reviewers
+    description: str
+
+
+_TERRAIN_FEATURES = ["elevation_m", "slope_deg", "aspect_deg", "depth_m"]
+_SPECTRAL_BANDS = ["blue_b2", "green_b3", "red_b4", "nir_b8", "swir_b11", "swir_b12"]
+_SPECTRAL_INDICES = ["ndvi", "ndwi", "swir_ratio", "bare_soil_index", "land_surface_temperature"]
+
+RESERVE_TASKS: dict[str, ReserveTaskSpec] = {
+    "prospectivity": ReserveTaskSpec(
+        name="prospectivity",
+        kind="classification",
+        target="is_manganese",
+        numerical_features=_TERRAIN_FEATURES + _SPECTRAL_BANDS + _SPECTRAL_INDICES,
+        categorical_features=["formation"],
+        forbidden_columns=RESERVE_FORBIDDEN_COLUMNS,
+        primary_metric="roc_auc",
+        description="Manganese occurrence probability from terrain, spectral bands, indices and formation.",
+    ),
+    "grade": ReserveTaskSpec(
+        name="grade",
+        kind="regression",
+        target="mn_pct",
+        numerical_features=_TERRAIN_FEATURES + _SPECTRAL_BANDS + _SPECTRAL_INDICES,
+        categorical_features=["formation"],
+        forbidden_columns=RESERVE_FORBIDDEN_COLUMNS,
+        primary_metric="rmse",
+        description="Manganese grade percentage from terrain, spectral and formation predictors.",
+    ),
+    "thickness": ReserveTaskSpec(
+        name="thickness",
+        kind="regression",
+        target="ore_thickness_m",
+        numerical_features=_TERRAIN_FEATURES + _SPECTRAL_BANDS + _SPECTRAL_INDICES,
+        categorical_features=["formation"],
+        forbidden_columns=RESERVE_FORBIDDEN_COLUMNS,
+        primary_metric="rmse",
+        description="Ore thickness (m) from terrain, spectral and formation predictors.",
+    ),
+}
+
 
 def project_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
 
 def load_fused_reserve_table(root: Path | None = None) -> pd.DataFrame:
+    """Load raw CSVs from disk and fuse them via the canonical fusion layer."""
     root = root or project_root()
+    from ml.reserve.fusion import fuse_reserve_datasets
+
     geological = pd.read_csv(root / "data/synthetic/geological.csv")
     satellite = pd.read_csv(root / "data/synthetic/satellite_features.csv")
-    return geological.merge(satellite, on=["sample_id", "latitude", "longitude"], how="inner")
+    return fuse_reserve_datasets(geological, satellite, validate=False).data
 
 
 def ensure_spectral_indices(df: pd.DataFrame) -> pd.DataFrame:
@@ -56,9 +128,22 @@ def ensure_spectral_indices(df: pd.DataFrame) -> pd.DataFrame:
     return output
 
 
-def prepare_reserve_matrix(df: pd.DataFrame, feature_columns: list[str] | None = None) -> pd.DataFrame:
+def prepare_reserve_matrix(
+    df: pd.DataFrame,
+    feature_columns: list[str] | None = None,
+    numerical_features: list[str] | None = None,
+    categorical_features: list[str] | None = None,
+) -> pd.DataFrame:
+    """Build the numeric modelling matrix.
+
+    ``feature_columns`` aligns one-hot output to a fixed schema (inference).
+    ``numerical_features``/``categorical_features`` allow a task-specific
+    curated subset (defaults keep the original prospectivity pool).
+    """
     prepared = ensure_spectral_indices(df)
-    subset = prepared[RESERVE_NUMERICAL_FEATURES + RESERVE_CATEGORICAL_FEATURES].copy()
+    numerical = numerical_features or RESERVE_NUMERICAL_FEATURES
+    categorical = categorical_features or RESERVE_CATEGORICAL_FEATURES
+    subset = prepared[numerical + categorical].copy()
     if feature_columns is None:
-        return pd.get_dummies(subset, columns=RESERVE_CATEGORICAL_FEATURES, dtype=int)
-    return one_hot_align(subset, RESERVE_CATEGORICAL_FEATURES, feature_columns)
+        return pd.get_dummies(subset, columns=categorical, dtype=int)
+    return one_hot_align(subset, categorical, feature_columns)

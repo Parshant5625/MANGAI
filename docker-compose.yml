@@ -32,9 +32,6 @@ services:
       LOG_LEVEL: INFO
     ports:
       - "8000:8000"
-    volumes:
-      - mangai_data:/app/data
-      - mangai_models:/app/models
 
   frontend:
     build:
@@ -49,5 +46,3 @@ services:
 
 volumes:
   mangai_pg:
-  mangai_data:
-  mangai_models:

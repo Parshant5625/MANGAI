@@ -1,0 +1,9 @@
+{
+  "method": "split_conformal",
+  "quantile": 5.072138931341731,
+  "coverage": 0.9,
+  "n_calibration": 4009,
+  "non_negative": true,
+  "empirical_coverage": 0.8829465186680121,
+  "note": "Coverage is empirical on the synthetic spatial holdout and depends on grouped-exchangeability; not a guarantee for real field data."
+}

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import math
-from typing import Iterable
+from collections.abc import Iterable
 
 
 def mae(y_true: Iterable[float], y_pred: Iterable[float]) -> float:

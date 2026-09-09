@@ -1,9 +1,7 @@
 """Tests for Production Intelligence ML pipeline."""
 
-import numpy as np
-import pandas as pd
 from ml.production.features import FEATURE_COLUMNS, build_daily_features, chronological_split
-from ml.risk.shortfall import shortfall_probability, severity
+from ml.risk.shortfall import severity, shortfall_probability
 
 
 def test_daily_features_no_future_leakage(demo_store):

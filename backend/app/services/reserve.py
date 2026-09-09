@@ -1,22 +1,34 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 from typing import Any
 
 import numpy as np
 import pandas as pd
 
 from backend.app.core.config import get_settings
+from backend.app.core.errors import ModelUnavailableError
 from backend.app.services.demo_data import DemoDataStore, demo_envelope, heuristic_prospectivity
+from backend.app.services.model_artifacts import reserve_prospectivity_available
 from ml.reserve.explain import explain_row
 from ml.reserve.features import ensure_spectral_indices
-from ml.reserve.inference import maybe_predict_regressor, predict_prospectivity_frame
-from ml.reserve.resource_estimator import estimate_resource_potential
-
+from ml.reserve.grid import generate_prediction_grid
+from ml.reserve.inference import (
+    load_model_metadata,
+    load_support_assessor,
+    predict_ensemble_frame,
+    predict_prospectivity_frame,
+    predict_regressor_with_interval,
+    resolve_ensemble_path,
+    resolve_model_path,
+)
+from ml.reserve.resource_estimator import estimate_resource_potential_with_intervals
 
 CELL_AREA_M2 = 10_000.0
 DENSITY_T_PER_M3 = 3.6
 _FRAME_CACHE: dict[tuple[str, float], pd.DataFrame] = {}
+logger = logging.getLogger(__name__)
 
 
 class ReserveService:
@@ -31,10 +43,18 @@ class ReserveService:
         model_dir = self._model_dir()
         stamps = []
         for path in [
+            model_dir / "reserve" / "prospectivity_model.joblib",
+            model_dir / "reserve" / "prospectivity_features.pkl",
             model_dir / "reserve" / "prospectivity_xgboost.json",
+            model_dir / "reserve" / "prospectivity_xgboost_features.pkl",
             model_dir / "reserve_xgboost.json",
+            model_dir / "reserve_features.pkl",
+            model_dir / "reserve" / "grade_model.joblib",
             model_dir / "reserve" / "grade_xgboost.json",
+            model_dir / "reserve" / "grade_xgboost_features.pkl",
+            model_dir / "reserve" / "thickness_model.joblib",
             model_dir / "reserve" / "thickness_xgboost.json",
+            model_dir / "reserve" / "thickness_xgboost_features.pkl",
             self.settings.resolved_data_dir / "processed" / "reserve_predictions.csv",
         ]:
             stamps.append(path.stat().st_mtime if path.exists() else 0.0)
@@ -52,11 +72,27 @@ class ReserveService:
 
     def _compute_base_frame(self) -> pd.DataFrame:
         df = ensure_spectral_indices(self.store.reserve_predictions().copy())
+        model_dir = self._model_dir()
+        ensemble_path = resolve_ensemble_path(model_dir)
         try:
-            scored = predict_prospectivity_frame(df, self._model_dir())
-            df["manganese_probability"] = scored["manganese_probability"]
-            df["prospectivity_class"] = scored["prospectivity_class"]
-        except FileNotFoundError:
+            if ensemble_path is not None:
+                scored = predict_ensemble_frame(df, model_dir)
+                if scored is not None:
+                    df["manganese_probability"] = scored["manganese_probability"]
+                    df["prospectivity_class"] = scored["prospectivity_class"]
+                else:
+                    raise FileNotFoundError("ensemble scoring returned None")
+            else:
+                scored = predict_prospectivity_frame(df, model_dir)
+                df["manganese_probability"] = scored["manganese_probability"]
+                df["prospectivity_class"] = scored["prospectivity_class"]
+        except Exception as exc:
+            logger.warning("Reserve prospectivity model unavailable; using demo heuristic fallback: %s", exc)
+            if self.settings.require_model_artifacts:
+                raise ModelUnavailableError(
+                    "Reserve prospectivity model is not available.",
+                    details={"model": "reserve_prospectivity"},
+                ) from exc
             df["manganese_probability"] = heuristic_prospectivity(df)
             df["prospectivity_class"] = pd.cut(
                 df["manganese_probability"],
@@ -65,10 +101,22 @@ class ReserveService:
                 include_lowest=True,
             ).astype(str)
         df["manganese_probability"] = df["manganese_probability"].astype(float).clip(0.01, 0.99)
-        grade = maybe_predict_regressor(df, self._model_dir() / "reserve" / "grade_xgboost.json")
-        thickness = maybe_predict_regressor(df, self._model_dir() / "reserve" / "thickness_xgboost.json")
+
+        grade, grade_fn = predict_regressor_with_interval(df, model_dir, "grade")
+        thickness, thickness_fn = predict_regressor_with_interval(df, model_dir, "thickness")
         df["predicted_grade_pct"] = grade.clip(2, 48).round(2) if grade is not None else self._predict_grade(df)
         df["predicted_thickness_m"] = thickness.clip(0.2, 18).round(2) if thickness is not None else self._predict_thickness(df)
+        # Store conformal interval bounds as columns for downstream consumers.
+        df["grade_interval_lower"] = df["grade_interval_upper"] = None
+        df["thickness_interval_lower"] = df["thickness_interval_upper"] = None
+        if grade is not None and grade_fn is not None:
+            intervals = grade_fn(grade)
+            df["grade_interval_lower"] = round(intervals["lower"], 2)
+            df["grade_interval_upper"] = round(intervals["upper"], 2)
+        if thickness is not None and thickness_fn is not None:
+            intervals = thickness_fn(thickness)
+            df["thickness_interval_lower"] = round(intervals["lower"], 2)
+            df["thickness_interval_upper"] = round(intervals["upper"], 2)
         df["confidence"] = self._confidence(df)
         return df
 
@@ -94,15 +142,40 @@ class ReserveService:
         spectral_completeness = 1 - df[["blue_b2", "green_b3", "red_b4", "nir_b8", "swir_b11", "swir_b12"]].isna().mean(axis=1)
         return pd.Series((support * 0.7 + spectral_completeness * 0.3).clip(0.35, 0.95), index=df.index).round(2)
 
-    def _resource_payload(self, probability: float, thickness_m: float, confidence: float, seed_key: str) -> dict[str, Any]:
+    def _parse_bbox(self, bbox: str) -> list[float]:
+        try:
+            values = [float(part.strip()) for part in bbox.split(",")]
+        except ValueError as exc:
+            raise ValueError("bbox must contain numeric min_lon,min_lat,max_lon,max_lat") from exc
+        if len(values) != 4:
+            raise ValueError("bbox must contain min_lon,min_lat,max_lon,max_lat")
+        min_lon, min_lat, max_lon, max_lat = values
+        if not (-180 <= min_lon <= 180 and -180 <= max_lon <= 180):
+            raise ValueError("bbox longitude values must be between -180 and 180")
+        if not (-90 <= min_lat <= 90 and -90 <= max_lat <= 90):
+            raise ValueError("bbox latitude values must be between -90 and 90")
+        if min_lon >= max_lon or min_lat >= max_lat:
+            raise ValueError("bbox minimum coordinates must be smaller than maximum coordinates")
+        return values
+
+    def _resource_payload(
+        self,
+        probability: float,
+        thickness_m: float,
+        thickness_low: float | None,
+        thickness_high: float | None,
+        seed_key: str,
+    ) -> dict[str, Any]:
         seed = int(hashlib.sha256(seed_key.encode("utf-8")).hexdigest()[:8], 16)
-        estimate = estimate_resource_potential(
+        low = thickness_low if thickness_low is not None else thickness_m
+        high = thickness_high if thickness_high is not None else thickness_m
+        estimate = estimate_resource_potential_with_intervals(
             probability=probability,
-            thickness_m=thickness_m,
+            thickness_point=thickness_m,
+            thickness_low=low,
+            thickness_high=high,
             cell_area_m2=CELL_AREA_M2,
             density_t_per_m3=DENSITY_T_PER_M3,
-            probability_std=max(0.03, (1 - confidence) * 0.18),
-            thickness_std_fraction=max(0.08, (1 - confidence) * 0.35),
             seed=seed,
         )
         return {
@@ -111,12 +184,8 @@ class ReserveService:
             "p10": round(estimate.p10, 2),
             "p50": round(estimate.p50, 2),
             "p90": round(estimate.p90, 2),
-            "assumptions": {
-                "cell_area_m2": CELL_AREA_M2,
-                "estimated_density_t_per_m3": DENSITY_T_PER_M3,
-                "uncertainty_method": "Monte Carlo",
-                "classification_boundary": "prototype only, not official reserves",
-            },
+            "assumptions": estimate.assumptions,
+            "uncertainty_sources": estimate.uncertainty_sources,
         }
 
     def _contributors(self, row: pd.Series) -> list[dict[str, Any]]:
@@ -127,19 +196,39 @@ class ReserveService:
         ]
 
     def _shap_contributors(self, row: pd.Series) -> list[dict[str, Any]]:
-        model_path = self._model_dir() / "reserve" / "prospectivity_xgboost.json"
-        if not model_path.exists():
-            model_path = self._model_dir() / "reserve_xgboost.json"
+        model_path = resolve_model_path(self._model_dir(), "prospectivity")
+        if model_path is None:
+            return self._contributors(row)
         return explain_row(pd.DataFrame([row]), model_path) or self._contributors(row)
 
+    def _model_metadata(self, name: str = "prospectivity") -> dict[str, Any] | None:
+        """Training metadata for the currently served model artifact."""
+        model_path = resolve_model_path(self._model_dir(), name)
+        if model_path is None:
+            return None
+        return load_model_metadata(model_path)
+
     def _cell(self, row: pd.Series) -> dict[str, Any]:
+        grade_low = float(row["grade_interval_lower"]) if "grade_interval_lower" in row.index and pd.notna(row.get("grade_interval_lower")) else None
+        grade_high = float(row["grade_interval_upper"]) if "grade_interval_upper" in row.index and pd.notna(row.get("grade_interval_upper")) else None
+        thickness_low = float(row["thickness_interval_lower"]) if "thickness_interval_lower" in row.index and pd.notna(row.get("thickness_interval_lower")) else None
+        thickness_high = float(row["thickness_interval_upper"]) if "thickness_interval_upper" in row.index and pd.notna(row.get("thickness_interval_upper")) else None
         resource = self._resource_payload(
             float(row["manganese_probability"]),
             float(row["predicted_thickness_m"]),
-            float(row["confidence"]),
+            thickness_low,
+            thickness_high,
             str(row["sample_id"]),
         )
-        return {
+        data_support: dict[str, Any] = {
+            "spectral_bands_present": int(
+                pd.Series(row[["blue_b2", "green_b3", "red_b4", "nir_b8", "swir_b11", "swir_b12"]]).notna().sum()
+            )
+            if all(column in row.index for column in ["blue_b2", "green_b3", "red_b4", "nir_b8", "swir_b11", "swir_b12"])
+            else 0,
+            "formation": str(row.get("formation", "")),
+        }
+        cell: dict[str, Any] = {
             "id": str(row["sample_id"]),
             "latitude": round(float(row["latitude"]), 6),
             "longitude": round(float(row["longitude"]), 6),
@@ -150,15 +239,57 @@ class ReserveService:
             "confidence": round(float(row["confidence"]), 2),
             "resource_potential": resource,
             "top_contributors": self._contributors(row),
-            "data_support": {
-                "spectral_bands_present": int(
-                    pd.Series(row[["blue_b2", "green_b3", "red_b4", "nir_b8", "swir_b11", "swir_b12"]]).notna().sum()
-                )
-                if all(column in row.index for column in ["blue_b2", "green_b3", "red_b4", "nir_b8", "swir_b11", "swir_b12"])
-                else 0,
-                "formation": str(row.get("formation", "")),
-            },
+            "data_support": data_support,
         }
+        # Phase 4 enrichment (optional, only when artifacts produced them).
+        if "manganese_probability_raw" in row.index and pd.notna(row.get("manganese_probability_raw")):
+            cell["calibrated_probability"] = round(float(row["manganese_probability"]), 4)
+            cell["base_probabilities"] = self._row_base_probabilities(row)
+        if grade_low is not None and grade_high is not None:
+            cell["grade_interval"] = {
+                "lower": round(grade_low, 2),
+                "upper": round(grade_high, 2),
+                "level": 0.9,
+                "method": "split_conformal",
+                "coverage": 0.9,
+                "non_negative": False,
+            }
+        if thickness_low is not None and thickness_high is not None:
+            cell["thickness_interval"] = {
+                "lower": round(thickness_low, 2),
+                "upper": round(thickness_high, 2),
+                "level": 0.9,
+                "method": "split_conformal",
+                "coverage": 0.9,
+                "non_negative": True,
+            }
+        support = load_support_assessor(self._model_dir())
+        if support is not None:
+            assessment = support.assess(
+                {name: float(row.get(name, float("nan"))) for name in [
+                    "elevation_m", "slope_deg", "depth_m", "ndvi", "ndwi", "swir_ratio",
+                ] if name in row.index},
+                latitude=float(row["latitude"]),
+                longitude=float(row["longitude"]),
+            )
+            cell["extrapolation"] = assessment.get("extrapolation")
+            cell["data_support_detail"] = assessment.get("data_support")
+        return cell
+
+    def _row_base_probabilities(self, row: pd.Series) -> dict[str, float]:
+        ensemble_path = resolve_ensemble_path(self._model_dir())
+        if ensemble_path is None:
+            return {}
+        try:
+            from ml.reserve.inference import load_ensemble
+            ensemble, columns = load_ensemble(self._model_dir())
+            if ensemble is None:
+                return {}
+            from ml.reserve.features import ensure_spectral_indices, prepare_reserve_matrix
+            frame = ensure_spectral_indices(pd.DataFrame([row.to_dict()]))
+            return ensemble.base_probabilities(prepare_reserve_matrix(frame, columns))
+        except Exception:
+            return {}
 
     def get_prospectivity(
         self,
@@ -167,12 +298,11 @@ class ReserveService:
         min_probability: float | None = None,
         limit: int = 500,
     ) -> dict[str, Any]:
-        df = self._base_frame()
         bbox_values: list[float] | None = None
         if bbox:
-            bbox_values = [float(part) for part in bbox.split(",")]
-            if len(bbox_values) != 4:
-                raise ValueError("bbox must contain min_lon,min_lat,max_lon,max_lat")
+            bbox_values = self._parse_bbox(bbox)
+        df = self._base_frame()
+        if bbox_values:
             min_lon, min_lat, max_lon, max_lat = bbox_values
             df = df[
                 (df["longitude"] >= min_lon)
@@ -199,7 +329,18 @@ class ReserveService:
             self._resource_payload(
                 float(row["manganese_probability"]),
                 float(row["predicted_thickness_m"]),
-                float(row["confidence"]),
+                (
+                    float(row["thickness_interval_lower"])
+                    if "thickness_interval_lower" in row.index
+                    and pd.notna(row.get("thickness_interval_lower"))
+                    else None
+                ),
+                (
+                    float(row["thickness_interval_upper"])
+                    if "thickness_interval_upper" in row.index
+                    and pd.notna(row.get("thickness_interval_upper"))
+                    else None
+                ),
                 str(row["sample_id"]),
             )
             for _, row in high.iterrows()
@@ -270,16 +411,82 @@ class ReserveService:
             "boreholes": records,
         }
 
+    def prediction_grid(
+        self,
+        site_id: str | None = None,
+        bbox: str | None = None,
+        cells_per_side: int = 10,
+        coverage: float = 0.9,
+    ) -> dict[str, Any]:
+        bbox_values = self._parse_bbox(bbox) if bbox else None
+        grid = generate_prediction_grid(
+            self._model_dir(),
+            bbox={
+                "min_lat": bbox_values[1],
+                "max_lat": bbox_values[3],
+                "min_lon": bbox_values[0],
+                "max_lon": bbox_values[2],
+            }
+            if bbox_values
+            else None,
+            cells_per_side=cells_per_side,
+            coverage=coverage,
+        )
+        return {
+            **demo_envelope(),
+            "site_id": site_id or self.settings.demo_site_id,
+            "bbox": [
+                grid["bbox"]["min_lon"],
+                grid["bbox"]["min_lat"],
+                grid["bbox"]["max_lon"],
+                grid["bbox"]["max_lat"],
+            ],
+            "cells_per_side": grid["cells_per_side"],
+            "model_versions": grid["model_versions"],
+            "context_method": grid["context_method"],
+            "search_radius_m": grid["search_radius_m"],
+            "cells": grid["cells"],
+        }
+
+    @staticmethod
+    def _served_version_label(meta: dict[str, Any] | None) -> str:
+        if meta and meta.get("model_name") and meta.get("version"):
+            return f"{meta['model_name']}-{meta['version']}"
+        return "reserve-prospectivity-legacy-artifact"
+
     def predict(self, payload: dict[str, Any]) -> dict[str, Any]:
+        if self.settings.require_model_artifacts and not reserve_prospectivity_available(self.settings):
+            logger.warning("Reserve prediction requested in live mode without model artifacts")
+            raise ModelUnavailableError(
+                "Reserve prospectivity model is not available.",
+                details={"model": "reserve_prospectivity"},
+            )
+        model_dir = self._model_dir()
         df = pd.DataFrame([payload])
         df["sample_id"] = "API-RESERVE-0001"
         df = ensure_spectral_indices(df)
+        ensemble_path = resolve_ensemble_path(model_dir)
+        version = self._served_version_label(self._model_metadata("prospectivity"))
         try:
-            scored = predict_prospectivity_frame(df, self._model_dir())
-            df["manganese_probability"] = scored["manganese_probability"]
-            df["prospectivity_class"] = scored["prospectivity_class"]
-            version = "reserve-xgb-2026.09.001"
-        except FileNotFoundError:
+            if ensemble_path is not None:
+                scored = predict_ensemble_frame(df, model_dir)
+                if scored is not None:
+                    df["manganese_probability"] = scored["manganese_probability"]
+                    df["prospectivity_class"] = scored["prospectivity_class"]
+                    version = self._served_version_label(self._model_metadata("prospectivity_ensemble"))
+                else:
+                    raise FileNotFoundError("ensemble scoring returned None")
+            else:
+                scored = predict_prospectivity_frame(df, model_dir)
+                df["manganese_probability"] = scored["manganese_probability"]
+                df["prospectivity_class"] = scored["prospectivity_class"]
+        except Exception as exc:
+            logger.warning("Reserve prediction model unavailable; using demo heuristic fallback: %s", exc)
+            if self.settings.require_model_artifacts:
+                raise ModelUnavailableError(
+                    "Reserve prospectivity model is not available.",
+                    details={"model": "reserve_prospectivity"},
+                ) from exc
             df["manganese_probability"] = heuristic_prospectivity(df)
             df["prospectivity_class"] = pd.cut(
                 df["manganese_probability"],
@@ -288,9 +495,28 @@ class ReserveService:
                 include_lowest=True,
             ).astype(str)
             version = "reserve-prototype-heuristic-001"
-        grade = maybe_predict_regressor(df, self._model_dir() / "reserve" / "grade_xgboost.json")
-        thickness = maybe_predict_regressor(df, self._model_dir() / "reserve" / "thickness_xgboost.json")
+        df["manganese_probability"] = df["manganese_probability"].astype(float).clip(0.01, 0.99)
+        grade, grade_fn = predict_regressor_with_interval(df, model_dir, "grade")
+        thickness, thickness_fn = predict_regressor_with_interval(df, model_dir, "thickness")
         df["predicted_grade_pct"] = grade.clip(2, 48).round(2) if grade is not None else self._predict_grade(df)
         df["predicted_thickness_m"] = thickness.clip(0.2, 18).round(2) if thickness is not None else self._predict_thickness(df)
+        df["grade_interval_lower"] = df["grade_interval_upper"] = None
+        df["thickness_interval_lower"] = df["thickness_interval_upper"] = None
+        if grade is not None and grade_fn is not None:
+            interval = grade_fn(grade)
+            df["grade_interval_lower"] = round(interval["lower"], 2)
+            df["grade_interval_upper"] = round(interval["upper"], 2)
+        if thickness is not None and thickness_fn is not None:
+            interval = thickness_fn(thickness)
+            df["thickness_interval_lower"] = round(interval["lower"], 2)
+            df["thickness_interval_upper"] = round(interval["upper"], 2)
         df["confidence"] = self._confidence(df)
-        return {**demo_envelope(), "prediction": self._cell(df.iloc[0]), "model_version": version}
+        cell = self._cell(df.iloc[0])
+        cell["data_support"]["model_version"] = version
+        cell["data_support"]["model_algorithm"] = (
+            self._model_metadata("prospectivity_ensemble")
+            or self._model_metadata("prospectivity")
+            or {}
+        ).get("algorithm", "demo-heuristic")
+        cell["data_support"]["prediction_type"] = "manganese_prospectivity"
+        return {**demo_envelope(), "prediction": cell, "model_version": version}

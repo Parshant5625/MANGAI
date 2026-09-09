@@ -2,19 +2,22 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Path, Query
 
 from backend.app.core.config import get_settings
+from backend.app.core.errors import NotFoundError, ValidationFailedError
 from backend.app.schemas import (
     BlastingResponse,
     DataQualityResponse,
     EquipmentResponse,
+    ModelComparisonResponse,
     ModelRegistryResponse,
     OverviewResponse,
     ProductionForecastResponse,
     ProductionPredictionRequest,
     RecommendationResponse,
     RecommendationSimulationRequest,
+    ReserveGridResponse,
     ReservePredictionRequest,
     ReservePredictionResponse,
     ReserveProspectivityResponse,
@@ -29,62 +32,102 @@ from backend.app.services.production import ProductionService
 from backend.app.services.recommendations import RecommendationService
 from backend.app.services.reserve import ReserveService
 
-
 router = APIRouter()
+ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+SiteId = Annotated[str | None, Query(min_length=1, max_length=128, pattern=ID_PATTERN)]
+
+
+def _validate_site_id(site_id: str | None) -> str | None:
+    settings = get_settings()
+    if settings.data_mode == "demo" and site_id is not None and site_id != settings.demo_site_id:
+        raise NotFoundError(
+            "SITE_NOT_FOUND",
+            f"Site not found: {site_id}",
+            details={"site_id": site_id},
+        )
+    return site_id
 
 
 @router.get("/overview", response_model=OverviewResponse, tags=["overview"])
-def get_overview(site_id: str | None = None) -> dict:
-    return OverviewService().get_overview(site_id=site_id)
+def get_overview(site_id: SiteId = None) -> dict:
+    return OverviewService().get_overview(site_id=_validate_site_id(site_id))
 
 
 @router.get("/reserves/prospectivity", response_model=ReserveProspectivityResponse, tags=["reserve"])
 def get_reserve_prospectivity(
-    site_id: str | None = None,
+    site_id: SiteId = None,
     bbox: str | None = None,
     min_probability: Annotated[float | None, Query(ge=0, le=1)] = None,
     limit: Annotated[int, Query(ge=1, le=2000)] = 500,
 ) -> dict:
     try:
         return ReserveService().get_prospectivity(
-            site_id=site_id,
+            site_id=_validate_site_id(site_id),
             bbox=bbox,
             min_probability=min_probability,
             limit=limit,
         )
     except ValueError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+        raise ValidationFailedError("INVALID_BBOX", str(exc), details={"bbox": bbox}) from exc
 
 
 @router.get("/reserves/summary", response_model=ReserveSummaryResponse, tags=["reserve"])
-def get_reserve_summary(site_id: str | None = None) -> dict:
-    return ReserveService().get_summary(site_id=site_id)
+def get_reserve_summary(site_id: SiteId = None) -> dict:
+    return ReserveService().get_summary(site_id=_validate_site_id(site_id))
 
 
 @router.get("/reserves/boreholes", tags=["reserve"])
-def get_reserve_boreholes(site_id: str | None = None, limit: Annotated[int, Query(ge=1, le=2000)] = 400) -> dict:
-    return ReserveService().boreholes(site_id=site_id, limit=limit)
+def get_reserve_boreholes(site_id: SiteId = None, limit: Annotated[int, Query(ge=1, le=2000)] = 400) -> dict:
+    return ReserveService().boreholes(site_id=_validate_site_id(site_id), limit=limit)
+
+
+@router.get("/reserves/grid", response_model=ReserveGridResponse, tags=["reserve"])
+def get_reserve_grid(
+    site_id: SiteId = None,
+    bbox: str | None = None,
+    cells: Annotated[int, Query(ge=2, le=40)] = 10,
+    coverage: Annotated[float, Query(ge=0.5, le=0.99)] = 0.9,
+) -> dict:
+    try:
+        return ReserveService().prediction_grid(
+            site_id=_validate_site_id(site_id),
+            bbox=bbox,
+            cells_per_side=cells,
+            coverage=coverage,
+        )
+    except ValueError as exc:
+        raise ValidationFailedError("INVALID_BBOX", str(exc), details={"bbox": bbox}) from exc
 
 
 @router.get("/reserves/{reserve_id}", tags=["reserve"])
-def get_reserve_detail(reserve_id: str, site_id: str | None = None) -> dict:
+# NOTE: declared AFTER the literal "/reserves/grid" route on purpose — FastAPI
+# matches routes in declaration order, so the literal path must come first or
+# the "{reserve_id}" catch-all swallows "grid" and returns 404.
+def get_reserve_detail(
+    reserve_id: Annotated[str, Path(min_length=1, max_length=128, pattern=ID_PATTERN)],
+    site_id: SiteId = None,
+) -> dict:
     try:
-        return ReserveService().get_detail(reserve_id, site_id=site_id)
+        return ReserveService().get_detail(reserve_id, site_id=_validate_site_id(site_id))
     except KeyError as exc:
-        raise HTTPException(status_code=404, detail=f"Reserve cell not found: {reserve_id}") from exc
+        raise NotFoundError(
+            "RESERVE_CELL_NOT_FOUND",
+            f"Reserve cell not found: {reserve_id}",
+            details={"reserve_id": reserve_id},
+        ) from exc
 
 
 @router.get("/production/forecast", response_model=ProductionForecastResponse, tags=["production"])
 def get_production_forecast(
-    site_id: str | None = None,
+    site_id: SiteId = None,
     horizon: Annotated[int, Query(ge=1, le=30)] = 7,
 ) -> dict:
-    return ProductionService().forecast(site_id=site_id, horizon=horizon)
+    return ProductionService().forecast(site_id=_validate_site_id(site_id), horizon=horizon)
 
 
 @router.get("/production/risk", response_model=ProductionForecastResponse, tags=["production"])
-def get_production_risk(site_id: str | None = None) -> dict:
-    return ProductionService().risk(site_id=site_id)
+def get_production_risk(site_id: SiteId = None) -> dict:
+    return ProductionService().risk(site_id=_validate_site_id(site_id))
 
 
 @router.get("/production/history", tags=["production"])
@@ -94,28 +137,33 @@ def get_production_history(days: Annotated[int, Query(ge=7, le=365)] = 60) -> di
 
 
 @router.get("/equipment", response_model=EquipmentResponse, tags=["operations"])
-def get_equipment(site_id: str | None = None) -> dict:
-    return OperationsService().equipment(site_id=site_id)
+def get_equipment(site_id: SiteId = None) -> dict:
+    return OperationsService().equipment(site_id=_validate_site_id(site_id))
 
 
 @router.get("/weather", response_model=WeatherResponse, tags=["operations"])
-def get_weather(site_id: str | None = None) -> dict:
-    return OperationsService().weather(site_id=site_id)
+def get_weather(site_id: SiteId = None) -> dict:
+    return OperationsService().weather(site_id=_validate_site_id(site_id))
 
 
 @router.get("/blasting", response_model=BlastingResponse, tags=["operations"])
-def get_blasting(site_id: str | None = None) -> dict:
-    return OperationsService().blasting(site_id=site_id)
+def get_blasting(site_id: SiteId = None) -> dict:
+    return OperationsService().blasting(site_id=_validate_site_id(site_id))
 
 
 @router.get("/recommendations", response_model=RecommendationResponse, tags=["recommendations"])
-def get_recommendations(site_id: str | None = None) -> dict:
-    return RecommendationService().list_recommendations(site_id=site_id)
+def get_recommendations(site_id: SiteId = None) -> dict:
+    return RecommendationService().list_recommendations(site_id=_validate_site_id(site_id))
 
 
 @router.get("/models", response_model=ModelRegistryResponse, tags=["mlops"])
 def get_models() -> dict:
     return ModelRegistryService().list_models()
+
+
+@router.get("/models/compare", response_model=ModelComparisonResponse, tags=["mlops"])
+def compare_models(model_name: str | None = None) -> dict:
+    return ModelRegistryService().compare(model_name=model_name)
 
 
 @router.get("/data-quality", response_model=DataQualityResponse, tags=["mlops"])
@@ -134,6 +182,5 @@ def predict_production(payload: ProductionPredictionRequest) -> dict:
 
 
 @router.post("/recommendations/simulate", response_model=RecommendationResponse, tags=["recommendations"])
-def simulate_recommendations(payload: RecommendationSimulationRequest, site_id: str | None = None) -> dict:
-    return RecommendationService().simulate(payload.model_dump(), site_id=site_id)
-
+def simulate_recommendations(payload: RecommendationSimulationRequest, site_id: SiteId = None) -> dict:
+    return RecommendationService().simulate(payload.model_dump(), site_id=_validate_site_id(site_id))

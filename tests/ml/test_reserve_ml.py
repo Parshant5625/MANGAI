@@ -1,10 +1,8 @@
 """Tests for Reserve Intelligence ML pipeline."""
 
 import numpy as np
-import pandas as pd
+
 from ml.reserve.features import (
-    RESERVE_NUMERICAL_FEATURES,
-    RESERVE_CATEGORICAL_FEATURES,
     LEAKAGE_EXCLUSIONS,
     ensure_spectral_indices,
     prepare_reserve_matrix,
@@ -12,9 +10,16 @@ from ml.reserve.features import (
 from ml.reserve.resource_estimator import estimate_resource_potential
 
 
+def _fused_reserve_frame(demo_store):
+    """Fuse geological + satellite features the same way production does."""
+    geo = demo_store.geological()
+    sat = demo_store.satellite()
+    return geo.merge(sat, on=["sample_id", "latitude", "longitude"], how="inner")
+
+
 def test_spectral_indices_computed(demo_store):
     """Verify spectral indices are computed correctly."""
-    df = demo_store.geological()
+    df = _fused_reserve_frame(demo_store)
     result = ensure_spectral_indices(df)
     
     assert "ndvi" in result.columns
@@ -25,7 +30,7 @@ def test_spectral_indices_computed(demo_store):
 
 def test_reserve_matrix_has_no_leakage_columns(demo_store):
     """Ensure leakage columns are excluded from features."""
-    df = demo_store.geological()
+    df = _fused_reserve_frame(demo_store)
     df = ensure_spectral_indices(df)
     matrix = prepare_reserve_matrix(df)
     
@@ -35,7 +40,7 @@ def test_reserve_matrix_has_no_leakage_columns(demo_store):
 
 def test_reserve_matrix_numeric_only(demo_store):
     """Verify reserve matrix contains only numeric values."""
-    df = demo_store.geological()
+    df = _fused_reserve_frame(demo_store)
     matrix = prepare_reserve_matrix(df)
     
     assert matrix.select_dtypes(include=[np.number]).shape[1] == matrix.shape[1]
@@ -83,9 +88,6 @@ def test_resource_estimator_respects_confidence():
 
 def test_probability_clipping(demo_store):
     """Verify probability values are clipped to valid range."""
-    from ml.reserve.inference import predict_prospectivity_frame
-    from pathlib import Path
-    import os
     
     df = demo_store.reserve_predictions()
     

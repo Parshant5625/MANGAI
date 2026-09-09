@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from ml.reserve.features import prepare_reserve_matrix
-from ml.reserve.inference import load_booster_and_columns
+from ml.reserve.inference import load_model_bundle
 
 
 def top_contributors_from_gain(model, feature_columns: list[str], row: pd.Series, limit: int = 5) -> list[dict]:
@@ -33,7 +33,7 @@ def explain_row(df: pd.DataFrame, model_path: Path, task: str = "classification"
     if not model_path.exists():
         return []
     try:
-        model, columns = load_booster_and_columns(model_path, task=task)
+        model, columns = load_model_bundle(model_path, task=task)
     except Exception:
         return []
     features = prepare_reserve_matrix(df, columns)
