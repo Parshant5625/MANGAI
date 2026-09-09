@@ -1,8 +1,8 @@
 from backend.app.schemas.api import (
     BlastingResponse,
     DataQualityResponse,
-    EquipmentResponse,
     ExtrapolationOut,
+    EquipmentResponse,
     GridCell,
     ModelComparisonResponse,
     ModelRegistryResponse,
@@ -19,6 +19,7 @@ from backend.app.schemas.api import (
     ReserveSummaryResponse,
     WeatherResponse,
 )
+from backend.app.schemas.operations import OperationsSummaryResponse
 
 __all__ = [
     "BlastingResponse",
@@ -28,6 +29,7 @@ __all__ = [
     "GridCell",
     "ModelComparisonResponse",
     "ModelRegistryResponse",
+    "OperationsSummaryResponse",
     "OverviewResponse",
     "PredictionIntervalOut",
     "ProductionForecastResponse",
@@ -41,4 +43,3 @@ __all__ = [
     "ReserveSummaryResponse",
     "WeatherResponse",
 ]
-
