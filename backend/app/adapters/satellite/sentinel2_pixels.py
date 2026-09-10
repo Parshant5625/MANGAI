@@ -191,7 +191,7 @@ class Sentinel2PixelExtractor:
                 left, bottom, right, top = bounds
                 col_start = max(0, int(np.floor((left - profile["transform"].c) / profile["transform"].a)))
                 col_stop = min(profile["width"], int(np.ceil((right - profile["transform"].c) / profile["transform"].a)))
-                row_start = max(0, int(np.floor((profile["transform"].f - top) / abs(profile["transform"].e)))
+                row_start = max(0, int(np.floor((profile["transform"].f - top) / abs(profile["transform"].e))))
                 row_stop = min(profile["height"], int(np.ceil((profile["transform"].f - bottom) / abs(profile["transform"].e))))
                 if col_start >= col_stop or row_start >= row_stop:
                     raise DataUnavailableError("Sentinel-2 AOI does not intersect the raster extent.")
