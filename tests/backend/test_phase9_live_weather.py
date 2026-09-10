@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from types import SimpleNamespace
 
 import pytest
@@ -33,7 +34,7 @@ def test_open_meteo_records_are_normalized(monkeypatch) -> None:
             "soil_moisture_0_to_7cm_mean": [0.31, 0.28],
         }
     }
-    records = provider._records(payload, __import__("datetime").date(2026, 9, 1), __import__("datetime").date(2026, 9, 2))
+    records = provider._records(payload, date(2026, 9, 1), date(2026, 9, 2))
     assert records == [
         {"date": "2026-09-01", "rainfall_mm": 4.2, "temperature_c": 28.1, "soil_moisture": 0.31},
         {"date": "2026-09-02", "rainfall_mm": 0.0, "temperature_c": 29.4, "soil_moisture": 0.28},
