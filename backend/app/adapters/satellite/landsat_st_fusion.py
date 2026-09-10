@@ -64,7 +64,7 @@ class LandsatSurfaceTemperatureFusion:
                     thermal_values = np.asarray([sample[0] for sample in samples], dtype=np.float32)
         except DataUnavailableError:
             raise
-        except Exception as exc:  # rasterio driver/IO errors vary by environment
+        except Exception as exc:
             raise DataUnavailableError(
                 "Landsat ST raster could not be decoded or sampled.",
                 details={"reason": str(exc)},
@@ -86,18 +86,16 @@ class LandsatSurfaceTemperatureFusion:
 
         coverage = len(records) / len(optical_batch.records)
         ingested_at = datetime.now(UTC).isoformat()
-        checksum = hashlib.sha256(
-            json.dumps(records, sort_keys=True, default=str).encode("utf-8")
-        ).hexdigest()
+        checksum = hashlib.sha256(json.dumps(records, sort_keys=True, default=str).encode("utf-8")).hexdigest()
         provenance = DataProvenance(
-            source_name="Copernicus Sentinel-2 L2A + USGS Landsat Collection 2 ST",
+            source_name="Copernicus Sentinel-2 L2A + USGS Landsat Collection 2 ST via Microsoft Planetary Computer",
             source_kind="satellite",
             mode="live",
             dataset="satellite_features",
             acquired_at=thermal_scene.get("datetime") or optical_batch.provenance.acquired_at,
             ingested_at=ingested_at,
-            source_version=f"{optical_batch.provenance.source_version or 'sentinel-2'}+{thermal_scene.get('collection', 'landsat-c2l2-st')}",
-            source_uri=str(thermal_scene.get("source_uri") or thermal_scene.get("scene_id") or "usgs-landsat-st"),
+            source_version=f"{optical_batch.provenance.source_version or 'sentinel-2'}+{thermal_scene.get('collection', 'landsat-c2-l2')}",
+            source_uri=str(thermal_scene.get("source_uri") or thermal_scene.get("scene_id") or "microsoft-planetary-computer"),
             checksum=checksum,
             license_note="Sentinel-2 and Landsat source terms must be verified for deployment; USGS Landsat Collection 2 is publicly accessible.",
             quality_score=coverage,
@@ -106,15 +104,9 @@ class LandsatSurfaceTemperatureFusion:
         return DataBatch(records=records, provenance=provenance)
 
     def _download(self, href: str) -> bytes:
-        request = Request(
-            href,
-            headers={"Accept": "image/tiff, application/octet-stream", "User-Agent": "MANGAI/1.0"},
-        )
+        request = Request(href, headers={"Accept": "image/tiff, application/octet-stream", "User-Agent": "MANGAI/1.0"})
         try:
             with urlopen(request, timeout=self.timeout_seconds) as response:
                 return response.read()
         except (HTTPError, URLError, TimeoutError, OSError) as exc:
-            raise DataUnavailableError(
-                "Landsat ST raster asset is unavailable.",
-                details={"reason": str(exc)},
-            ) from exc
+            raise DataUnavailableError("Landsat ST raster asset is unavailable.", details={"reason": str(exc)}) from exc
