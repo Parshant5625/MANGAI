@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from datetime import date
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class LiveSatelliteReserveRequest(BaseModel):
@@ -18,11 +20,11 @@ class LiveSatelliteReserveRequest(BaseModel):
     @field_validator("start", "end")
     @classmethod
     def validate_date(cls, value: str) -> str:
-        from datetime import date
-
         date.fromisoformat(value)
         return value
 
-    def validate_window(self) -> None:
+    @model_validator(mode="after")
+    def validate_window(self) -> LiveSatelliteReserveRequest:
         if self.start > self.end:
             raise ValueError("start must not be after end")
+        return self
