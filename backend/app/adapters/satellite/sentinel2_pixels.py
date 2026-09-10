@@ -75,16 +75,16 @@ class Sentinel2PixelExtractor:
         checksum = hashlib.sha256(json.dumps({"scene_id": scene.get("scene_id"), "rows": rows}, sort_keys=True).encode("utf-8")).hexdigest()
         valid_ratio = float(mask.mean()) if mask.size else 0.0
         provenance = DataProvenance(
-            source_name="Copernicus Data Space Ecosystem Sentinel-2 L2A",
+            source_name="Copernicus Sentinel-2 L2A via Microsoft Planetary Computer",
             source_kind="satellite",
             mode="live",
             dataset="satellite_features",
             acquired_at=scene.get("datetime") or ingested_at,
             ingested_at=ingested_at,
             source_version=str(scene.get("collection") or "sentinel-2-l2a"),
-            source_uri=str(scene.get("scene_id") or "copernicus-stac"),
+            source_uri=str(scene.get("source_uri") or scene.get("scene_id") or "microsoft-planetary-computer"),
             checksum=checksum,
-            license_note="Copernicus Sentinel data are made available free of charge; verify applicable access and usage terms for deployment.",
+            license_note="Sentinel-2 data are provided by Copernicus/ESA and hosted by Microsoft Planetary Computer; verify applicable terms for deployment.",
             quality_score=valid_ratio,
             row_count=len(rows),
         )
