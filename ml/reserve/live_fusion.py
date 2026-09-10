@@ -1,9 +1,4 @@
-"""Live reserve feature fusion for real satellite observations.
-
-The production reserve path keeps real satellite provenance and joins it to
-non-target geological context by spatial proximity. Assay/ore targets are
-never used as serving features.
-"""
+"""Live reserve feature fusion for real satellite observations."""
 
 from __future__ import annotations
 
@@ -12,11 +7,19 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 
-from ml.common.contracts import GEOLOGICAL_CONTEXT_CONTRACT
 from ml.common.provenance import DataBatch
-from ml.common.validation import validate_dataset
 
 EARTH_RADIUS_M = 6_371_000.0
+GEOLOGY_CONTEXT_COLUMNS = (
+    "sample_id",
+    "latitude",
+    "longitude",
+    "elevation_m",
+    "slope_deg",
+    "aspect_deg",
+    "depth_m",
+    "formation",
+)
 
 
 @dataclass(frozen=True)
@@ -44,16 +47,32 @@ def _haversine_matrix(lat1: np.ndarray, lon1: np.ndarray, lat2: np.ndarray, lon2
     return EARTH_RADIUS_M * 2 * np.arcsin(np.sqrt(np.clip(a, 0, 1)))
 
 
+def _validate_geology_context(frame: pd.DataFrame) -> None:
+    missing = [column for column in GEOLOGY_CONTEXT_COLUMNS if column not in frame.columns]
+    if missing:
+        raise ValueError(f"Live geological context is missing required columns: {missing}")
+    if frame.empty:
+        return
+    if frame["sample_id"].astype(str).duplicated().any():
+        raise ValueError("Live geological context sample_id values must be unique.")
+    if not frame["latitude"].between(-90, 90).all() or not frame["longitude"].between(-180, 180).all():
+        raise ValueError("Live geological context contains invalid coordinates.")
+    if not frame["slope_deg"].between(0, 90).all() or not frame["aspect_deg"].between(0, 360).all():
+        raise ValueError("Live geological context contains invalid terrain values.")
+    if (frame["depth_m"] < 0).any():
+        raise ValueError("Live geological context contains negative depth values.")
+
+
 def fuse_live_satellite_with_geology(
     satellite_batch: DataBatch,
     geological: pd.DataFrame,
     *,
     max_distance_m: float = 500.0,
 ) -> LiveReserveFusionResult:
-    """Join live satellite pixels to the nearest geological context observation.
+    """Join live satellite pixels to nearest geological context by WGS84 distance.
 
-    ``geological`` must contain contextual columns only. Target assay columns
-    are deliberately not required, preventing target leakage during inference.
+    Assay and ore-thickness targets are intentionally not required or copied.
+    This prevents target leakage in serving-time reserve inference.
     """
     if satellite_batch.provenance.mode != "live":
         raise ValueError("Live reserve fusion requires a live satellite batch.")
@@ -62,15 +81,19 @@ def fuse_live_satellite_with_geology(
     if max_distance_m <= 0:
         raise ValueError("max_distance_m must be positive")
 
-    validation = validate_dataset(geological, GEOLOGICAL_CONTEXT_CONTRACT)
-    validation.raise_for_errors()
+    _validate_geology_context(geological)
     satellite = pd.DataFrame(satellite_batch.records)
-    required_satellite = ["sample_id", "latitude", "longitude", "blue_b2", "green_b3", "red_b4", "nir_b8", "swir_b11", "swir_b12", "land_surface_temperature"]
+    required_satellite = [
+        "sample_id", "latitude", "longitude", "blue_b2", "green_b3", "red_b4",
+        "nir_b8", "swir_b11", "swir_b12", "land_surface_temperature",
+    ]
     missing = [column for column in required_satellite if column not in satellite.columns]
     if missing:
         raise ValueError(f"Satellite batch is missing required reserve features: {missing}")
     if satellite.empty or geological.empty:
-        return LiveReserveFusionResult(satellite.iloc[0:0].copy(), 0, len(satellite), max_distance_m, satellite_batch.provenance.to_dict())
+        return LiveReserveFusionResult(
+            satellite.iloc[0:0].copy(), 0, len(satellite), max_distance_m, satellite_batch.provenance.to_dict()
+        )
 
     distances = _haversine_matrix(
         satellite["latitude"].to_numpy(float),
@@ -84,9 +107,7 @@ def fuse_live_satellite_with_geology(
     sat = satellite.loc[matched_mask].reset_index(drop=True)
     context = geological.iloc[nearest[matched_mask]].reset_index(drop=True).add_suffix("_geo")
     fused = pd.concat([sat, context], axis=1)
-    for column in GEOLOGICAL_CONTEXT_CONTRACT.column_names():
-        if column == "sample_id":
-            continue
+    for column in GEOLOGY_CONTEXT_COLUMNS[1:]:
         geo_column = f"{column}_geo"
         if geo_column in fused:
             fused[column] = fused[geo_column]
