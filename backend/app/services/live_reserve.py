@@ -9,9 +9,7 @@ import pandas as pd
 from backend.app.adapters.satellite.fusion_pipeline import LiveSatelliteFusionPipeline
 from backend.app.core.config import get_settings
 from backend.app.core.errors import DataUnavailableError, ModelUnavailableError
-from ml.common.contracts import GEOLOGICAL_CONTEXT_CONTRACT
-from ml.common.provenance import DataBatch, DataProvenance
-from ml.common.validation import validate_dataset
+from ml.common.provenance import DataProvenance
 from ml.reserve.inference import (
     load_model_metadata,
     load_support_assessor,
@@ -20,7 +18,7 @@ from ml.reserve.inference import (
     resolve_ensemble_path,
     resolve_model_path,
 )
-from ml.reserve.live_fusion import fuse_live_satellite_with_geology
+from ml.reserve.live_fusion import GEOLOGY_CONTEXT_COLUMNS, fuse_live_satellite_with_geology
 from ml.reserve.resource_estimator import estimate_resource_potential_with_intervals
 
 CELL_AREA_M2 = 10_000.0
@@ -42,14 +40,20 @@ class LiveSatelliteReserveService:
         if not path.exists():
             raise DataUnavailableError(
                 "Live geological context file is unavailable.",
-                details={"path": str(path), "required_columns": GEOLOGICAL_CONTEXT_CONTRACT.required_columns()},
+                details={"path": str(path), "required_columns": list(GEOLOGY_CONTEXT_COLUMNS)},
             )
         try:
             frame = pd.read_csv(path)
         except Exception as exc:
             raise DataUnavailableError("Live geological context could not be read.", details={"path": str(path)}) from exc
-        validation = validate_dataset(frame, GEOLOGICAL_CONTEXT_CONTRACT)
-        validation.raise_for_errors()
+        missing = [column for column in GEOLOGY_CONTEXT_COLUMNS if column not in frame.columns]
+        if missing:
+            raise DataUnavailableError(
+                "Live geological context failed the target-free context contract.",
+                details={"missing_columns": missing, "required_columns": list(GEOLOGY_CONTEXT_COLUMNS)},
+            )
+        if frame["sample_id"].astype(str).duplicated().any():
+            raise DataUnavailableError("Live geological context contains duplicate sample_id values.")
         checksum = hashlib.sha256(path.read_bytes()).hexdigest()
         provenance = DataProvenance(
             source_name="live_geological_file",
@@ -184,8 +188,6 @@ class LiveSatelliteReserveService:
     ) -> dict[str, Any]:
         if self.settings.data_mode != "live":
             raise DataUnavailableError("Live satellite reserve inference requires DATA_MODE=live.")
-        if not self.pipeline:
-            raise DataUnavailableError("Live satellite fusion pipeline is unavailable.")
         model_dir = self.settings.resolved_model_dir
         if resolve_ensemble_path(model_dir) is None and resolve_model_path(model_dir, "prospectivity") is None:
             raise ModelUnavailableError("Reserve prospectivity model artifact is not available.", details={"model": "reserve_prospectivity"})
