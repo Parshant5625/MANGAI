@@ -6,6 +6,7 @@ import pandas as pd
 
 from backend.app.adapters.factory import weather_provider
 from backend.app.core.config import get_settings
+from backend.app.core.errors import DataUnavailableError
 from backend.app.services.demo_data import DemoDataStore, demo_envelope
 
 
@@ -67,9 +68,12 @@ class OperationsService:
         records = provider.fetch_forecast(site_id or self.settings.demo_site_id, "", "")
         df = pd.DataFrame(records)
         if df.empty:
-            raise ValueError("Weather provider returned no observations")
+            raise DataUnavailableError(
+                "Weather provider returned no observations.",
+                details={"provider": "live" if self.settings.data_mode == "live" else "local_demo_file"},
+            )
         if "date" not in df.columns:
-            raise ValueError("Weather provider response is missing date")
+            raise DataUnavailableError("Weather provider response is missing date.")
         df["date"] = pd.to_datetime(df["date"])
         latest = pd.Timestamp(df["date"].max())
         last_7 = df[df["date"] > latest - pd.Timedelta(days=7)]
