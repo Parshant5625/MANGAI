@@ -1,0 +1,1 @@
+Phase 9.4 is under active validation. Do not enable live reserve inference from Sentinel-2-only output until the thermal-field fusion and site/grid clipping steps are completed.
