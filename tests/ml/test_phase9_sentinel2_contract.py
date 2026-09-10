@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from ml.common.validation import validate_dataset
 from ml.common.contracts import SATELLITE_CONTRACT
+from ml.common.validation import validate_dataset
 
 
 def test_real_pixel_output_can_validate_against_canonical_contract() -> None:

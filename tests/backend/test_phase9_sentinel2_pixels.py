@@ -3,7 +3,11 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from backend.app.adapters.satellite.sentinel2_pixels import REQUIRED_BANDS, PixelExtractionConfig, Sentinel2PixelExtractor
+from backend.app.adapters.satellite.sentinel2_pixels import (
+    REQUIRED_BANDS,
+    PixelExtractionConfig,
+    Sentinel2PixelExtractor,
+)
 from backend.app.core.errors import DataUnavailableError
 
 
