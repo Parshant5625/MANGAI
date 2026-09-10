@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -28,7 +28,7 @@ class OpenMeteoWeatherProvider:
 
     def fetch_forecast(self, site_id: str, start: str, end: str) -> list[dict]:
         start_date, end_date = self._resolve_window(start, end)
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         base_url = self.archive_url if end_date < today else self.forecast_url
         params = {
             "latitude": self.latitude,
@@ -58,7 +58,7 @@ class OpenMeteoWeatherProvider:
 
     @staticmethod
     def _resolve_window(start: str, end: str) -> tuple[date, date]:
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         if not start and not end:
             return today - timedelta(days=29), today
         start_date = date.fromisoformat(start) if start else today

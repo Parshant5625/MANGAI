@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pandas as pd
 
-
 HORIZONS = (1, 7, 14, 28)
 FORBIDDEN_FEATURES = {
     "production_mt",

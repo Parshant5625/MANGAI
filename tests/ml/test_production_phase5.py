@@ -4,7 +4,13 @@ import pandas as pd
 import pytest
 
 from ml.production.features import FEATURE_COLUMNS, build_daily_features
-from ml.production.pipeline import FORBIDDEN_FEATURES, add_future_targets, assert_no_target_leakage, chronological_splits, load_fused_production_data
+from ml.production.pipeline import (
+    FORBIDDEN_FEATURES,
+    add_future_targets,
+    assert_no_target_leakage,
+    chronological_splits,
+    load_fused_production_data,
+)
 
 
 def test_production_feature_columns_exclude_forbidden_targets() -> None:

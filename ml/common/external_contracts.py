@@ -13,7 +13,6 @@ from typing import Any, Literal
 from ml.common.contracts import ALL_CONTRACTS, DatasetContract
 from ml.common.provenance import DataBatch, DataMode, DataProvenance, SourceKind
 
-
 ExternalDataset = Literal[
     "geological",
     "boreholes",
@@ -107,9 +106,9 @@ def validate_external_batch(batch: DataBatch) -> list[str]:
         errors.append("Live ingestion cannot be marked synthetic.")
 
     # Import lazily to keep this module usable by lightweight provider tooling.
-    from ml.common.validation import validate_dataset
-
     import pandas as pd
+
+    from ml.common.validation import validate_dataset
 
     validation = validate_dataset(pd.DataFrame(batch.records), contract.canonical_contract)
     errors.extend(validation.errors)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -101,7 +101,7 @@ class Sentinel2STACProvider:
                 },
             )
 
-        acquired_at = datetime.now(timezone.utc).isoformat()
+        acquired_at = datetime.now(UTC).isoformat()
         checksum = hashlib.sha256(json.dumps(records, sort_keys=True).encode("utf-8")).hexdigest()
         mean_cloud = sum(float(record["cloud_cover_pct"] or 0) for record in records) / len(records)
         provenance = DataProvenance(

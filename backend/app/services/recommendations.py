@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from backend.app.core.config import get_settings
@@ -55,7 +55,7 @@ class RecommendationService:
         return {
             **demo_envelope(),
             "site_id": site_id or self.settings.demo_site_id,
-            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "generated_at": datetime.now(UTC).isoformat(),
             "recommendation_count": len(recommendations),
             "recommendations": recommendations,
             "methodology_note": "Recommendations are generated from forecast, operational, weather, blasting and reserve evidence. Impact ranges are scenario estimates, not guarantees. Human approval is required for every proposed action.",
