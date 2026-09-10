@@ -15,36 +15,29 @@ class Settings(BaseSettings):
     app_env: str = Field(default="development", validation_alias="APP_ENV")
     api_v1_prefix: str = "/api/v1"
     data_mode: DataMode = Field(default="demo", validation_alias="DATA_MODE")
-    database_url: str = Field(
-        default="sqlite:///./mangai_dev.db",
-        validation_alias="DATABASE_URL",
-    )
-    cors_origins: str = Field(
-        default="http://localhost:5173,http://127.0.0.1:5173",
-        validation_alias="CORS_ORIGINS",
-    )
+    database_url: str = Field(default="sqlite:///./mangai_dev.db", validation_alias="DATABASE_URL")
+    cors_origins: str = Field(default="http://localhost:5173,http://127.0.0.1:5173", validation_alias="CORS_ORIGINS")
     model_dir: Path = Field(default=Path("models"), validation_alias="MODEL_DIR")
     data_dir: Path = Field(default=Path("data"), validation_alias="DATA_DIR")
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
     demo_site_id: str = "demo-moil-site"
     demo_site_name: str = "MANGAI Demo Mine"
+
     weather_latitude: float | None = Field(default=None, validation_alias="WEATHER_LATITUDE")
     weather_longitude: float | None = Field(default=None, validation_alias="WEATHER_LONGITUDE")
-    weather_forecast_url: str = Field(
-        default="https://api.open-meteo.com/v1/forecast",
-        validation_alias="WEATHER_FORECAST_URL",
-    )
-    weather_archive_url: str = Field(
-        default="https://archive-api.open-meteo.com/v1/archive",
-        validation_alias="WEATHER_ARCHIVE_URL",
-    )
+    weather_forecast_url: str = Field(default="https://api.open-meteo.com/v1/forecast", validation_alias="WEATHER_FORECAST_URL")
+    weather_archive_url: str = Field(default="https://archive-api.open-meteo.com/v1/archive", validation_alias="WEATHER_ARCHIVE_URL")
     weather_timeout_seconds: float = Field(default=10.0, validation_alias="WEATHER_TIMEOUT_SECONDS")
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-    )
+    sentinel2_latitude: float | None = Field(default=None, validation_alias="SENTINEL2_LATITUDE")
+    sentinel2_longitude: float | None = Field(default=None, validation_alias="SENTINEL2_LONGITUDE")
+    sentinel2_stac_url: str = Field(default="https://stac.dataspace.copernicus.eu/v1", validation_alias="SENTINEL2_STAC_URL")
+    sentinel2_collection: str = Field(default="sentinel-2-l2a", validation_alias="SENTINEL2_COLLECTION")
+    sentinel2_max_cloud_cover: float = Field(default=20.0, validation_alias="SENTINEL2_MAX_CLOUD_COVER")
+    sentinel2_bbox_delta: float = Field(default=0.05, validation_alias="SENTINEL2_BBOX_DELTA")
+    sentinel2_timeout_seconds: float = Field(default=20.0, validation_alias="SENTINEL2_TIMEOUT_SECONDS")
+
+    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     @field_validator("app_env", mode="before")
     @classmethod
@@ -64,9 +57,8 @@ class Settings(BaseSettings):
     @classmethod
     def validate_log_level(cls, value: object) -> str:
         normalized = str(value).strip().upper()
-        if normalized not in SUPPORTED_LOG_LEVELS:
-            supported = ", ".join(sorted(SUPPORTED_LOG_LEVELS))
-            raise ValueError(f"LOG_LEVEL must be one of: {supported}")
+        if normalized not in SUPPORTED_LOG_LEVEL_LEVELS:
+            raise ValueError(f"LOG_LEVEL must be one of: {', '.join(sorted(SUPPORTED_LOG_LEVELS))}")
         return normalized
 
     @property
@@ -88,8 +80,3 @@ class Settings(BaseSettings):
     @property
     def require_model_artifacts(self) -> bool:
         return self.data_mode == "live"
-
-
-@lru_cache
-def get_settings() -> Settings:
-    return Settings()
