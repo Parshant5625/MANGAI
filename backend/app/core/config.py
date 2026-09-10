@@ -81,3 +81,9 @@ class Settings(BaseSettings):
     @property
     def require_model_artifacts(self) -> bool:
         return self.data_mode == "live"
+
+
+@lru_cache(maxsize=1)
+def get_settings() -> Settings:
+    """Return the process-wide validated application settings."""
+    return Settings()
