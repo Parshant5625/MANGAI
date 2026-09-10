@@ -69,7 +69,7 @@ class Sentinel2PixelExtractor:
         assets = scene.get("assets") or {}
         selected = self._select_assets(assets)
         arrays, profile = self._read_and_align(selected)
-        mask = self._build_valid_mask(arrays, selected)
+        mask = self._build_valid_mask(arrays)
         rows = self._features_from_arrays(arrays, mask, profile, site_id, scene.get("scene_id"))
         if not rows:
             raise DataUnavailableError(
@@ -77,13 +77,10 @@ class Sentinel2PixelExtractor:
                 details={"scene_id": scene.get("scene_id")},
             )
 
-        acquired_at = datetime.now(UTC).isoformat()
+        ingested_at = datetime.now(UTC).isoformat()
         checksum = hashlib.sha256(
             json.dumps(
-                {
-                    "scene_id": scene.get("scene_id"),
-                    "rows": rows,
-                },
+                {"scene_id": scene.get("scene_id"), "rows": rows},
                 sort_keys=True,
             ).encode("utf-8")
         ).hexdigest()
@@ -93,8 +90,8 @@ class Sentinel2PixelExtractor:
             source_kind="satellite",
             mode="live",
             dataset="satellite_features",
-            acquired_at=scene.get("datetime") or acquired_at,
-            ingested_at=acquired_at,
+            acquired_at=scene.get("datetime") or ingested_at,
+            ingested_at=ingested_at,
             source_version=str(scene.get("collection") or "sentinel-2-l2a"),
             source_uri=str(scene.get("scene_id") or "copernicus-stac"),
             checksum=checksum,
@@ -180,36 +177,14 @@ class Sentinel2PixelExtractor:
             arrays[band] = destination
         return arrays, profile
 
-    def _build_valid_mask(self, arrays: dict[str, np.ndarray], assets: dict[str, str]) -> np.ndarray:
+    @staticmethod
+    def _build_valid_mask(arrays: dict[str, np.ndarray]) -> np.ndarray:
         valid = np.ones_like(arrays["B11"], dtype=bool)
         for band in REQUIRED_BANDS:
             valid &= np.isfinite(arrays[band])
             valid &= arrays[band] >= 0
             valid &= arrays[band] <= 10000
-        for key in self.config.cloud_mask_keys:
-            if key in assets:
-                scl, scl_profile = self._read(assets[key])
-                if scl_profile.get("crs") is None:
-                    raise DataUnavailableError("Sentinel-2 scene classification raster is missing CRS information.")
-                aligned_scl = np.full(arrays["B11"].shape, 0, dtype=np.float32)
-                reference_profile = {
-                    "transform": self._reference_transform(arrays["B11"], assets),
-                    "crs": None,
-                }
-                # SCL alignment is handled only when the asset carries a compatible
-                # reference grid. The common provider path supplies SCL_20M.
-                if scl.shape != arrays["B11"].shape:
-                    continue
-                valid &= ~np.isin(scl, [3, 8, 9, 10, 11])
-                break
         return valid
-
-    @staticmethod
-    def _reference_transform(array: np.ndarray, assets: dict[str, str]) -> Any:
-        # Kept as a small seam for future AOI/window alignment. The actual
-        # reference transform is already held in the output profile.
-        del array, assets
-        return None
 
     @staticmethod
     def _features_from_arrays(
@@ -240,25 +215,26 @@ class Sentinel2PixelExtractor:
         rows: list[dict[str, Any]] = []
         for row_idx, col_idx in zip(*np.where(mask)):
             x, y = transform * (int(col_idx) + 0.5, int(row_idx) + 0.5)
-            record = {
-                "site_id": site_id,
-                "sample_id": f"{scene_id or 'scene'}_{row_idx}_{col_idx}",
-                "latitude": None,
-                "longitude": None,
-                "blue_b2": float(b2[row_idx, col_idx]),
-                "green_b3": float(b3[row_idx, col_idx]),
-                "red_b4": float(b4[row_idx, col_idx]),
-                "nir_b8": float(b8[row_idx, col_idx]),
-                "swir_b11": float(b11[row_idx, col_idx]),
-                "swir_b12": float(b12[row_idx, col_idx]),
-                "ndvi": float(ndvi[row_idx, col_idx]),
-                "ndwi": float(ndwi[row_idx, col_idx]),
-                "swir_ratio": float(swir_ratio[row_idx, col_idx]),
-                "bare_soil_index": float(bare_soil[row_idx, col_idx]),
-                "land_surface_temperature": None,
-                "x": float(x),
-                "y": float(y),
-                "crs": str(crs),
-            }
-            rows.append(record)
+            rows.append(
+                {
+                    "site_id": site_id,
+                    "sample_id": f"{scene_id or 'scene'}_{row_idx}_{col_idx}",
+                    "latitude": None,
+                    "longitude": None,
+                    "blue_b2": float(b2[row_idx, col_idx]),
+                    "green_b3": float(b3[row_idx, col_idx]),
+                    "red_b4": float(b4[row_idx, col_idx]),
+                    "nir_b8": float(b8[row_idx, col_idx]),
+                    "swir_b11": float(b11[row_idx, col_idx]),
+                    "swir_b12": float(b12[row_idx, col_idx]),
+                    "ndvi": float(ndvi[row_idx, col_idx]),
+                    "ndwi": float(ndwi[row_idx, col_idx]),
+                    "swir_ratio": float(swir_ratio[row_idx, col_idx]),
+                    "bare_soil_index": float(bare_soil[row_idx, col_idx]),
+                    "land_surface_temperature": None,
+                    "x": float(x),
+                    "y": float(y),
+                    "crs": str(crs),
+                }
+            )
         return rows
