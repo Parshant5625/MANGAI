@@ -57,8 +57,9 @@ class Settings(BaseSettings):
     @classmethod
     def validate_log_level(cls, value: object) -> str:
         normalized = str(value).strip().upper()
-        if normalized not in SUPPORTED_LOG_LEVEL_LEVELS:
-            raise ValueError(f"LOG_LEVEL must be one of: {', '.join(sorted(SUPPORTED_LOG_LEVELS))}")
+        if normalized not in SUPPORTED_LOG_LEVELS:
+            supported = ", ".join(sorted(SUPPORTED_LOG_LEVELS))
+            raise ValueError(f"LOG_LEVEL must be one of: {supported}")
         return normalized
 
     @property
