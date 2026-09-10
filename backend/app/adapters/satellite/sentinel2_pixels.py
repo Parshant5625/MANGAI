@@ -19,13 +19,14 @@ try:
     from rasterio.enums import Resampling
     from rasterio.io import MemoryFile
     from rasterio.transform import Affine
-    from rasterio.warp import reproject
+    from rasterio.warp import reproject, transform_bounds
 except ImportError:  # pragma: no cover - exercised through the explicit runtime error
     rasterio = None
     Affine = Any
 
 
 REQUIRED_BANDS = ("B02", "B03", "B04", "B08", "B11", "B12")
+SCL_MASK_CLASSES = (3, 8, 9, 10, 11)
 
 
 @dataclass(frozen=True)
@@ -35,6 +36,7 @@ class PixelExtractionConfig:
     target_resolution_m: int = 20
     cloud_mask_keys: tuple[str, ...] = ("SCL_20M", "SCL")
     timeout_seconds: float = 60.0
+    aoi_bbox: tuple[float, float, float, float] | None = None
 
     def __post_init__(self) -> None:
         if self.target_resolution_m not in (10, 20):
@@ -47,14 +49,21 @@ class PixelExtractionConfig:
                 "Sentinel-2 pixel ingestion timeout must be positive.",
                 details={"timeout_seconds": self.timeout_seconds},
             )
+        if self.aoi_bbox is not None:
+            min_lon, min_lat, max_lon, max_lat = self.aoi_bbox
+            if not (-180 <= min_lon < max_lon <= 180 and -90 <= min_lat < max_lat <= 90):
+                raise DataUnavailableError(
+                    "Sentinel-2 AOI bbox must be (min_lon, min_lat, max_lon, max_lat) in EPSG:4326."
+                )
 
 
 class Sentinel2PixelExtractor:
     """Read real Sentinel-2 L2A raster assets and derive canonical features.
 
-    The extractor expects asset URLs discovered by the STAC provider. It never
-    creates spectral values when an asset is missing and never uses synthetic
-    fallback data in live mode.
+    The extractor aligns all bands to a common target grid, clips that grid to
+    an optional WGS84 AOI, and masks Sentinel-2 scene-classification pixels that
+    represent cloud, shadow, cirrus, or snow/ice. It never fabricates spectral
+    values and never uses synthetic fallback data in live mode.
     """
 
     def __init__(self, config: PixelExtractionConfig | None = None) -> None:
@@ -68,12 +77,18 @@ class Sentinel2PixelExtractor:
     def extract_scene(self, scene: dict[str, Any], site_id: str) -> DataBatch:
         assets = scene.get("assets") or {}
         selected = self._select_assets(assets)
+        scl_href = self._select_scl(assets)
         arrays, profile = self._read_and_align(selected)
         mask = self._build_valid_mask(arrays)
+        if scl_href:
+            scl, _ = self._read_and_align({"SCL": scl_href}, reference_profile=profile)
+            scl_values = scl["SCL"]
+            mask &= np.isfinite(scl_values)
+            mask &= ~np.isin(scl_values.astype(np.int16), SCL_MASK_CLASSES)
         rows = self._features_from_arrays(arrays, mask, profile, site_id, scene.get("scene_id"))
         if not rows:
             raise DataUnavailableError(
-                "Sentinel-2 scene contains no valid pixels after quality masking.",
+                "Sentinel-2 scene contains no valid pixels after AOI and quality masking.",
                 details={"scene_id": scene.get("scene_id")},
             )
 
@@ -120,6 +135,15 @@ class Sentinel2PixelExtractor:
             )
         return normalized
 
+    def _select_scl(self, assets: dict[str, Any]) -> str | None:
+        for key in self.config.cloud_mask_keys:
+            value = assets.get(key)
+            if isinstance(value, dict):
+                value = value.get("href")
+            if value:
+                return str(value)
+        return None
+
     def _download(self, href: str) -> bytes:
         request = Request(
             href,
@@ -146,32 +170,58 @@ class Sentinel2PixelExtractor:
                 details={"reason": str(exc)},
             ) from exc
 
-    def _read_and_align(self, assets: dict[str, str]) -> tuple[dict[str, np.ndarray], Any]:
-        reference_band = "B11" if self.config.target_resolution_m == 20 else "B02"
-        reference, profile = self._read(assets[reference_band])
-        if profile.get("crs") is None:
+    def _read_and_align(
+        self,
+        assets: dict[str, str],
+        reference_profile: dict[str, Any] | None = None,
+    ) -> tuple[dict[str, np.ndarray], Any]:
+        reference_band = next(iter(assets)) if reference_profile is not None else (
+            "B11" if self.config.target_resolution_m == 20 else "B02"
+        )
+        reference, source_profile = self._read(assets[reference_band])
+        if source_profile.get("crs") is None:
             raise DataUnavailableError("Sentinel-2 raster is missing CRS information.")
-        profile["width"] = reference.shape[1]
-        profile["height"] = reference.shape[0]
-        arrays = {reference_band: reference}
+
+        if reference_profile is None:
+            profile = source_profile.copy()
+            profile["width"] = reference.shape[1]
+            profile["height"] = reference.shape[0]
+            if self.config.aoi_bbox is not None:
+                bounds = transform_bounds("EPSG:4326", profile["crs"], *self.config.aoi_bbox, densify_pts=21)
+                left, bottom, right, top = bounds
+                col_start = max(0, int(np.floor((left - profile["transform"].c) / profile["transform"].a)))
+                col_stop = min(profile["width"], int(np.ceil((right - profile["transform"].c) / profile["transform"].a)))
+                row_start = max(0, int(np.floor((profile["transform"].f - top) / abs(profile["transform"].e)))
+                row_stop = min(profile["height"], int(np.ceil((profile["transform"].f - bottom) / abs(profile["transform"].e))))
+                if col_start >= col_stop or row_start >= row_stop:
+                    raise DataUnavailableError("Sentinel-2 AOI does not intersect the raster extent.")
+                reference = reference[row_start:row_stop, col_start:col_stop]
+                profile["transform"] = profile["transform"] * Affine.translation(col_start, row_start)
+                profile["width"] = reference.shape[1]
+                profile["height"] = reference.shape[0]
+            arrays = {reference_band: reference}
+        else:
+            profile = reference_profile.copy()
+            arrays = {}
+
         for band, href in assets.items():
-            if band == reference_band:
+            if reference_profile is None and band == reference_band:
                 continue
-            array, source_profile = self._read(href)
-            if source_profile.get("crs") is None:
+            array, band_profile = self._read(href)
+            if band_profile.get("crs") is None:
                 raise DataUnavailableError(
                     "Sentinel-2 raster is missing CRS information.",
                     details={"band": band},
                 )
-            destination = np.full(reference.shape, np.nan, dtype=np.float32)
+            destination = np.full((profile["height"], profile["width"]), np.nan, dtype=np.float32)
             reproject(
                 source=array,
                 destination=destination,
-                src_transform=source_profile["transform"],
-                src_crs=source_profile["crs"],
+                src_transform=band_profile["transform"],
+                src_crs=band_profile["crs"],
                 dst_transform=profile["transform"],
                 dst_crs=profile["crs"],
-                resampling=Resampling.bilinear,
+                resampling=Resampling.nearest if band == "SCL" else Resampling.bilinear,
                 dst_nodata=np.nan,
             )
             arrays[band] = destination
