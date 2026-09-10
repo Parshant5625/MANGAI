@@ -24,6 +24,7 @@ dependencies = [
   "matplotlib>=3.9",
   "joblib>=1.4",
   "python-dateutil>=2.9",
+  "rasterio>=1.4",
 ]
 
 [project.optional-dependencies]
