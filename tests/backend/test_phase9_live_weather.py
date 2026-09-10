@@ -60,5 +60,5 @@ def test_live_weather_does_not_fallback_to_demo(monkeypatch) -> None:
     settings = SimpleNamespace(data_mode="live", demo_site_id="demo-moil-site")
     monkeypatch.setattr("backend.app.services.operations.get_settings", lambda: settings)
     monkeypatch.setattr("backend.app.services.operations.weather_provider", lambda: EmptyWeatherProvider())
-    with pytest.raises(ValueError, match="no observations"):
+    with pytest.raises(DataUnavailableError, match="no observations"):
         OperationsService().weather()
