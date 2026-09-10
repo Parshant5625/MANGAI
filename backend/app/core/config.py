@@ -36,6 +36,10 @@ class Settings(BaseSettings):
     sentinel2_max_cloud_cover: float = Field(default=20.0, validation_alias="SENTINEL2_MAX_CLOUD_COVER")
     sentinel2_bbox_delta: float = Field(default=0.05, validation_alias="SENTINEL2_BBOX_DELTA")
     sentinel2_timeout_seconds: float = Field(default=20.0, validation_alias="SENTINEL2_TIMEOUT_SECONDS")
+    sentinel2_s3_endpoint: str = Field(
+        default="eodata.ams.dataspace.copernicus.eu",
+        validation_alias="SENTINEL2_S3_ENDPOINT",
+    )
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
