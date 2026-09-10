@@ -33,6 +33,7 @@ from backend.app.services.overview import OverviewService
 from backend.app.services.production import ProductionService
 from backend.app.services.recommendations import RecommendationService
 from backend.app.services.reserve import ReserveService
+from backend.app.services.satellite import SatelliteService
 
 router = APIRouter()
 ID_PATTERN = r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
@@ -52,12 +53,7 @@ def get_overview(site_id: SiteId = None) -> dict:
 
 
 @router.get("/reserves/prospectivity", response_model=ReserveProspectivityResponse, tags=["reserve"])
-def get_reserve_prospectivity(
-    site_id: SiteId = None,
-    bbox: str | None = None,
-    min_probability: Annotated[float | None, Query(ge=0, le=1)] = None,
-    limit: Annotated[int, Query(ge=1, le=2000)] = 500,
-) -> dict:
+def get_reserve_prospectivity(site_id: SiteId = None, bbox: str | None = None, min_probability: Annotated[float | None, Query(ge=0, le=1)] = None, limit: Annotated[int, Query(ge=1, le=2000)] = 500) -> dict:
     try:
         return ReserveService().get_prospectivity(site_id=_validate_site_id(site_id), bbox=bbox, min_probability=min_probability, limit=limit)
     except ValueError as exc:
@@ -75,12 +71,7 @@ def get_reserve_boreholes(site_id: SiteId = None, limit: Annotated[int, Query(ge
 
 
 @router.get("/reserves/grid", response_model=ReserveGridResponse, tags=["reserve"])
-def get_reserve_grid(
-    site_id: SiteId = None,
-    bbox: str | None = None,
-    cells: Annotated[int, Query(ge=2, le=40)] = 10,
-    coverage: Annotated[float, Query(ge=0.5, le=0.99)] = 0.9,
-) -> dict:
+def get_reserve_grid(site_id: SiteId = None, bbox: str | None = None, cells: Annotated[int, Query(ge=2, le=40)] = 10, coverage: Annotated[float, Query(ge=0.5, le=0.99)] = 0.9) -> dict:
     try:
         return ReserveService().prediction_grid(site_id=_validate_site_id(site_id), bbox=bbox, cells_per_side=cells, coverage=coverage)
     except ValueError as exc:
@@ -88,10 +79,7 @@ def get_reserve_grid(
 
 
 @router.get("/reserves/{reserve_id}", tags=["reserve"])
-def get_reserve_detail(
-    reserve_id: Annotated[str, Path(min_length=1, max_length=128, pattern=ID_PATTERN)],
-    site_id: SiteId = None,
-) -> dict:
+def get_reserve_detail(reserve_id: Annotated[str, Path(min_length=1, max_length=128, pattern=ID_PATTERN)], site_id: SiteId = None) -> dict:
     try:
         return ReserveService().get_detail(reserve_id, site_id=_validate_site_id(site_id))
     except KeyError as exc:
@@ -129,11 +117,13 @@ def get_blasting(site_id: SiteId = None) -> dict:
     return OperationsService().blasting(site_id=_validate_site_id(site_id))
 
 
+@router.get("/satellite/scenes", tags=["satellite"])
+def get_satellite_scenes(site_id: SiteId = None, start: str = Query(min_length=10), end: str = Query(min_length=10), limit: Annotated[int, Query(ge=1, le=100)] = 10) -> dict:
+    return SatelliteService().scenes(site_id=_validate_site_id(site_id), start=start, end=end, limit=limit)
+
+
 @router.get("/operations/summary", response_model=OperationsSummaryResponse, tags=["operations"])
-def get_operations_summary(
-    site_id: SiteId = None,
-    days: Annotated[int, Query(ge=7, le=365)] = 30,
-) -> dict:
+def get_operations_summary(site_id: SiteId = None, days: Annotated[int, Query(ge=7, le=365)] = 30) -> dict:
     return OperationsSummaryService().summary(site_id=_validate_site_id(site_id), days=days)
 
 
