@@ -4,7 +4,6 @@ import hashlib
 import json
 from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from backend.app.core.config import get_settings
@@ -55,7 +54,11 @@ class Sentinel2STACProvider:
         request = Request(
             f"{self.catalog_url}/search",
             data=json.dumps(payload).encode("utf-8"),
-            headers={"Accept": "application/geo+json, application/json", "Content-Type": "application/json", "User-Agent": "MANGAI/1.0"},
+            headers={
+                "Accept": "application/geo+json, application/json",
+                "Content-Type": "application/json",
+                "User-Agent": "MANGAI/1.0",
+            },
             method="POST",
         )
         try:
@@ -91,11 +94,16 @@ class Sentinel2STACProvider:
         if not records:
             raise DataUnavailableError(
                 "No Sentinel-2 L2A scenes matched the requested window and cloud threshold.",
-                details={"provider": "copernicus-stac", "collection": self.collection, "max_cloud_cover": self.max_cloud_cover},
+                details={
+                    "provider": "copernicus-stac",
+                    "collection": self.collection,
+                    "max_cloud_cover": self.max_cloud_cover,
+                },
             )
 
         acquired_at = datetime.now(timezone.utc).isoformat()
         checksum = hashlib.sha256(json.dumps(records, sort_keys=True).encode("utf-8")).hexdigest()
+        mean_cloud = sum(float(record["cloud_cover_pct"] or 0) for record in records) / len(records)
         provenance = DataProvenance(
             source_name="Copernicus Data Space Ecosystem Sentinel-2 STAC",
             source_kind="satellite",
@@ -107,7 +115,7 @@ class Sentinel2STACProvider:
             source_uri=f"{self.catalog_url}/search",
             checksum=checksum,
             license_note="Copernicus Sentinel data are made available free of charge; verify applicable access and usage terms for deployment.",
-            quality_score=max(0.0, min(1.0, 1.0 - (sum(float(r["cloud_cover_pct"] or 0) for r in records) / len(records)) / 100.0)),
+            quality_score=max(0.0, min(1.0, 1.0 - mean_cloud / 100.0)),
             row_count=len(records),
         )
-        return DataBatch(records=tuple(records), provenance=provenance)
+        return DataBatch(records=records, provenance=provenance)
