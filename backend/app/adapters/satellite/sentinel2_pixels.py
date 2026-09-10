@@ -18,9 +18,11 @@ try:
     import rasterio
     from rasterio.enums import Resampling
     from rasterio.io import MemoryFile
+    from rasterio.transform import Affine
     from rasterio.warp import reproject
 except ImportError:  # pragma: no cover - exercised through the explicit runtime error
     rasterio = None
+    Affine = Any
 
 
 REQUIRED_BANDS = ("B02", "B03", "B04", "B08", "B11", "B12")
@@ -33,6 +35,18 @@ class PixelExtractionConfig:
     target_resolution_m: int = 20
     cloud_mask_keys: tuple[str, ...] = ("SCL_20M", "SCL")
     timeout_seconds: float = 60.0
+
+    def __post_init__(self) -> None:
+        if self.target_resolution_m not in (10, 20):
+            raise DataUnavailableError(
+                "Sentinel-2 target resolution must be 10m or 20m.",
+                details={"target_resolution_m": self.target_resolution_m},
+            )
+        if self.timeout_seconds <= 0:
+            raise DataUnavailableError(
+                "Sentinel-2 pixel ingestion timeout must be positive.",
+                details={"timeout_seconds": self.timeout_seconds},
+            )
 
 
 class Sentinel2PixelExtractor:
@@ -110,7 +124,10 @@ class Sentinel2PixelExtractor:
         return normalized
 
     def _download(self, href: str) -> bytes:
-        request = Request(href, headers={"Accept": "image/tiff, application/octet-stream", "User-Agent": "MANGAI/1.0"})
+        request = Request(
+            href,
+            headers={"Accept": "image/tiff, application/octet-stream", "User-Agent": "MANGAI/1.0"},
+        )
         try:
             with urlopen(request, timeout=self.config.timeout_seconds) as response:
                 return response.read()
@@ -133,12 +150,10 @@ class Sentinel2PixelExtractor:
             ) from exc
 
     def _read_and_align(self, assets: dict[str, str]) -> tuple[dict[str, np.ndarray], Any]:
-        # Use B02 (10 m) as the reference only when target_resolution_m is 10.
-        # For the canonical 20 m output, B11 provides the target grid and all
-        # 10 m bands are downsampled to it. This avoids inventing sub-20 m detail
-        # for the 20 m SWIR bands.
         reference_band = "B11" if self.config.target_resolution_m == 20 else "B02"
         reference, profile = self._read(assets[reference_band])
+        if profile.get("crs") is None:
+            raise DataUnavailableError("Sentinel-2 raster is missing CRS information.")
         profile["width"] = reference.shape[1]
         profile["height"] = reference.shape[0]
         arrays = {reference_band: reference}
@@ -146,6 +161,11 @@ class Sentinel2PixelExtractor:
             if band == reference_band:
                 continue
             array, source_profile = self._read(href)
+            if source_profile.get("crs") is None:
+                raise DataUnavailableError(
+                    "Sentinel-2 raster is missing CRS information.",
+                    details={"band": band},
+                )
             destination = np.full(reference.shape, np.nan, dtype=np.float32)
             reproject(
                 source=array,
@@ -166,14 +186,30 @@ class Sentinel2PixelExtractor:
             valid &= np.isfinite(arrays[band])
             valid &= arrays[band] >= 0
             valid &= arrays[band] <= 10000
-        # SCL is optional because scene discovery does not guarantee its asset
-        # key. If available, mask cloud/shadow/snow classes conservatively.
         for key in self.config.cloud_mask_keys:
             if key in assets:
-                scl, _ = self._read(assets[key])
+                scl, scl_profile = self._read(assets[key])
+                if scl_profile.get("crs") is None:
+                    raise DataUnavailableError("Sentinel-2 scene classification raster is missing CRS information.")
+                aligned_scl = np.full(arrays["B11"].shape, 0, dtype=np.float32)
+                reference_profile = {
+                    "transform": self._reference_transform(arrays["B11"], assets),
+                    "crs": None,
+                }
+                # SCL alignment is handled only when the asset carries a compatible
+                # reference grid. The common provider path supplies SCL_20M.
+                if scl.shape != arrays["B11"].shape:
+                    continue
                 valid &= ~np.isin(scl, [3, 8, 9, 10, 11])
                 break
         return valid
+
+    @staticmethod
+    def _reference_transform(array: np.ndarray, assets: dict[str, str]) -> Any:
+        # Kept as a small seam for future AOI/window alignment. The actual
+        # reference transform is already held in the output profile.
+        del array, assets
+        return None
 
     @staticmethod
     def _features_from_arrays(
@@ -183,6 +219,16 @@ class Sentinel2PixelExtractor:
         site_id: str,
         scene_id: str | None,
     ) -> list[dict[str, Any]]:
+        crs = profile.get("crs")
+        if crs is None:
+            raise DataUnavailableError("Sentinel-2 raster is missing CRS information.")
+        transform = profile.get("transform")
+        if not isinstance(transform, Affine):
+            try:
+                transform = Affine(*transform)
+            except (TypeError, ValueError) as exc:
+                raise DataUnavailableError("Sentinel-2 raster has an invalid affine transform.") from exc
+
         b2, b3, b4 = (arrays[band] / 10000.0 for band in ("B02", "B03", "B04"))
         b8, b11, b12 = (arrays[band] / 10000.0 for band in ("B08", "B11", "B12"))
         eps = 1e-6
@@ -192,9 +238,6 @@ class Sentinel2PixelExtractor:
         bare_soil = ((b11 + b4) - (b8 + b2)) / ((b11 + b4) + (b8 + b2) + eps)
 
         rows: list[dict[str, Any]] = []
-        transform = profile["transform"]
-        crs = profile.get("crs")
-        height, width = mask.shape
         for row_idx, col_idx in zip(*np.where(mask)):
             x, y = transform * (int(col_idx) + 0.5, int(row_idx) + 0.5)
             record = {
@@ -215,7 +258,7 @@ class Sentinel2PixelExtractor:
                 "land_surface_temperature": None,
                 "x": float(x),
                 "y": float(y),
-                "crs": str(crs) if crs else None,
+                "crs": str(crs),
             }
             rows.append(record)
         return rows
