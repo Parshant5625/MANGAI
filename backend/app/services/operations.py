@@ -63,12 +63,13 @@ class OperationsService:
         }
 
     def weather(self, site_id: str | None = None) -> dict[str, Any]:
-        records = weather_provider().fetch_forecast(site_id or self.settings.demo_site_id, "", "")
+        provider = weather_provider()
+        records = provider.fetch_forecast(site_id or self.settings.demo_site_id, "", "")
         df = pd.DataFrame(records)
         if df.empty:
-            df = self.store.weather().copy()
+            raise ValueError("Weather provider returned no observations")
         if "date" not in df.columns:
-            df["date"] = pd.to_datetime(df.get("observed_at", pd.Timestamp.utcnow()))
+            raise ValueError("Weather provider response is missing date")
         df["date"] = pd.to_datetime(df["date"])
         latest = pd.Timestamp(df["date"].max())
         last_7 = df[df["date"] > latest - pd.Timedelta(days=7)]
@@ -87,6 +88,7 @@ class OperationsService:
         return {
             **demo_envelope(),
             "site_id": site_id or self.settings.demo_site_id,
+            "source": "open-meteo" if self.settings.data_mode == "live" else "local_demo_file",
             "latest_date": latest.date().isoformat(),
             "rainfall_7d_mm": round(rainfall_7, 2),
             "rainfall_30d_mm": round(rainfall_30, 2),
