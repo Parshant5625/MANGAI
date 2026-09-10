@@ -3,6 +3,7 @@ from __future__ import annotations
 from io import BytesIO
 
 import numpy as np
+import pytest
 import rasterio
 from rasterio.io import MemoryFile
 from rasterio.transform import from_origin
@@ -67,19 +68,20 @@ def test_fuses_scaled_landsat_temperature(monkeypatch):
 
     assert len(result.records) == 2
     expected = 30000 * ST_SCALE + ST_OFFSET_K - 273.15
-    assert result.records[0]["land_surface_temperature"] == expected
+    assert result.records[0]["land_surface_temperature"] == pytest.approx(expected, abs=1e-5)
     assert result.records[0]["thermal_scene_id"] == "LC09_TEST"
     assert result.provenance.quality_score == 1.0
 
 
 def test_drops_fill_pixels(monkeypatch):
-    raw = _raster_bytes(np.array([[0, 30000], [0, 0]], dtype=np.uint16))
+    raw = _raster_bytes(np.array([[30000, 0], [0, 0]], dtype=np.uint16))
     fusion = LandsatSurfaceTemperatureFusion()
     monkeypatch.setattr(fusion, "_download", lambda href: raw)
 
     result = fusion.fuse(_batch(), {"scene_id": "LC09_TEST", "assets": {"surface_temperature": "x"}})
 
     assert len(result.records) == 1
+    assert result.records[0]["sample_id"] == "s1"
     assert result.provenance.quality_score == 0.5
 
 
