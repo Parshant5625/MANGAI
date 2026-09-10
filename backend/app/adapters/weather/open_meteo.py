@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -29,11 +29,7 @@ class OpenMeteoWeatherProvider:
     def fetch_forecast(self, site_id: str, start: str, end: str) -> list[dict]:
         start_date, end_date = self._resolve_window(start, end)
         today = datetime.now(timezone.utc).date()
-        if end_date < today:
-            base_url = self.archive_url
-        else:
-            base_url = self.forecast_url
-
+        base_url = self.archive_url if end_date < today else self.forecast_url
         params = {
             "latitude": self.latitude,
             "longitude": self.longitude,
@@ -58,19 +54,17 @@ class OpenMeteoWeatherProvider:
                 "Live weather provider is unavailable.",
                 details={"provider": "open-meteo", "reason": str(exc)},
             ) from exc
-
         return self._records(payload, start_date, end_date)
 
     @staticmethod
     def _resolve_window(start: str, end: str) -> tuple[date, date]:
         today = datetime.now(timezone.utc).date()
+        if not start and not end:
+            return today - timedelta(days=29), today
         start_date = date.fromisoformat(start) if start else today
         end_date = date.fromisoformat(end) if end else start_date
         if end_date < start_date:
             raise DataUnavailableError("Weather end date must not precede start date.")
-        if not start and not end:
-            start_date = today
-            end_date = today
         return start_date, end_date
 
     @staticmethod
@@ -81,7 +75,6 @@ class OpenMeteoWeatherProvider:
                 "Live weather response did not contain daily observations.",
                 details={"provider": "open-meteo"},
             )
-
         records: list[dict] = []
         times = daily.get("time", [])
         rainfall = daily.get("precipitation_sum", [])
