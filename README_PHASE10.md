@@ -1,17 +1,25 @@
 # Phase 10 — Real Satellite → Reserve AI
 
-Phase 10 connects the real Sentinel-2 + Landsat surface-temperature fusion pipeline to the existing Reserve Intelligence models.
+Phase 10 connects real Sentinel-2 + Landsat surface-temperature data to the existing Reserve Intelligence models.
+
+## Live data source
+
+MANGAI uses the **Microsoft Planetary Computer STAC API** for live satellite discovery and signed HTTPS raster assets. This avoids direct CDSE S3 credential management while keeping the data path live and reproducible. Planetary Computer's STAC API is public; hosted raster assets are exposed through signed URLs. See the official Microsoft Planetary Computer documentation for the access model.
 
 ## Live flow
 
 ```text
-Sentinel-2 L2A scenes
+Microsoft Planetary Computer STAC
+        ↓
+Sentinel-2 L2A scene discovery
+        ↓
+Signed HTTPS COG assets
         ↓
 AOI clipping + SCL masking
         ↓
 Spectral features / indices
         ↓
-Landsat Collection 2 surface temperature
+Landsat Collection 2 Level-2 ST
         ↓
 Temporal + spatial fusion
         ↓
@@ -27,6 +35,38 @@ Conformal intervals
         ↓
 Prototype resource potential (P10/P50/P90)
 ```
+
+## Python dependencies
+
+Install the Planetary Computer client libraries in the active MANGAI environment:
+
+```powershell
+python -m pip install -e .
+```
+
+The project declares `pystac-client` and `planetary-computer` as runtime dependencies.
+
+## Live smoke test
+
+Required environment variables:
+
+- `SENTINEL2_LATITUDE`
+- `SENTINEL2_LONGITUDE`
+
+Optional:
+
+- `SENTINEL2_MAX_CLOUD_COVER`
+- `LIVE_SMOKE_START`
+- `LIVE_SMOKE_END`
+- `LIVE_SMOKE_SITE_ID`
+
+Run:
+
+```powershell
+python scripts/live_satellite_smoke.py
+```
+
+No `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, or CDSE S3 credentials are required for this Planetary Computer path.
 
 ## Geological input boundary
 
