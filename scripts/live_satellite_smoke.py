@@ -1,9 +1,10 @@
-"""Run a fail-closed smoke test against the live satellite discovery stack.
+"""Run a fail-closed smoke test against Microsoft Planetary Computer.
 
-This script intentionally does not use demo data and does not train models.
-It verifies external catalog discovery first and reports whether raster access is
-ready. Copernicus STAC currently commonly returns ``s3://eodata/...`` assets;
-reading those assets requires Copernicus S3 credentials in the environment.
+This script intentionally does not use demo data and does not train models. It
+verifies real Sentinel-2 discovery and that the returned raster assets are
+signed HTTPS URLs suitable for Rasterio/HTTP access. Planetary Computer uses
+short-lived SAS tokens for its hosted raster assets, so no AWS/CDSE credentials
+are required.
 
 Required environment variables:
     SENTINEL2_LATITUDE
@@ -14,8 +15,6 @@ Optional:
     LIVE_SMOKE_START (default: 30 days before LIVE_SMOKE_END)
     LIVE_SMOKE_END (default: today UTC)
     SENTINEL2_MAX_CLOUD_COVER
-
-The script never prints credential values.
 """
 
 from __future__ import annotations
@@ -23,7 +22,7 @@ from __future__ import annotations
 import os
 from datetime import UTC, datetime, timedelta
 
-from backend.app.adapters.satellite.sentinel2 import Sentinel2STACProvider
+from backend.app.adapters.satellite.planetary_computer import PlanetaryComputerSentinel2Provider
 from backend.app.core.errors import DataUnavailableError
 
 
@@ -40,11 +39,12 @@ def main() -> int:
     site_id = os.getenv("LIVE_SMOKE_SITE_ID", "smoke-test-site")
     start, end = _date_range()
     print("MANGAI live satellite smoke test")
+    print("provider: Microsoft Planetary Computer")
     print(f"window: {start} -> {end}")
     print(f"site_id: {site_id}")
 
     try:
-        provider = Sentinel2STACProvider()
+        provider = PlanetaryComputerSentinel2Provider()
         batch = provider.search_scenes(site_id, start, end, limit=3)
     except DataUnavailableError as exc:
         print(f"FAIL: Sentinel-2 discovery unavailable: {exc.message}")
@@ -56,29 +56,22 @@ def main() -> int:
     print(f"quality_score: {batch.provenance.quality_score:.3f}")
 
     schemes: dict[str, int] = {}
+    signed_assets = 0
     for scene in batch.records:
         for href in (scene.get("assets") or {}).values():
             scheme = str(href).split(":", 1)[0].lower() if ":" in str(href) else "relative"
             schemes[scheme] = schemes.get(scheme, 0) + 1
+            if str(href).startswith("https://") and "sig=" in str(href):
+                signed_assets += 1
+
     print(f"asset schemes: {schemes}")
+    print(f"signed HTTPS assets: {signed_assets}")
 
-    if "s3" in schemes:
-        access_key = bool(os.getenv("AWS_ACCESS_KEY_ID"))
-        secret_key = bool(os.getenv("AWS_SECRET_ACCESS_KEY"))
-        print(
-            "NEXT: Copernicus returned S3 raster assets. "
-            "Pixel ingestion requires CDSE S3 credentials."
-        )
-        print(f"AWS_ACCESS_KEY_ID configured: {access_key}")
-        print(f"AWS_SECRET_ACCESS_KEY configured: {secret_key}")
-        if not (access_key and secret_key):
-            print(
-                "BLOCKED: configure AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY "
-                "from your Copernicus Data Space S3 credentials, then rerun."
-            )
-            return 3
+    if not signed_assets:
+        print("BLOCKED: Planetary Computer returned no signed HTTPS raster assets.")
+        return 3
 
-    print("PASS: external satellite discovery and raster-access prerequisites are ready.")
+    print("PASS: Planetary Computer discovery and signed raster-access prerequisites are ready.")
     return 0
 
 
