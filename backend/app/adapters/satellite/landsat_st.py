@@ -1,8 +1,8 @@
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-import json
 from typing import Any
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode

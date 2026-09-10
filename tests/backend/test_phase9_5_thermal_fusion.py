@@ -4,7 +4,6 @@ from io import BytesIO
 
 import numpy as np
 import pytest
-import rasterio
 from rasterio.io import MemoryFile
 from rasterio.transform import from_origin
 
