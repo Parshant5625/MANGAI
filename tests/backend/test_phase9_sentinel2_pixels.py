@@ -48,6 +48,8 @@ def test_feature_math_uses_reflectance_and_masks_invalid_pixels() -> None:
     assert first["ndvi"] == pytest.approx(1 / 3, rel=1e-5)
     assert first["land_surface_temperature"] is None
     assert first["crs"] == "EPSG:4326"
+    assert first["longitude"] == pytest.approx(75.005)
+    assert first["latitude"] == pytest.approx(20.995)
 
 
 def test_extractor_requires_rasterio(monkeypatch: pytest.MonkeyPatch) -> None:
