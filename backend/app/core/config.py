@@ -28,6 +28,17 @@ class Settings(BaseSettings):
     log_level: str = Field(default="INFO", validation_alias="LOG_LEVEL")
     demo_site_id: str = "demo-moil-site"
     demo_site_name: str = "MANGAI Demo Mine"
+    weather_latitude: float | None = Field(default=None, validation_alias="WEATHER_LATITUDE")
+    weather_longitude: float | None = Field(default=None, validation_alias="WEATHER_LONGITUDE")
+    weather_forecast_url: str = Field(
+        default="https://api.open-meteo.com/v1/forecast",
+        validation_alias="WEATHER_FORECAST_URL",
+    )
+    weather_archive_url: str = Field(
+        default="https://archive-api.open-meteo.com/v1/archive",
+        validation_alias="WEATHER_ARCHIVE_URL",
+    )
+    weather_timeout_seconds: float = Field(default=10.0, validation_alias="WEATHER_TIMEOUT_SECONDS")
 
     model_config = SettingsConfigDict(
         env_file=".env",
