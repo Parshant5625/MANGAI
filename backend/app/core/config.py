@@ -29,17 +29,13 @@ class Settings(BaseSettings):
     weather_archive_url: str = Field(default="https://archive-api.open-meteo.com/v1/archive", validation_alias="WEATHER_ARCHIVE_URL")
     weather_timeout_seconds: float = Field(default=10.0, validation_alias="WEATHER_TIMEOUT_SECONDS")
 
+    # Required for live Microsoft Planetary Computer Sentinel-2 discovery.
     sentinel2_latitude: float | None = Field(default=None, validation_alias="SENTINEL2_LATITUDE")
     sentinel2_longitude: float | None = Field(default=None, validation_alias="SENTINEL2_LONGITUDE")
-    sentinel2_stac_url: str = Field(default="https://stac.dataspace.copernicus.eu/v1", validation_alias="SENTINEL2_STAC_URL")
     sentinel2_collection: str = Field(default="sentinel-2-l2a", validation_alias="SENTINEL2_COLLECTION")
     sentinel2_max_cloud_cover: float = Field(default=20.0, validation_alias="SENTINEL2_MAX_CLOUD_COVER")
     sentinel2_bbox_delta: float = Field(default=0.05, validation_alias="SENTINEL2_BBOX_DELTA")
     sentinel2_timeout_seconds: float = Field(default=20.0, validation_alias="SENTINEL2_TIMEOUT_SECONDS")
-    sentinel2_s3_endpoint: str = Field(
-        default="eodata.ams.dataspace.copernicus.eu",
-        validation_alias="SENTINEL2_S3_ENDPOINT",
-    )
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
