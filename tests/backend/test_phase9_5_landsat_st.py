@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import json
-
 from backend.app.adapters.satellite.landsat_st import LandsatSTConfig, LandsatSurfaceTemperatureProvider
 
 
