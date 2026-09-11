@@ -29,13 +29,19 @@ class Settings(BaseSettings):
     weather_archive_url: str = Field(default="https://archive-api.open-meteo.com/v1/archive", validation_alias="WEATHER_ARCHIVE_URL")
     weather_timeout_seconds: float = Field(default=10.0, validation_alias="WEATHER_TIMEOUT_SECONDS")
 
+    # Required for live Microsoft Planetary Computer Sentinel-2 discovery.
     sentinel2_latitude: float | None = Field(default=None, validation_alias="SENTINEL2_LATITUDE")
     sentinel2_longitude: float | None = Field(default=None, validation_alias="SENTINEL2_LONGITUDE")
-    sentinel2_stac_url: str = Field(default="https://stac.dataspace.copernicus.eu/v1", validation_alias="SENTINEL2_STAC_URL")
     sentinel2_collection: str = Field(default="sentinel-2-l2a", validation_alias="SENTINEL2_COLLECTION")
     sentinel2_max_cloud_cover: float = Field(default=20.0, validation_alias="SENTINEL2_MAX_CLOUD_COVER")
     sentinel2_bbox_delta: float = Field(default=0.05, validation_alias="SENTINEL2_BBOX_DELTA")
     sentinel2_timeout_seconds: float = Field(default=20.0, validation_alias="SENTINEL2_TIMEOUT_SECONDS")
+
+    # Scene discovery threshold only. Pixel-level acceptance is governed by QA_PIXEL and ST_QA.
+    landsat_max_cloud_cover: float = Field(default=80.0, validation_alias="LANDSAT_MAX_CLOUD_COVER")
+    # QA_RADSAT is supported, but remote QA_RADSAT COGs can be disproportionately slow to
+    # range-read on some public assets. Keep it opt-in until a provider-specific fast path exists.
+    landsat_use_qa_radsat: bool = Field(default=False, validation_alias="LANDSAT_USE_QA_RADSAT")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
