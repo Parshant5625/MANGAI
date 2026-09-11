@@ -180,11 +180,6 @@ class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase)
         delta = 0.05
         bbox = [longitude - delta, latitude - delta, longitude + delta, latitude + delta]
         try:
-            # Do not hard-filter by scene-level cloud cover here. A Landsat scene can
-            # still contain usable clear pixels inside the local AOI even when the
-            # scene-wide cloud percentage is high. Pixel-level QA belongs in the
-            # raster extraction stage. We retrieve a larger candidate set and rank
-            # by acquisition time first, while preserving cloud metadata for fusion.
             search = self.catalog.search(
                 collections=[LANDSAT_COLLECTION],
                 bbox=bbox,
@@ -206,6 +201,9 @@ class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase)
             if not st_asset:
                 continue
             cloud = item.properties.get("eo:cloud_cover")
+            qa_pixel = assets.get("qa_pixel") or assets.get("QA_PIXEL")
+            qa_radsat = assets.get("qa_radsat") or assets.get("QA_RADSAT")
+            st_qa = assets.get("st_qa") or assets.get("ST_QA")
             scenes.append(
                 {
                     "scene_id": item.id,
@@ -214,7 +212,12 @@ class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase)
                     "cloud_cover": float(cloud) if cloud is not None else None,
                     "cloud_threshold_pct": self.max_cloud_cover,
                     "cloud_threshold_passed": cloud is None or float(cloud) <= self.max_cloud_cover,
-                    "assets": {"surface_temperature": st_asset},
+                    "assets": {
+                        "surface_temperature": st_asset,
+                        "qa_pixel": qa_pixel,
+                        "qa_radsat": qa_radsat,
+                        "st_qa": st_qa,
+                    },
                     "source_uri": item.self_href or self.stac_url,
                     "provider": "microsoft-planetary-computer",
                 }
