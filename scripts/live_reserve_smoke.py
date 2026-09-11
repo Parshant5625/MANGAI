@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import os
 from pathlib import Path
 
@@ -28,6 +29,27 @@ def _parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _nearest_demo_coordinate(path: Path, latitude: float, longitude: float) -> tuple[float, float]:
+    """Choose a synthetic geology coordinate so demo satellite/geology AOIs overlap."""
+    best: tuple[float, float, float] | None = None
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        for row in csv.DictReader(handle):
+            try:
+                row_lat = float(row["latitude"])
+                row_lon = float(row["longitude"])
+            except (KeyError, TypeError, ValueError):
+                continue
+            # Longitude degrees shrink with latitude; this keeps the nearest-point
+            # choice geographically meaningful without requiring a geospatial package.
+            lon_scale = max(0.1, abs(__import__("math").cos(__import__("math").radians(latitude))))
+            distance_sq = (row_lat - latitude) ** 2 + ((row_lon - longitude) * lon_scale) ** 2
+            if best is None or distance_sq < best[0]:
+                best = (distance_sq, row_lat, row_lon)
+    if best is None:
+        raise ValueError(f"Synthetic geological context has no valid coordinates: {path}")
+    return best[1], best[2]
+
+
 def main() -> int:
     args = _parser().parse_args()
     settings = get_settings()
@@ -37,6 +59,15 @@ def main() -> int:
 
     if args.demo_geology:
         geology_path = synthetic_geology
+        if not geology_path.exists():
+            print(f"FAIL: synthetic geological context is unavailable: {geology_path}")
+            return 2
+        original_coordinates = (args.latitude, args.longitude)
+        args.latitude, args.longitude = _nearest_demo_coordinate(
+            geology_path,
+            args.latitude,
+            args.longitude,
+        )
 
     print("MANGAI live reserve inference smoke test")
     print("provider: Microsoft Planetary Computer")
@@ -53,6 +84,15 @@ def main() -> int:
     if args.demo_geology:
         print("WARNING: DEMO MIXED-DATA MODE — real satellite + synthetic geological context.")
         print(f"synthetic geology: {synthetic_geology}")
+        print(
+            "demo AOI aligned to nearest synthetic geology coordinate: "
+            f"{args.latitude}, {args.longitude}"
+        )
+        if original_coordinates != (args.latitude, args.longitude):
+            print(
+                "note: requested satellite coordinates were "
+                f"{original_coordinates[0]}, {original_coordinates[1]}"
+            )
     elif not raw_geology.exists():
         print("INFO: operator-supplied data/raw/geological.csv is absent.")
         print("INFO: running the smoke test requires --demo-geology for the repository demo dataset.")
