@@ -15,7 +15,7 @@ from ml.common.external_contracts import validate_external_batch
 from ml.common.provenance import DataBatch
 
 
-# Small bounded AOI around the requested mine/site coordinate.  This keeps
+# Small bounded AOI around the requested mine/site coordinate. This keeps
 # Planetary Computer COG reads fast while covering the normal 500 m geology
 # matching radius with margin.
 LIVE_AOI_HALF_DEG = 0.02
@@ -116,7 +116,7 @@ class LiveSatelliteFusionPipeline:
                 thermal_scenes,
                 max_days=max_temporal_days,
             )
-            fused = self.thermal_fusion.fuse(optical, matched)
+            fused = self.thermal_fusion.fuse(optical, matched, aoi_bbox=aoi_bbox)
             errors = validate_external_batch(fused)
             if errors:
                 raise DataUnavailableError(
