@@ -25,7 +25,7 @@ from backend.app.schemas import (
     ReserveSummaryResponse,
     WeatherResponse,
 )
-from backend.app.schemas.live_reserve import LiveSatelliteReserveRequest
+from backend.app.schemas.live_reserve import LiveSatelliteReserveRequest, LiveSatelliteReserveResponse
 from backend.app.services.data_quality import DataQualityService
 from backend.app.services.live_reserve import LiveSatelliteReserveService
 from backend.app.services.model_registry import ModelRegistryService
@@ -154,7 +154,7 @@ def predict_reserve(payload: ReservePredictionRequest) -> dict:
     return ReserveService().predict(payload.model_dump())
 
 
-@router.post("/predictions/reserve/live-satellite", tags=["prediction", "satellite"])
+@router.post("/predictions/reserve/live-satellite", response_model=LiveSatelliteReserveResponse, tags=["prediction", "satellite"])
 def predict_live_satellite_reserve(payload: LiveSatelliteReserveRequest) -> dict:
     return LiveSatelliteReserveService().predict(**payload.model_dump())
 
