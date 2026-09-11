@@ -29,19 +29,20 @@ def main() -> int:
     start = args.start or (datetime.fromisoformat(end).date() - timedelta(days=30)).isoformat()
 
     print("MANGAI live Sentinel-2 pixel smoke test")
-    print(f"provider: Microsoft Planetary Computer")
+    print("provider: Microsoft Planetary Computer")
     print(f"window: {start} -> {end}")
     print(f"coordinates: {latitude}, {longitude}")
     print(f"cloud threshold: {settings.sentinel2_max_cloud_cover}%")
 
     try:
         provider = PlanetaryComputerSentinel2Provider()
-        scenes = provider.discover(
-            latitude=latitude,
-            longitude=longitude,
-            start_date=start,
-            end_date=end,
+        batch = provider.search_scenes(
+            site_id=args.site_id,
+            start=start,
+            end=end,
+            limit=3,
         )
+        scenes = batch.records
         if not scenes:
             print("FAIL: no Sentinel-2 scenes matched the requested window and cloud threshold.")
             return 1
@@ -49,17 +50,17 @@ def main() -> int:
         scene = scenes[0]
         print(f"PASS: discovered {len(scenes)} scene(s); selecting {scene.get('scene_id')}")
         assets = scene.get("assets") or {}
-        print(f"spectral assets: {sum(1 for key in ('B02','B03','B04','B08','B11','B12') if key in assets)} / 6")
-        print(f"SCL asset: {'yes' if any(key in assets for key in ('SCL_20M', 'SCL')) else 'no'}")
+        print(f"spectral assets: {sum(1 for key in ('B02', 'B03', 'B04', 'B08', 'B11', 'B12') if key in assets)} / 6")
+        print(f"SCL asset: {'yes' if 'SCL' in assets else 'no'}")
 
-        batch = Sentinel2PixelService().ingest_scene(scene, args.site_id)
-        print(f"PASS: extracted {len(batch.records)} valid satellite pixel(s)")
-        print(f"quality_score: {batch.provenance.quality_score}")
-        print(f"dataset: {batch.provenance.dataset}")
-        print(f"mode: {batch.provenance.mode}")
-        print(f"source: {batch.provenance.source_name}")
-        if batch.records:
-            sample = batch.records[0]
+        pixel_batch = Sentinel2PixelService().ingest_scene(scene, args.site_id)
+        print(f"PASS: extracted {len(pixel_batch.records)} valid satellite pixel(s)")
+        print(f"quality_score: {pixel_batch.provenance.quality_score}")
+        print(f"dataset: {pixel_batch.provenance.dataset}")
+        print(f"mode: {pixel_batch.provenance.mode}")
+        print(f"source: {pixel_batch.provenance.source_name}")
+        if pixel_batch.records:
+            sample = pixel_batch.records[0]
             print("sample feature keys:", ", ".join(sorted(sample.keys())))
             print(f"sample WGS84: lat={sample.get('latitude')}, lon={sample.get('longitude')}")
             print(f"sample NDVI: {sample.get('ndvi')}")
