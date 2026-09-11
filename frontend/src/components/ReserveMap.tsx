@@ -4,6 +4,7 @@ import { ProspectivityCell } from "../types/api";
 import { percent } from "../utils/format";
 import "maplibre-gl/dist/maplibre-gl.css";
 import "../reserve-intelligence.css";
+import "../reserve-intelligence-details.css";
 
 type LayerKey = "probability" | "grade" | "thickness" | "confidence";
 
