@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from typing import Any, Protocol
 
 from backend.app.adapters.satellite.alignment import parse_scene_datetime
@@ -54,7 +55,7 @@ class LiveSatelliteFusionPipeline:
 
     def __init__(self, sentinel_provider=None, landsat_provider=None, optical_service=None, thermal_fusion=None) -> None:
         self.sentinel_provider = sentinel_provider or PlanetaryComputerSentinel2Provider()
-        self.landsat_provider = landsat_provider or PlanetaryComputerLandsatSurfaceTemperatureProvider()
+        self.landsat_provider = landsat_provider or PlanetaryComputerLandsatSurfaceTemperatureProvider(max_items=50)
         self.optical_service = optical_service or Sentinel2PixelService()
         self.thermal_fusion = thermal_fusion or LandsatSurfaceTemperatureFusion()
 
@@ -70,14 +71,26 @@ class LiveSatelliteFusionPipeline:
         if not sentinel_batch.records:
             raise DataUnavailableError("No Sentinel-2 scenes are available for fusion.")
 
-        thermal_scenes = self.landsat_provider.discover(latitude=latitude, longitude=longitude, start_date=start, end_date=end)
+        # Temporal matching is allowed to reach outside the user-requested Sentinel
+        # window. Without this expansion, a Sentinel scene near the start/end of the
+        # window could never match a valid Landsat scene that is within max_temporal_days.
+        start_date = parse_scene_datetime(f"{start}T00:00:00Z").date() - timedelta(days=max_temporal_days)
+        end_date = parse_scene_datetime(f"{end}T23:59:59Z").date() + timedelta(days=max_temporal_days)
+        thermal_scenes = self.landsat_provider.discover(
+            latitude=latitude,
+            longitude=longitude,
+            start_date=start_date.isoformat(),
+            end_date=end_date.isoformat(),
+        )
         if not thermal_scenes:
             raise DataUnavailableError("No Landsat ST scenes are available for fusion.")
 
         half_deg = LIVE_AOI_HALF_DEG
         aoi_bbox = (
-            max(-180.0, longitude - half_deg), max(-90.0, latitude - half_deg),
-            min(180.0, longitude + half_deg), min(90.0, latitude + half_deg),
+            max(-180.0, longitude - half_deg),
+            max(-90.0, latitude - half_deg),
+            min(180.0, longitude + half_deg),
+            min(90.0, latitude + half_deg),
         )
 
         fused_batches: list[DataBatch] = []
@@ -122,7 +135,10 @@ class LiveSatelliteFusionPipeline:
 
         return FusionRunResult(
             self._combine_batches(fused_batches),
-            len(sentinel_batch.records), len(fused_batches), len(thermal_scenes), tuple(distances),
+            len(sentinel_batch.records),
+            len(fused_batches),
+            len(thermal_scenes),
+            tuple(distances),
         )
 
     @staticmethod
@@ -150,12 +166,16 @@ class LiveSatelliteFusionPipeline:
         first = batches[0].provenance
         from ml.common.provenance import DataProvenance
         provenance = DataProvenance(
-            source_name=first.source_name, source_kind=first.source_kind, mode=first.mode,
+            source_name=first.source_name,
+            source_kind=first.source_kind,
+            mode=first.mode,
             dataset=first.dataset,
             acquired_at=max(batch.provenance.acquired_at or "" for batch in batches),
             ingested_at=max(batch.provenance.ingested_at or "" for batch in batches),
-            source_version=first.source_version, source_uri=first.source_uri,
-            checksum=first.checksum, license_note=first.license_note,
+            source_version=first.source_version,
+            source_uri=first.source_uri,
+            checksum=first.checksum,
+            license_note=first.license_note,
             quality_score=sum(batch.provenance.quality_score for batch in batches) / len(batches),
             row_count=len(records),
         )
