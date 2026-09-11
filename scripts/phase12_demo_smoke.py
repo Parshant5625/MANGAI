@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import sys
 from urllib.error import URLError
 from urllib.request import Request, urlopen
 
