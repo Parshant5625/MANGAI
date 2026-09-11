@@ -37,9 +37,11 @@ class Settings(BaseSettings):
     sentinel2_bbox_delta: float = Field(default=0.05, validation_alias="SENTINEL2_BBOX_DELTA")
     sentinel2_timeout_seconds: float = Field(default=20.0, validation_alias="SENTINEL2_TIMEOUT_SECONDS")
 
-    # Retained as a candidate-search ranking/metadata threshold. Final Landsat
-    # pixel acceptance is governed by QA_PIXEL and ST_QA in thermal fusion.
+    # Scene discovery threshold only. Pixel-level acceptance is governed by QA_PIXEL and ST_QA.
     landsat_max_cloud_cover: float = Field(default=80.0, validation_alias="LANDSAT_MAX_CLOUD_COVER")
+    # QA_RADSAT is supported, but remote QA_RADSAT COGs can be disproportionately slow to
+    # range-read on some public assets. Keep it opt-in until a provider-specific fast path exists.
+    landsat_use_qa_radsat: bool = Field(default=False, validation_alias="LANDSAT_USE_QA_RADSAT")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
