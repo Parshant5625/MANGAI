@@ -62,13 +62,13 @@ class PlanetaryComputerSentinel2Provider(_PlanetaryComputerBase):
         self.lat = settings.sentinel2_latitude
         self.lon = settings.sentinel2_longitude
         self.bbox_delta = settings.sentinel2_bbox_delta
+
+    def search_scenes(self, site_id: str, start: str, end: str, limit: int = 10) -> DataBatch:
         if self.lat is None or self.lon is None:
             raise DataUnavailableError(
                 "Live Sentinel-2 requires SENTINEL2_LATITUDE and SENTINEL2_LONGITUDE.",
                 details={"provider": "microsoft-planetary-computer", "configuration": "missing_coordinates"},
             )
-
-    def search_scenes(self, site_id: str, start: str, end: str, limit: int = 10) -> DataBatch:
         if not start.strip() or not end.strip():
             raise DataUnavailableError("Sentinel-2 search requires a start and end date.")
         if start > end:
@@ -121,47 +121,36 @@ class PlanetaryComputerSentinel2Provider(_PlanetaryComputerBase):
                 }
             )
 
-        if not records:
-            raise DataUnavailableError(
-                "No Sentinel-2 L2A scenes matched the requested window and cloud threshold.",
-                details={
-                    "provider": "microsoft-planetary-computer",
-                    "collection": self.collection,
-                    "max_cloud_cover": self.max_cloud_cover,
-                },
-            )
-
         acquired_at = datetime.now(UTC).isoformat()
-        checksum = hashlib.sha256(json.dumps(records, sort_keys=True).encode("utf-8")).hexdigest()
-        mean_cloud = sum(float(record["cloud_cover_pct"] or 0) for record in records) / len(records)
+        payload = json.dumps(records, sort_keys=True, default=str).encode("utf-8")
+        checksum = hashlib.sha256(payload).hexdigest()
         provenance = DataProvenance(
-            source_name="Microsoft Planetary Computer Sentinel-2 L2A",
+            source_name="Copernicus Sentinel-2 L2A via Microsoft Planetary Computer",
             source_kind="satellite",
             mode="live",
-            dataset="satellite_features",
+            dataset="sentinel2_scenes",
             acquired_at=acquired_at,
             ingested_at=acquired_at,
             source_version=self.collection,
-            source_uri=f"{self.stac_url}/search",
+            source_uri=self.stac_url,
             checksum=checksum,
-            license_note="Sentinel-2 data are provided by Copernicus/ESA and hosted by Microsoft Planetary Computer; verify applicable terms for deployment.",
-            quality_score=max(0.0, min(1.0, 1.0 - mean_cloud / 100.0)),
+            license_note="Sentinel-2 L2A public data accessed through Microsoft Planetary Computer; verify source terms for production deployment.",
+            quality_score=1.0 if records else 0.0,
             row_count=len(records),
         )
         return DataBatch(records=records, provenance=provenance)
 
 
 class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase):
-    """Discover signed Landsat Collection 2 Level-2 ST assets from Planetary Computer."""
+    """Discover Landsat Collection 2 Level-2 surface-temperature assets."""
 
-    def __init__(self, max_cloud_cover: float | None = None, max_items: int = 20) -> None:
+    def __init__(self, *, max_items: int = 50, max_cloud_cover: float | None = None) -> None:
         super().__init__()
         settings = get_settings()
-        configured_cloud = settings.landsat_max_cloud_cover if max_cloud_cover is None else max_cloud_cover
-        if not 0 <= configured_cloud <= 100:
-            raise DataUnavailableError("Landsat cloud threshold must be between 0 and 100.")
-        self.max_cloud_cover = configured_cloud
-        self.max_items = max(1, max_items)
+        self.collection = settings.landsat_collection or LANDSAT_COLLECTION
+        self.max_items = max(1, min(max_items, 100))
+        self.max_cloud_cover = settings.landsat_max_cloud_cover if max_cloud_cover is None else max_cloud_cover
+        self.bbox_delta = settings.sentinel2_bbox_delta * 2.5
 
     def discover(
         self,
@@ -170,18 +159,17 @@ class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase)
         start_date: str | None = None,
         end_date: str | None = None,
     ) -> list[dict[str, Any]]:
-        if not -90 <= latitude <= 90 or not -180 <= longitude <= 180:
-            raise DataUnavailableError("Landsat coordinates are outside valid WGS84 bounds.")
-        end = end_date or datetime.now(UTC).date().isoformat()
-        start = start_date or end
-        if start > end:
-            raise DataUnavailableError("Landsat start_date must not be after end_date.")
-
-        delta = 0.05
-        bbox = [longitude - delta, latitude - delta, longitude + delta, latitude + delta]
+        start = start_date or "1900-01-01"
+        end = end_date or "2100-01-01"
+        bbox = [
+            longitude - self.bbox_delta,
+            latitude - self.bbox_delta,
+            longitude + self.bbox_delta,
+            latitude + self.bbox_delta,
+        ]
         try:
             search = self.catalog.search(
-                collections=[LANDSAT_COLLECTION],
+                collections=[self.collection],
                 bbox=bbox,
                 datetime=f"{start}T00:00:00Z/{end}T23:59:59Z",
                 limit=self.max_items,
@@ -194,32 +182,23 @@ class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase)
                 details={"provider": "microsoft-planetary-computer", "reason": str(exc)},
             ) from exc
 
-        scenes: list[dict[str, Any]] = []
+        records: list[dict[str, Any]] = []
         for item in items:
-            assets = self._signed_assets(item)
-            st_asset = assets.get("lwir11") or assets.get("lwir")
-            if not st_asset:
-                continue
             cloud = item.properties.get("eo:cloud_cover")
-            qa_pixel = assets.get("qa_pixel") or assets.get("QA_PIXEL")
-            qa_radsat = assets.get("qa_radsat") or assets.get("QA_RADSAT")
-            st_qa = assets.get("st_qa") or assets.get("ST_QA")
-            scenes.append(
+            if cloud is not None and float(cloud) > self.max_cloud_cover:
+                continue
+            assets = self._signed_assets(item)
+            thermal = assets.get("lwir11") or assets.get("lwir") or assets.get("ST_B10")
+            if not thermal:
+                continue
+            records.append(
                 {
                     "scene_id": item.id,
                     "datetime": item.datetime.isoformat() if item.datetime else item.properties.get("datetime"),
-                    "collection": LANDSAT_COLLECTION,
-                    "cloud_cover": float(cloud) if cloud is not None else None,
-                    "cloud_threshold_pct": self.max_cloud_cover,
-                    "cloud_threshold_passed": cloud is None or float(cloud) <= self.max_cloud_cover,
-                    "assets": {
-                        "surface_temperature": st_asset,
-                        "qa_pixel": qa_pixel,
-                        "qa_radsat": qa_radsat,
-                        "st_qa": st_qa,
-                    },
+                    "cloud_cover_pct": cloud,
+                    "assets": {**assets, "surface_temperature": thermal},
                     "source_uri": item.self_href or self.stac_url,
                     "provider": "microsoft-planetary-computer",
                 }
             )
-        return scenes
+        return records
