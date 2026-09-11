@@ -55,7 +55,8 @@ class LiveSatelliteReserveService:
         if frame["sample_id"].astype(str).duplicated().any():
             raise DataUnavailableError("Geological context contains duplicate sample_id values.")
         checksum = hashlib.sha256(path.read_bytes()).hexdigest()
-        is_synthetic = "data" + str(Path.sep) + "synthetic" + str(Path.sep) in str(path).lower()
+        path_parts = {part.lower() for part in path.parts}
+        is_synthetic = "synthetic" in path_parts and "data" in path_parts
         provenance = DataProvenance(
             source_name="synthetic_geological_demo" if is_synthetic else "live_geological_file",
             source_kind="synthetic" if is_synthetic else "local_file",
@@ -227,7 +228,7 @@ class LiveSatelliteReserveService:
         if ensemble_path is not None:
             scored = predict_ensemble_frame(frame, model_dir)
             if scored is None:
-                raise ModelUnavailableError("Reserve ensemble artifact could not be loaded.", details={"model": "prospectivity_ensemble"})
+                raise ModelUnavailableError("Reserve ensemble artifact could not be loaded.", details={"model": "reserve_prospectivity_ensemble"})
         else:
             from ml.reserve.inference import predict_prospectivity_frame
             scored = predict_prospectivity_frame(frame, model_dir)
