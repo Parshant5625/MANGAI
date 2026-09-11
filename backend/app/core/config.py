@@ -37,9 +37,8 @@ class Settings(BaseSettings):
     sentinel2_bbox_delta: float = Field(default=0.05, validation_alias="SENTINEL2_BBOX_DELTA")
     sentinel2_timeout_seconds: float = Field(default=20.0, validation_alias="SENTINEL2_TIMEOUT_SECONDS")
 
-    # Landsat is used as the thermal companion to Sentinel-2. A relatively
-    # permissive scene-level threshold is intentional until pixel-level QA_PIXEL
-    # and ST_QA masking is applied during thermal extraction.
+    # Retained as a candidate-search ranking/metadata threshold. Final Landsat
+    # pixel acceptance is governed by QA_PIXEL and ST_QA in thermal fusion.
     landsat_max_cloud_cover: float = Field(default=80.0, validation_alias="LANDSAT_MAX_CLOUD_COVER")
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
