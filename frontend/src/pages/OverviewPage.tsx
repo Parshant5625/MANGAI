@@ -12,6 +12,7 @@ import {
   Wrench
 } from "lucide-react";
 import { DriverList, MetricCard, PanelHeader } from "../components/ui";
+import { OverviewReserveIntelligence } from "../components/OverviewReserveIntelligence";
 import {
   DataQualityResponse,
   EquipmentResponse,
@@ -21,19 +22,7 @@ import {
 } from "../types/api";
 import { compactNumber, number, percent, signedNumber } from "../utils/format";
 
-export function OverviewPage({
-  overview,
-  production,
-  recommendations,
-  equipment,
-  quality
-}: {
-  overview: OverviewResponse;
-  production: ProductionForecastResponse;
-  recommendations: RecommendationResponse;
-  equipment: EquipmentResponse;
-  quality: DataQualityResponse;
-}) {
+export function OverviewPage({ overview, production, recommendations, equipment, quality }: { overview: OverviewResponse; production: ProductionForecastResponse; recommendations: RecommendationResponse; equipment: EquipmentResponse; quality: DataQualityResponse }) {
   const healthScore = quality.overall_score;
   const topRecommendation = recommendations.recommendations[0];
   const riskLevel = overview.shortfall_probability > 0.75 ? "CRITICAL" : overview.shortfall_probability > 0.65 ? "HIGH" : overview.shortfall_probability > 0.45 ? "MEDIUM" : "LOW";
@@ -74,6 +63,8 @@ export function OverviewPage({
         <MetricCard icon={Database} label="Data quality" value={percent(healthScore)} tone={healthScore >= 0.85 ? "ok" : "risk"} />
       </section>
 
+      <OverviewReserveIntelligence />
+
       <section className="panel wide chart-panel overview-forecast-panel">
         <PanelHeader icon={Activity} title="Production Forecast" meta={`${riskLevel} RISK`} />
         <div className="split">
@@ -96,9 +87,7 @@ export function OverviewPage({
           <div className="pulse-ring"><strong>{percent(equipment.fleet_availability)}</strong><span>availability</span></div>
           <div className="pulse-details">
             <MetricLine label="Utilization" value={percent(equipment.fleet_utilization)} />
-            {equipment.items.slice(0, 3).map((item) => (
-              <MetricLine key={item.equipment_id} label={item.equipment_id} value={`${number(item.downtime_7d_hours, 1)} h`} />
-            ))}
+            {equipment.items.slice(0, 3).map((item) => <MetricLine key={item.equipment_id} label={item.equipment_id} value={`${number(item.downtime_7d_hours, 1)} h`} />)}
           </div>
         </div>
       </section>
@@ -108,8 +97,7 @@ export function OverviewPage({
         <div className="stack">
           {recommendations.recommendations.slice(0, 3).map((item, index) => (
             <div className="action-row action-row-animated" key={item.id} style={{ animationDelay: `${index * 90}ms` }}>
-              <span className={`priority ${item.priority.toLowerCase()}`}>{item.priority}</span>
-              <p>{item.title}</p>
+              <span className={`priority ${item.priority.toLowerCase()}`}>{item.priority}</span><p>{item.title}</p>
             </div>
           ))}
         </div>
@@ -119,14 +107,8 @@ export function OverviewPage({
       <section className="panel">
         <PanelHeader icon={Database} title="Data & Model Health" meta={overview.model_health} />
         <div className="health-grid">
-          <div className="health-ring" style={{ "--score": `${healthScore * 360}deg` } as CSSProperties}>
-            <strong>{percent(healthScore)}</strong><span>data quality</span>
-          </div>
-          <div className="health-copy">
-            <MetricLine label="Model status" value={overview.model_health} />
-            <MetricLine label="Data mode" value={overview.synthetic_data ? "DEMO" : "LIVE"} />
-            <MetricLine label="Recommendations" value={number(overview.recommendation_count)} />
-          </div>
+          <div className="health-ring" style={{ "--score": `${healthScore * 360}deg` } as CSSProperties}><strong>{percent(healthScore)}</strong><span>data quality</span></div>
+          <div className="health-copy"><MetricLine label="Model status" value={overview.model_health} /><MetricLine label="Data mode" value={overview.synthetic_data ? "DEMO" : "LIVE"} /><MetricLine label="Recommendations" value={number(overview.recommendation_count)} /></div>
         </div>
       </section>
 
@@ -149,15 +131,5 @@ export function OverviewPage({
   );
 }
 
-function MetricLine({ label, value }: { label: string; value: string }) {
-  return <div className="metric-line"><span>{label}</span><strong>{value}</strong></div>;
-}
-
-function LoopStep({ number: stepNumber, title, text, icon: Icon }: { number: string; title: string; text: string; icon: typeof Map }) {
-  return (
-    <div className="loop-step">
-      <div className="loop-icon"><Icon size={19} /><span>{stepNumber}</span></div>
-      <div><strong>{title}</strong><p>{text}</p></div>
-    </div>
-  );
-}
+function MetricLine({ label, value }: { label: string; value: string }) { return <div className="metric-line"><span>{label}</span><strong>{value}</strong></div>; }
+function LoopStep({ number: stepNumber, title, text, icon: Icon }: { number: string; title: string; text: string; icon: typeof Map }) { return <div className="loop-step"><div className="loop-icon"><Icon size={19} /><span>{stepNumber}</span></div><div><strong>{title}</strong><p>{text}</p></div></div>; }
