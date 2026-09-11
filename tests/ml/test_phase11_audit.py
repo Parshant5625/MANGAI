@@ -10,7 +10,7 @@ def test_audit_events_are_chained_and_do_not_store_raw_inputs(tmp_path: Path):
         "reserve_prediction",
         {"model_version": "reserve-2026.09.004", "site_id": "demo-moil-site", "record_count": 1},
     )
-    second = append_audit_event(
+    append_audit_event(
         audit_dir,
         "production_prediction",
         {"model_version": "production-7d-trained", "site_id": "demo-moil-site", "record_count": 1},
