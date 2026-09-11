@@ -5,7 +5,7 @@ from datetime import timedelta
 from typing import Any, Protocol
 
 from backend.app.adapters.satellite.alignment import parse_scene_datetime
-from backend.app.adapters.satellite.landsat_st_fusion import LandsatSurfaceTemperatureFusion
+from backend.app.adapters.satellite.landsat_st_resilient import ResilientLandsatSurfaceTemperatureFusion
 from backend.app.adapters.satellite.planetary_computer import (
     PlanetaryComputerLandsatSurfaceTemperatureProvider,
     PlanetaryComputerSentinel2Provider,
@@ -51,13 +51,13 @@ class FusionRunResult:
 
 
 class LiveSatelliteFusionPipeline:
-    """Fail-closed Sentinel-2 -> Landsat ST fusion using Planetary Computer."""
+    """Sentinel-2 -> Landsat ST fusion using Planetary Computer."""
 
     def __init__(self, sentinel_provider=None, landsat_provider=None, optical_service=None, thermal_fusion=None) -> None:
         self.sentinel_provider = sentinel_provider or PlanetaryComputerSentinel2Provider()
         self.landsat_provider = landsat_provider or PlanetaryComputerLandsatSurfaceTemperatureProvider(max_items=50)
         self.optical_service = optical_service or Sentinel2PixelService()
-        self.thermal_fusion = thermal_fusion or LandsatSurfaceTemperatureFusion()
+        self.thermal_fusion = thermal_fusion or ResilientLandsatSurfaceTemperatureFusion()
 
     def run(self, *, site_id: str, start: str, end: str, latitude: float, longitude: float, max_temporal_days: int = 16, limit: int = 5) -> FusionRunResult:
         if not site_id.strip():
@@ -67,9 +67,6 @@ class LiveSatelliteFusionPipeline:
         if max_temporal_days < 0:
             raise DataUnavailableError("Maximum temporal matching window must be non-negative.")
 
-        # Runtime coordinates are authoritative for the requested fusion AOI.
-        # This also keeps live provider configuration optional for API callers
-        # that submit site coordinates in the request body.
         if isinstance(self.sentinel_provider, PlanetaryComputerSentinel2Provider):
             self.sentinel_provider.lat = float(latitude)
             self.sentinel_provider.lon = float(longitude)
