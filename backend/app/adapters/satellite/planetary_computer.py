@@ -63,11 +63,26 @@ class PlanetaryComputerSentinel2Provider(_PlanetaryComputerBase):
         self.lon = settings.sentinel2_longitude
         self.bbox_delta = settings.sentinel2_bbox_delta
 
-    def search_scenes(self, site_id: str, start: str, end: str, limit: int = 10) -> DataBatch:
-        if self.lat is None or self.lon is None:
+    def search_scenes(
+        self,
+        site_id: str,
+        start: str,
+        end: str,
+        limit: int = 10,
+        *,
+        latitude: float | None = None,
+        longitude: float | None = None,
+    ) -> DataBatch:
+        search_lat = self.lat if latitude is None else latitude
+        search_lon = self.lon if longitude is None else longitude
+        if search_lat is None or search_lon is None:
             raise DataUnavailableError(
-                "Live Sentinel-2 requires SENTINEL2_LATITUDE and SENTINEL2_LONGITUDE.",
-                details={"provider": "microsoft-planetary-computer", "configuration": "missing_coordinates"},
+                "Live Sentinel-2 requires coordinates.",
+                details={
+                    "provider": "microsoft-planetary-computer",
+                    "configuration": "missing_coordinates",
+                    "required": ["latitude", "longitude"],
+                },
             )
         if not start.strip() or not end.strip():
             raise DataUnavailableError("Sentinel-2 search requires a start and end date.")
@@ -75,10 +90,10 @@ class PlanetaryComputerSentinel2Provider(_PlanetaryComputerBase):
             raise DataUnavailableError("Sentinel-2 end date must not precede start date.")
 
         bbox = [
-            self.lon - self.bbox_delta,
-            self.lat - self.bbox_delta,
-            self.lon + self.bbox_delta,
-            self.lat + self.bbox_delta,
+            search_lon - self.bbox_delta,
+            search_lat - self.bbox_delta,
+            search_lon + self.bbox_delta,
+            search_lat + self.bbox_delta,
         ]
         try:
             search = self.catalog.search(
@@ -120,13 +135,11 @@ class PlanetaryComputerSentinel2Provider(_PlanetaryComputerBase):
                     "provider": "microsoft-planetary-computer",
                 }
             )
-
         acquired_at = datetime.now(UTC).isoformat()
-        payload = json.dumps(records, sort_keys=True, default=str).encode("utf-8")
-        checksum = hashlib.sha256(payload).hexdigest()
+        checksum = hashlib.sha256(json.dumps(records, sort_keys=True, default=str).encode()).hexdigest()
         provenance = DataProvenance(
             source_name="Copernicus Sentinel-2 L2A via Microsoft Planetary Computer",
-            source_kind="satellite",
+            source_kind="remote_api",
             mode="live",
             dataset="sentinel2_scenes",
             acquired_at=acquired_at,
@@ -147,7 +160,7 @@ class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase)
     def __init__(self, *, max_items: int = 50, max_cloud_cover: float | None = None) -> None:
         super().__init__()
         settings = get_settings()
-        self.collection = settings.landsat_collection or LANDSAT_COLLECTION
+        self.collection = LANDSAT_COLLECTION
         self.max_items = max(1, min(max_items, 100))
         self.max_cloud_cover = settings.landsat_max_cloud_cover if max_cloud_cover is None else max_cloud_cover
         self.bbox_delta = settings.sentinel2_bbox_delta * 2.5
