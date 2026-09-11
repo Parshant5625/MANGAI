@@ -15,6 +15,12 @@ from ml.common.external_contracts import validate_external_batch
 from ml.common.provenance import DataBatch
 
 
+# Small bounded AOI around the requested mine/site coordinate.  This keeps
+# Planetary Computer COG reads fast while covering the normal 500 m geology
+# matching radius with margin.
+LIVE_AOI_HALF_DEG = 0.02
+
+
 class SentinelSceneProvider(Protocol):
     def search_scenes(self, site_id: str, start: str, end: str, limit: int = 10) -> DataBatch: ...
 
@@ -93,10 +99,18 @@ class LiveSatelliteFusionPipeline:
         if not thermal_scenes:
             raise DataUnavailableError("No Landsat ST scenes are available for fusion.")
 
+        half_deg = LIVE_AOI_HALF_DEG
+        aoi_bbox = (
+            max(-180.0, longitude - half_deg),
+            max(-90.0, latitude - half_deg),
+            min(180.0, longitude + half_deg),
+            min(90.0, latitude + half_deg),
+        )
+
         fused_batches: list[DataBatch] = []
         distances: list[float] = []
         for scene in sentinel_batch.records:
-            optical = self.optical_service.ingest_scene(scene, site_id)
+            optical = self.optical_service.ingest_scene(scene, site_id, aoi_bbox=aoi_bbox)
             matched = select_temporally_matched_scene(
                 scene.get("datetime"),
                 thermal_scenes,
