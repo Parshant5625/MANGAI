@@ -140,7 +140,13 @@ class PlanetaryComputerSentinel2Provider(_PlanetaryComputerBase):
 
 
 class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase):
-    """Discover Landsat Collection 2 Level-2 surface-temperature assets."""
+    """Discover Landsat Collection 2 Level-2 surface-temperature assets.
+
+    Scene-level cloud cover is retained as metadata rather than used as a hard
+    acceptance gate. Thermal usability must be decided from pixel-level QA
+    (QA_PIXEL/ST_QA/QA_RADSAT) during fusion because a cloudy scene can still
+    contain valid thermal pixels inside the requested AOI.
+    """
 
     def __init__(self, *, max_items: int = 50, max_cloud_cover: float | None = None) -> None:
         super().__init__()
@@ -183,8 +189,6 @@ class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase)
         records: list[dict[str, Any]] = []
         for item in items:
             cloud = item.properties.get("eo:cloud_cover")
-            if cloud is not None and float(cloud) > self.max_cloud_cover:
-                continue
             assets = self._signed_assets(item)
             thermal = assets.get("lwir11") or assets.get("lwir") or assets.get("ST_B10")
             if not thermal:
