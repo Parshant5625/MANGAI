@@ -19,6 +19,7 @@ from backend.app.schemas.api import (
     ReserveSummaryResponse,
     WeatherResponse,
 )
+from backend.app.schemas.monitoring import ModelMonitoringResponse
 from backend.app.schemas.operations import OperationsSummaryResponse
 
 __all__ = [
@@ -28,6 +29,7 @@ __all__ = [
     "ExtrapolationOut",
     "GridCell",
     "ModelComparisonResponse",
+    "ModelMonitoringResponse",
     "ModelRegistryResponse",
     "OperationsSummaryResponse",
     "OverviewResponse",
