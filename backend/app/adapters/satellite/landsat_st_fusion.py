@@ -183,7 +183,19 @@ class LandsatSurfaceTemperatureFusion:
             uncertainty_k = np.full(len(values), np.nan, dtype=np.float32)
             qa_x, qa_y = transform(source_crs, qa_pixel_crs, xs, ys)
             stqa_x, stqa_y = transform(source_crs, st_qa_crs, xs, ys)
-            qa_stats = {"pixel_quality_rejected": 0, "st_uncertainty_rejected": 0, "radsat_rejected": 0, "qa_unreadable": 0}
+            qa_stats = {
+                "pixel_quality_rejected": 0,
+                "qa_pixel_fill": 0,
+                "qa_pixel_dilated_cloud": 0,
+                "qa_pixel_cirrus": 0,
+                "qa_pixel_cloud": 0,
+                "qa_pixel_cloud_shadow": 0,
+                "qa_pixel_snow": 0,
+                "qa_pixel_clear": 0,
+                "st_uncertainty_rejected": 0,
+                "radsat_rejected": 0,
+                "qa_unreadable": 0,
+            }
             for index, (qx, qy, ux, uy) in enumerate(zip(qa_x, qa_y, stqa_x, stqa_y)):
                 qrow, qcol = rasterio.transform.rowcol(qa_pixel_transform, qx, qy)
                 qvalue = self._value_from_array(qa_pixel, int(qrow), int(qcol))
@@ -191,10 +203,15 @@ class LandsatSurfaceTemperatureFusion:
                     qa_rejected[index] = True
                     qa_stats["qa_unreadable"] += 1
                     continue
-                if self._qa_pixel_is_bad(int(qvalue)):
+                qvalue_int = int(qvalue)
+                qa_flags = self._qa_pixel_flags(qvalue_int)
+                if qa_flags:
                     qa_rejected[index] = True
                     qa_stats["pixel_quality_rejected"] += 1
+                    for flag in qa_flags:
+                        qa_stats[f"qa_pixel_{flag}"] += 1
                     continue
+                qa_stats["qa_pixel_clear"] += 1
                 srow, scol = rasterio.transform.rowcol(st_qa_transform, ux, uy)
                 uncertainty_dn = self._value_from_array(st_qa, int(srow), int(scol))
                 if uncertainty_dn is None:
@@ -266,8 +283,25 @@ class LandsatSurfaceTemperatureFusion:
         return value if np.isfinite(value) else None
 
     @staticmethod
+    def _qa_pixel_flags(value: int) -> list[str]:
+        flags: list[str] = []
+        if value & QA_PIXEL_FILL:
+            flags.append("fill")
+        if value & QA_PIXEL_DILATED_CLOUD:
+            flags.append("dilated_cloud")
+        if value & QA_PIXEL_CIRRUS:
+            flags.append("cirrus")
+        if value & QA_PIXEL_CLOUD:
+            flags.append("cloud")
+        if value & QA_PIXEL_CLOUD_SHADOW:
+            flags.append("cloud_shadow")
+        if value & QA_PIXEL_SNOW:
+            flags.append("snow")
+        return flags
+
+    @staticmethod
     def _qa_pixel_is_bad(value: int) -> bool:
-        return (value & (QA_PIXEL_FILL | QA_PIXEL_DILATED_CLOUD | QA_PIXEL_CIRRUS | QA_PIXEL_CLOUD | QA_PIXEL_CLOUD_SHADOW | QA_PIXEL_SNOW)) != 0
+        return bool(LandsatSurfaceTemperatureFusion._qa_pixel_flags(value))
 
     @staticmethod
     def _qa_radsat_is_bad(value: int) -> bool:
