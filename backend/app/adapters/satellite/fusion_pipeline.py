@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from backend.app.adapters.satellite.alignment import select_temporally_matched_scene
+from backend.app.adapters.satellite.alignment import parse_scene_datetime
 from backend.app.adapters.satellite.landsat_st_fusion import LandsatSurfaceTemperatureFusion
 from backend.app.adapters.satellite.planetary_computer import (
     PlanetaryComputerLandsatSurfaceTemperatureProvider,
@@ -14,10 +14,6 @@ from backend.app.core.errors import DataUnavailableError
 from ml.common.external_contracts import validate_external_batch
 from ml.common.provenance import DataBatch
 
-
-# Small bounded AOI around the requested mine/site coordinate. This keeps
-# Planetary Computer COG reads fast while covering the normal 500 m geology
-# matching radius with margin.
 LIVE_AOI_HALF_DEG = 0.02
 
 
@@ -56,29 +52,13 @@ class FusionRunResult:
 class LiveSatelliteFusionPipeline:
     """Fail-closed Sentinel-2 -> Landsat ST fusion using Planetary Computer."""
 
-    def __init__(
-        self,
-        sentinel_provider: SentinelSceneProvider | None = None,
-        landsat_provider: LandsatSceneProvider | None = None,
-        optical_service: Sentinel2PixelService | None = None,
-        thermal_fusion: LandsatSurfaceTemperatureFusion | None = None,
-    ) -> None:
+    def __init__(self, sentinel_provider=None, landsat_provider=None, optical_service=None, thermal_fusion=None) -> None:
         self.sentinel_provider = sentinel_provider or PlanetaryComputerSentinel2Provider()
         self.landsat_provider = landsat_provider or PlanetaryComputerLandsatSurfaceTemperatureProvider()
         self.optical_service = optical_service or Sentinel2PixelService()
         self.thermal_fusion = thermal_fusion or LandsatSurfaceTemperatureFusion()
 
-    def run(
-        self,
-        *,
-        site_id: str,
-        start: str,
-        end: str,
-        latitude: float,
-        longitude: float,
-        max_temporal_days: int = 16,
-        limit: int = 5,
-    ) -> FusionRunResult:
+    def run(self, *, site_id: str, start: str, end: str, latitude: float, longitude: float, max_temporal_days: int = 16, limit: int = 5) -> FusionRunResult:
         if not site_id.strip():
             raise ValueError("site_id must not be empty")
         if start > end:
@@ -90,50 +70,77 @@ class LiveSatelliteFusionPipeline:
         if not sentinel_batch.records:
             raise DataUnavailableError("No Sentinel-2 scenes are available for fusion.")
 
-        thermal_scenes = self.landsat_provider.discover(
-            latitude=latitude,
-            longitude=longitude,
-            start_date=start,
-            end_date=end,
-        )
+        thermal_scenes = self.landsat_provider.discover(latitude=latitude, longitude=longitude, start_date=start, end_date=end)
         if not thermal_scenes:
             raise DataUnavailableError("No Landsat ST scenes are available for fusion.")
 
         half_deg = LIVE_AOI_HALF_DEG
         aoi_bbox = (
-            max(-180.0, longitude - half_deg),
-            max(-90.0, latitude - half_deg),
-            min(180.0, longitude + half_deg),
-            min(90.0, latitude + half_deg),
+            max(-180.0, longitude - half_deg), max(-90.0, latitude - half_deg),
+            min(180.0, longitude + half_deg), min(90.0, latitude + half_deg),
         )
 
         fused_batches: list[DataBatch] = []
         distances: list[float] = []
+        failures: list[dict[str, Any]] = []
+
         for scene in sentinel_batch.records:
             optical = self.optical_service.ingest_scene(scene, site_id, aoi_bbox=aoi_bbox)
-            matched = select_temporally_matched_scene(
-                scene.get("datetime"),
-                thermal_scenes,
-                max_days=max_temporal_days,
-            )
-            fused = self.thermal_fusion.fuse(optical, matched, aoi_bbox=aoi_bbox)
-            errors = validate_external_batch(fused)
-            if errors:
-                raise DataUnavailableError(
-                    "Fused satellite batch failed the canonical data contract.",
-                    details={"errors": errors, "scene_id": scene.get("scene_id")},
-                )
-            fused_batches.append(fused)
-            distances.append(float(matched["temporal_distance_days"]))
+            candidates = self._rank_thermal_candidates(scene.get("datetime"), thermal_scenes, max_days=max_temporal_days)
+            if not candidates:
+                failures.append({"sentinel_scene_id": scene.get("scene_id"), "error": "no temporal Landsat candidate"})
+                continue
 
-        combined = self._combine_batches(fused_batches)
+            selected_fused = None
+            selected_scene = None
+            candidate_failures = []
+            for candidate in candidates:
+                try:
+                    fused = self.thermal_fusion.fuse(optical, candidate, aoi_bbox=aoi_bbox)
+                    errors = validate_external_batch(fused)
+                    if errors:
+                        candidate_failures.append({"scene_id": candidate.get("scene_id"), "errors": errors})
+                        continue
+                    selected_fused = fused
+                    selected_scene = candidate
+                    break
+                except DataUnavailableError as exc:
+                    candidate_failures.append({"scene_id": candidate.get("scene_id"), "error": str(exc)})
+
+            if selected_fused is None or selected_scene is None:
+                failures.append({"sentinel_scene_id": scene.get("scene_id"), "candidate_failures": candidate_failures})
+                continue
+
+            fused_batches.append(selected_fused)
+            distances.append(float(selected_scene["temporal_distance_days"]))
+
+        if not fused_batches:
+            raise DataUnavailableError(
+                "No Sentinel-2 scene could be thermally fused with valid Landsat ST pixels.",
+                details={"failures": failures},
+            )
+
         return FusionRunResult(
-            combined,
-            len(sentinel_batch.records),
-            len(fused_batches),
-            len(thermal_scenes),
-            tuple(distances),
+            self._combine_batches(fused_batches),
+            len(sentinel_batch.records), len(fused_batches), len(thermal_scenes), tuple(distances),
         )
+
+    @staticmethod
+    def _rank_thermal_candidates(reference_datetime: Any, scenes: list[dict[str, Any]], *, max_days: int) -> list[dict[str, Any]]:
+        reference = parse_scene_datetime(reference_datetime)
+        candidates = []
+        for scene in scenes:
+            try:
+                scene_time = parse_scene_datetime(scene.get("datetime"))
+            except DataUnavailableError:
+                continue
+            distance_days = abs((scene_time - reference).total_seconds()) / 86400.0
+            if distance_days <= max_days:
+                selected = dict(scene)
+                selected["temporal_distance_days"] = distance_days
+                candidates.append((distance_days, selected))
+        candidates.sort(key=lambda item: (item[0], str(item[1].get("scene_id", ""))))
+        return [scene for _, scene in candidates]
 
     @staticmethod
     def _combine_batches(batches: list[DataBatch]) -> DataBatch:
@@ -142,18 +149,13 @@ class LiveSatelliteFusionPipeline:
         records = [record for batch in batches for record in batch.records]
         first = batches[0].provenance
         from ml.common.provenance import DataProvenance
-
         provenance = DataProvenance(
-            source_name=first.source_name,
-            source_kind=first.source_kind,
-            mode=first.mode,
+            source_name=first.source_name, source_kind=first.source_kind, mode=first.mode,
             dataset=first.dataset,
             acquired_at=max(batch.provenance.acquired_at or "" for batch in batches),
             ingested_at=max(batch.provenance.ingested_at or "" for batch in batches),
-            source_version=first.source_version,
-            source_uri=first.source_uri,
-            checksum=first.checksum,
-            license_note=first.license_note,
+            source_version=first.source_version, source_uri=first.source_uri,
+            checksum=first.checksum, license_note=first.license_note,
             quality_score=sum(batch.provenance.quality_score for batch in batches) / len(batches),
             row_count=len(records),
         )
