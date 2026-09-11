@@ -38,13 +38,7 @@ class LandsatSurfaceTemperatureFusion:
             raise DataUnavailableError("Landsat ST timeout must be positive.")
         self.timeout_seconds = timeout_seconds
 
-    def fuse(
-        self,
-        optical_batch: DataBatch,
-        thermal_scene: dict[str, Any],
-        *,
-        aoi_bbox: tuple[float, float, float, float] | None = None,
-    ) -> DataBatch:
+    def fuse(self, optical_batch: DataBatch, thermal_scene: dict[str, Any], *, aoi_bbox: tuple[float, float, float, float] | None = None) -> DataBatch:
         if optical_batch.provenance.mode != "live":
             raise DataUnavailableError("Thermal fusion is only enabled for live satellite batches.")
         if optical_batch.provenance.dataset != "satellite_features":
@@ -73,21 +67,11 @@ class LandsatSurfaceTemperatureFusion:
             ) from exc
 
         temperatures_c = thermal_values * ST_SCALE + ST_OFFSET_K - 273.15
-        valid = (
-            np.isfinite(thermal_values)
-            & (thermal_values > 0)
-            & (thermal_values <= 65535)
-            & np.isfinite(temperatures_c)
-            & (temperatures_c >= ST_MIN_C)
-            & (temperatures_c <= ST_MAX_C)
-        )
+        valid = np.isfinite(thermal_values) & (thermal_values > 0) & (thermal_values <= 65535) & np.isfinite(temperatures_c) & (temperatures_c >= ST_MIN_C) & (temperatures_c <= ST_MAX_C)
         if not valid.any():
             raise DataUnavailableError(
                 "Landsat ST scene has no valid thermal pixels at or near Sentinel locations.",
-                details={
-                    "neighbor_radius_pixels": THERMAL_NEIGHBOR_RADIUS_PIXELS,
-                    "temperature_range_c": [ST_MIN_C, ST_MAX_C],
-                },
+                details={"neighbor_radius_pixels": THERMAL_NEIGHBOR_RADIUS_PIXELS, "temperature_range_c": [ST_MIN_C, ST_MAX_C]},
             )
 
         records: list[dict[str, Any]] = []
@@ -106,17 +90,14 @@ class LandsatSurfaceTemperatureFusion:
         checksum = hashlib.sha256(json.dumps(records, sort_keys=True, default=str).encode("utf-8")).hexdigest()
         provenance = DataProvenance(
             source_name="Copernicus Sentinel-2 L2A + USGS Landsat Collection 2 ST via Microsoft Planetary Computer",
-            source_kind="satellite",
-            mode="live",
-            dataset="satellite_features",
+            source_kind="satellite", mode="live", dataset="satellite_features",
             acquired_at=thermal_scene.get("datetime") or optical_batch.provenance.acquired_at,
             ingested_at=ingested_at,
             source_version=f"{optical_batch.provenance.source_version or 'sentinel-2'}+{thermal_scene.get('collection', 'landsat-c2-l2')}",
             source_uri=str(thermal_scene.get("source_uri") or thermal_scene.get("scene_id") or "microsoft-planetary-computer"),
             checksum=checksum,
             license_note="Sentinel-2 and Landsat source terms must be verified for deployment; USGS Landsat Collection 2 is publicly accessible.",
-            quality_score=coverage,
-            row_count=len(records),
+            quality_score=coverage, row_count=len(records),
         )
         return DataBatch(records=records, provenance=provenance)
 
@@ -131,24 +112,11 @@ class LandsatSurfaceTemperatureFusion:
         target_x, target_y = transform(source_crs, dataset.crs, xs, ys)
         return self._sample_points_with_neighborhood(dataset, target_x, target_y)
 
-    def _sample_remote_cog(
-        self,
-        href: str,
-        optical_batch: DataBatch,
-        aoi_bbox: tuple[float, float, float, float],
-    ) -> np.ndarray:
-        # Planetary Computer serves signed Cloud-Optimized GeoTIFFs over HTTPS.
-        # Explicit GDAL /vsicurl settings make rasterio use HTTP range requests
-        # instead of attempting directory scans or whole-object downloads.
+    def _sample_remote_cog(self, href: str, optical_batch: DataBatch, aoi_bbox: tuple[float, float, float, float]) -> np.ndarray:
         env_options = {
-            "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR",
-            "CPL_VSIL_CURL_ALLOWED_EXTENSIONS": ".tif,.tiff",
-            "GDAL_HTTP_VERSION": "1.1",
-            "GDAL_HTTP_MULTIPLEX": "NO",
-            "GDAL_HTTP_MAX_RETRY": "4",
-            "GDAL_HTTP_RETRY_DELAY": "1",
-            "VSI_CACHE": "TRUE",
-            "VSI_CACHE_SIZE": "5000000",
+            "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR", "CPL_VSIL_CURL_ALLOWED_EXTENSIONS": ".tif,.tiff",
+            "GDAL_HTTP_VERSION": "1.1", "GDAL_HTTP_MULTIPLEX": "NO", "GDAL_HTTP_MAX_RETRY": "4",
+            "GDAL_HTTP_RETRY_DELAY": "1", "VSI_CACHE": "TRUE", "VSI_CACHE_SIZE": "5000000",
         }
         with rasterio.Env(**env_options):
             with rasterio.open(href, sharing=False) as dataset:
@@ -157,20 +125,15 @@ class LandsatSurfaceTemperatureFusion:
                 source_crs = optical_batch.records[0].get("crs")
                 if not source_crs:
                     raise DataUnavailableError("Sentinel-2 records are missing CRS information.")
-
-                left, bottom, right, top = transform_bounds(
-                    "EPSG:4326", dataset.crs, *aoi_bbox, densify_pts=21
-                )
+                left, bottom, right, top = transform_bounds("EPSG:4326", dataset.crs, *aoi_bbox, densify_pts=21)
                 requested = from_bounds(left, bottom, right, top, transform=dataset.transform)
-                expanded = Window(
-                    requested.col_off - THERMAL_NEIGHBOR_RADIUS_PIXELS,
-                    requested.row_off - THERMAL_NEIGHBOR_RADIUS_PIXELS,
-                    requested.width + 2 * THERMAL_NEIGHBOR_RADIUS_PIXELS,
-                    requested.height + 2 * THERMAL_NEIGHBOR_RADIUS_PIXELS,
-                )
+                expanded = Window(requested.col_off - THERMAL_NEIGHBOR_RADIUS_PIXELS, requested.row_off - THERMAL_NEIGHBOR_RADIUS_PIXELS, requested.width + 2 * THERMAL_NEIGHBOR_RADIUS_PIXELS, requested.height + 2 * THERMAL_NEIGHBOR_RADIUS_PIXELS)
                 window = expanded.intersection(Window(0, 0, dataset.width, dataset.height))
                 if window.width <= 0 or window.height <= 0:
                     raise DataUnavailableError("Landsat ST raster does not overlap the requested AOI.")
+                # Landsat ST_B10 is uint16. Asking masked-array machinery to fill
+                # masked uint16 cells with NaN raises TypeError. Keep the mask and
+                # convert the data to float explicitly instead.
                 array = dataset.read(1, window=window, masked=True)
                 xs = [float(record["x"]) for record in optical_batch.records]
                 ys = [float(record["y"]) for record in optical_batch.records]
@@ -186,13 +149,7 @@ class LandsatSurfaceTemperatureFusion:
         return values
 
     @staticmethod
-    def _sample_array_with_neighborhood(
-        dataset: Any,
-        array: Any,
-        window: Window,
-        xs: list[float],
-        ys: list[float],
-    ) -> np.ndarray:
+    def _sample_array_with_neighborhood(dataset: Any, array: Any, window: Window, xs: list[float], ys: list[float]) -> np.ndarray:
         values = np.full(len(xs), np.nan, dtype=np.float32)
         for index, (x, y) in enumerate(zip(xs, ys)):
             row, col = rasterio.transform.rowcol(dataset.transform, x, y)
@@ -206,34 +163,34 @@ class LandsatSurfaceTemperatureFusion:
     @staticmethod
     def _nearest_valid_from_dataset(dataset: Any, row: int, col: int) -> float:
         radius = THERMAL_NEIGHBOR_RADIUS_PIXELS
-        best_value = np.nan
         for radius_step in range(radius + 1):
-            r0 = max(0, row - radius_step)
-            r1 = min(dataset.height - 1, row + radius_step)
-            c0 = max(0, col - radius_step)
-            c1 = min(dataset.width - 1, col + radius_step)
+            r0, r1 = max(0, row - radius_step), min(dataset.height - 1, row + radius_step)
+            c0, c1 = max(0, col - radius_step), min(dataset.width - 1, col + radius_step)
             if r0 > r1 or c0 > c1:
                 continue
             block = dataset.read(1, window=Window(c0, r0, c1 - c0 + 1, r1 - r0 + 1), masked=True)
             candidate = LandsatSurfaceTemperatureFusion._nearest_valid_from_array(block, row - r0, col - c0)
             if candidate is not None:
-                best_value = candidate
-                break
-        return float(best_value) if np.isfinite(best_value) else np.nan
+                return float(candidate)
+        return np.nan
 
     @staticmethod
     def _nearest_valid_from_array(array: Any, center_row: int, center_col: int) -> float | None:
         if array.size == 0:
             return None
-        values = np.ma.filled(array, np.nan).astype(np.float32)
+        # Preserve the mask before converting uint16 data to float. np.ma.filled
+        # with np.nan is invalid for integer dtypes and was the observed failure.
+        mask = np.ma.getmaskarray(array)
+        values = np.asarray(array.data, dtype=np.float32)
+        values = np.where(mask, np.nan, values)
         height, width = values.shape
         best_value: float | None = None
         best_distance = float("inf")
-        for radius in range(min(THERMAL_NEIGHBOR_RADIUS_PIXELS, max(height, width))):
-            r0 = max(0, center_row - radius)
-            r1 = min(height - 1, center_row + radius)
-            c0 = max(0, center_col - radius)
-            c1 = min(width - 1, center_col + radius)
+        for radius in range(THERMAL_NEIGHBOR_RADIUS_PIXELS + 1):
+            r0, r1 = max(0, center_row - radius), min(height - 1, center_row + radius)
+            c0, c1 = max(0, center_col - radius), min(width - 1, center_col + radius)
+            if r0 > r1 or c0 > c1:
+                continue
             for row in range(r0, r1 + 1):
                 for col in range(c0, c1 + 1):
                     distance = max(abs(row - center_row), abs(col - center_col))
@@ -244,17 +201,13 @@ class LandsatSurfaceTemperatureFusion:
                         continue
                     temperature_c = value * ST_SCALE + ST_OFFSET_K - 273.15
                     if ST_MIN_C <= temperature_c <= ST_MAX_C:
-                        best_value = value
-                        best_distance = distance
+                        best_value, best_distance = value, distance
             if best_value is not None:
                 return best_value
         return None
 
     def _download(self, href: str) -> bytes:
-        request = Request(
-            href,
-            headers={"Accept": "image/tiff, application/octet-stream", "User-Agent": "MANGAI/1.0"},
-        )
+        request = Request(href, headers={"Accept": "image/tiff, application/octet-stream", "User-Agent": "MANGAI/1.0"})
         try:
             with urlopen(request, timeout=self.timeout_seconds) as response:
                 return response.read()
