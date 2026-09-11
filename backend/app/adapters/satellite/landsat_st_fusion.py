@@ -33,6 +33,8 @@ QA_PIXEL_CIRRUS = 1 << 2
 QA_PIXEL_CLOUD = 1 << 3
 QA_PIXEL_CLOUD_SHADOW = 1 << 4
 QA_PIXEL_SNOW = 1 << 5
+QA_RADSAT_DROPPED_PIXEL = 1 << 9
+QA_RADSAT_TERRAIN_OCCLUSION = 1 << 11
 
 
 class LandsatSurfaceTemperatureFusion:
@@ -129,17 +131,26 @@ class LandsatSurfaceTemperatureFusion:
             ).mean()
             quality *= float(uncertainty_quality)
         ingested_at = datetime.now(UTC).isoformat()
-        checksum = hashlib.sha256(json.dumps(records, sort_keys=True, default=str).encode("utf-8")).hexdigest()
+        checksum = hashlib.sha256(
+            json.dumps(records, sort_keys=True, default=str).encode("utf-8")
+        ).hexdigest()
         provenance = DataProvenance(
             source_name="Copernicus Sentinel-2 L2A + USGS Landsat Collection 2 ST via Microsoft Planetary Computer",
-            source_kind="satellite", mode="live", dataset="satellite_features",
+            source_kind="satellite",
+            mode="live",
+            dataset="satellite_features",
             acquired_at=thermal_scene.get("datetime") or optical_batch.provenance.acquired_at,
             ingested_at=ingested_at,
             source_version=f"{optical_batch.provenance.source_version or 'sentinel-2'}+{thermal_scene.get('collection', 'landsat-c2-l2')}",
-            source_uri=str(thermal_scene.get("source_uri") or thermal_scene.get("scene_id") or "microsoft-planetary-computer"),
+            source_uri=str(
+                thermal_scene.get("source_uri")
+                or thermal_scene.get("scene_id")
+                or "microsoft-planetary-computer"
+            ),
             checksum=checksum,
             license_note="Sentinel-2 and Landsat source terms must be verified for deployment; USGS Landsat Collection 2 is publicly accessible.",
-            quality_score=max(0.0, min(1.0, quality)), row_count=len(records),
+            quality_score=max(0.0, min(1.0, quality)),
+            row_count=len(records),
         )
         return DataBatch(records=records, provenance=provenance)
 
@@ -162,9 +173,14 @@ class LandsatSurfaceTemperatureFusion:
         assets: dict[str, Any],
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         env_options = {
-            "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR", "CPL_VSIL_CURL_ALLOWED_EXTENSIONS": ".tif,.tiff",
-            "GDAL_HTTP_VERSION": "1.1", "GDAL_HTTP_MULTIPLEX": "NO", "GDAL_HTTP_MAX_RETRY": "4",
-            "GDAL_HTTP_RETRY_DELAY": "1", "VSI_CACHE": "TRUE", "VSI_CACHE_SIZE": "5000000",
+            "GDAL_DISABLE_READDIR_ON_OPEN": "EMPTY_DIR",
+            "CPL_VSIL_CURL_ALLOWED_EXTENSIONS": ".tif,.tiff",
+            "GDAL_HTTP_VERSION": "1.1",
+            "GDAL_HTTP_MULTIPLEX": "NO",
+            "GDAL_HTTP_MAX_RETRY": "4",
+            "GDAL_HTTP_RETRY_DELAY": "1",
+            "VSI_CACHE": "TRUE",
+            "VSI_CACHE_SIZE": "5000000",
         }
         qa_pixel_href = assets.get("qa_pixel")
         qa_radsat_href = assets.get("qa_radsat")
@@ -182,7 +198,9 @@ class LandsatSurfaceTemperatureFusion:
                 source_crs = optical_batch.records[0].get("crs")
                 if not source_crs:
                     raise DataUnavailableError("Sentinel-2 records are missing CRS information.")
-                left, bottom, right, top = transform_bounds("EPSG:4326", dataset.crs, *aoi_bbox, densify_pts=21)
+                left, bottom, right, top = transform_bounds(
+                    "EPSG:4326", dataset.crs, *aoi_bbox, densify_pts=21
+                )
                 requested = from_bounds(left, bottom, right, top, transform=dataset.transform)
                 window = requested.intersection(Window(0, 0, dataset.width, dataset.height))
                 if window.width <= 0 or window.height <= 0:
@@ -193,11 +211,13 @@ class LandsatSurfaceTemperatureFusion:
                 target_x, target_y = transform(source_crs, dataset.crs, xs, ys)
                 values = self._sample_window(array, dataset.transform, window, target_x, target_y)
 
-            qa_pixel, qa_pixel_transform, qa_pixel_crs = self._read_remote_window(qa_pixel_href, aoi_bbox, env_options)
-            st_qa, st_qa_transform, st_qa_crs = self._read_remote_window(st_qa_href, aoi_bbox, env_options)
-            qa_radsat = None
-            qa_radsat_transform = None
-            qa_radsat_crs = None
+            qa_pixel, qa_pixel_transform, qa_pixel_crs = self._read_remote_window(
+                qa_pixel_href, aoi_bbox, env_options
+            )
+            st_qa, st_qa_transform, st_qa_crs = self._read_remote_window(
+                st_qa_href, aoi_bbox, env_options
+            )
+            qa_radsat = qa_radsat_transform = qa_radsat_crs = None
             if qa_radsat_href:
                 qa_radsat, qa_radsat_transform, qa_radsat_crs = self._read_remote_window(
                     qa_radsat_href, aoi_bbox, env_options
@@ -207,14 +227,15 @@ class LandsatSurfaceTemperatureFusion:
             uncertainty_k = np.full(len(values), np.nan, dtype=np.float32)
             qa_x, qa_y = transform(source_crs, qa_pixel_crs, xs, ys)
             stqa_x, stqa_y = transform(source_crs, st_qa_crs, xs, ys)
-            for index, (x, y, qx, qy, ux, uy) in enumerate(
-                zip(target_x, target_y, qa_x, qa_y, stqa_x, stqa_y)
+            for index, (qx, qy, ux, uy) in enumerate(
+                zip(qa_x, qa_y, stqa_x, stqa_y)
             ):
                 qrow, qcol = rasterio.transform.rowcol(qa_pixel_transform, qx, qy)
                 qvalue = self._value_from_array(qa_pixel, int(qrow), int(qcol))
                 if qvalue is None or self._qa_pixel_is_bad(int(qvalue)):
                     qa_rejected[index] = True
                     continue
+
                 srow, scol = rasterio.transform.rowcol(st_qa_transform, ux, uy)
                 uncertainty_dn = self._value_from_array(st_qa, int(srow), int(scol))
                 if uncertainty_dn is None:
@@ -225,26 +246,43 @@ class LandsatSurfaceTemperatureFusion:
                     qa_rejected[index] = True
                     continue
                 uncertainty_k[index] = uncertainty
+
                 if qa_radsat is not None and qa_radsat_crs is not None:
-                    rxs, rys = transform(source_crs, qa_radsat_crs, [xs[index]], [ys[index]])
-                    rrow, rcol = rasterio.transform.rowcol(qa_radsat_transform, rxs[0], rys[0])
-                    rvalue = self._value_from_array(qa_radsat, int(rrow), int(rcol))
-                    if rvalue is None or int(rvalue) != 0:
+                    rxs, rys = transform(
+                        source_crs, qa_radsat_crs, [xs[index]], [ys[index]]
+                    )
+                    rrow, rcol = rasterio.transform.rowcol(
+                        qa_radsat_transform, rxs[0], rys[0]
+                    )
+                    rvalue = self._value_from_array(
+                        qa_radsat, int(rrow), int(rcol)
+                    )
+                    if rvalue is None or self._qa_radsat_is_bad(int(rvalue)):
                         qa_rejected[index] = True
+
             return values, uncertainty_k, qa_rejected
 
     @staticmethod
-    def _read_remote_window(href: str, aoi_bbox: tuple[float, float, float, float], env_options: dict[str, str]) -> tuple[Any, Any, Any]:
+    def _read_remote_window(
+        href: str,
+        aoi_bbox: tuple[float, float, float, float],
+        env_options: dict[str, str],
+    ) -> tuple[Any, Any, Any]:
         with rasterio.Env(**env_options):
             with rasterio.open(str(href), sharing=False) as dataset:
                 if dataset.crs is None:
                     raise DataUnavailableError("Landsat QA raster is missing CRS information.")
-                left, bottom, right, top = transform_bounds("EPSG:4326", dataset.crs, *aoi_bbox, densify_pts=21)
+                left, bottom, right, top = transform_bounds(
+                    "EPSG:4326", dataset.crs, *aoi_bbox, densify_pts=21
+                )
                 requested = from_bounds(left, bottom, right, top, transform=dataset.transform)
                 window = requested.intersection(Window(0, 0, dataset.width, dataset.height))
                 if window.width <= 0 or window.height <= 0:
                     raise DataUnavailableError("Landsat QA raster does not overlap the requested AOI.")
-                return dataset.read(1, window=window, masked=True), dataset.transform * rasterio.Affine.translation(window.col_off, window.row_off), dataset.crs
+                local_transform = dataset.transform * rasterio.Affine.translation(
+                    window.col_off, window.row_off
+                )
+                return dataset.read(1, window=window, masked=True), local_transform, dataset.crs
 
     @staticmethod
     def _sample_points(dataset: Any, xs: list[float], ys: list[float]) -> np.ndarray:
@@ -257,7 +295,13 @@ class LandsatSurfaceTemperatureFusion:
         return values
 
     @staticmethod
-    def _sample_window(array: Any, transform_: Any, window: Any, xs: list[float], ys: list[float]) -> np.ndarray:
+    def _sample_window(
+        array: Any,
+        transform_: Any,
+        window: Any,
+        xs: list[float],
+        ys: list[float],
+    ) -> np.ndarray:
         values = np.full(len(xs), np.nan, dtype=np.float32)
         for index, (x, y) in enumerate(zip(xs, ys)):
             row, col = rasterio.transform.rowcol(transform_, x, y)
@@ -298,14 +342,27 @@ class LandsatSurfaceTemperatureFusion:
         return (value & bad_bits) != 0
 
     @staticmethod
+    def _qa_radsat_is_bad(value: int) -> bool:
+        # QA_RADSAT is bit-packed across bands. For thermal ST fusion, do not
+        # reject a pixel because an unrelated reflective band is saturated.
+        # Only reject dropped pixels and terrain-occluded pixels.
+        bad_bits = QA_RADSAT_DROPPED_PIXEL | QA_RADSAT_TERRAIN_OCCLUSION
+        return (value & bad_bits) != 0
+
+    @staticmethod
     def _nearest_valid_from_array(array: Any, center_row: int, center_col: int) -> float | None:
         """Return only the sampled pixel; never borrow a neighboring thermal value."""
         return LandsatSurfaceTemperatureFusion._value_from_array(array, center_row, center_col)
 
     def _download(self, href: str) -> bytes:
-        request = Request(href, headers={"Accept": "image/tiff, application/octet-stream", "User-Agent": "MANGAI/1.0"})
+        request = Request(
+            href,
+            headers={"Accept": "image/tiff, application/octet-stream", "User-Agent": "MANGAI/1.0"},
+        )
         try:
             with urlopen(request, timeout=self.timeout_seconds) as response:
                 return response.read()
         except (HTTPError, URLError, TimeoutError, OSError) as exc:
-            raise DataUnavailableError("Landsat ST raster asset is unavailable.", details={"reason": str(exc)}) from exc
+            raise DataUnavailableError(
+                "Landsat ST raster asset is unavailable.", details={"reason": str(exc)}
+            ) from exc
