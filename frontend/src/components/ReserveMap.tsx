@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { ProspectivityCell } from "../types/api";
 import { percent } from "../utils/format";
 import "maplibre-gl/dist/maplibre-gl.css";
+import "../reserve-intelligence.css";
 
 type LayerKey = "probability" | "grade" | "thickness" | "confidence";
 
