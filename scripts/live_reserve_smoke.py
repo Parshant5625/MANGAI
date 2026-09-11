@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import os
+from pathlib import Path
 
 from backend.app.core.config import get_settings
 from backend.app.core.errors import DataUnavailableError, ModelUnavailableError
@@ -19,12 +20,24 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-temporal-days", type=int, default=16)
     parser.add_argument("--max-geology-distance-m", type=float, default=500.0)
     parser.add_argument("--limit", type=int, default=5)
+    parser.add_argument(
+        "--demo-geology",
+        action="store_true",
+        help="Use the repository's synthetic geological context for a mixed-data demonstration; never used by the API serving path.",
+    )
     return parser
 
 
 def main() -> int:
     args = _parser().parse_args()
     settings = get_settings()
+    raw_geology = settings.resolved_data_dir / "raw" / "geological.csv"
+    synthetic_geology = settings.resolved_data_dir / "synthetic" / "geological.csv"
+    geology_path: Path | None = None
+
+    if args.demo_geology:
+        geology_path = synthetic_geology
+
     print("MANGAI live reserve inference smoke test")
     print("provider: Microsoft Planetary Computer")
     print(f"data_mode: {settings.data_mode}")
@@ -37,6 +50,15 @@ def main() -> int:
         print("FAIL: DATA_MODE must be set to live for this smoke test.")
         return 2
 
+    if args.demo_geology:
+        print("WARNING: DEMO MIXED-DATA MODE — real satellite + synthetic geological context.")
+        print(f"synthetic geology: {synthetic_geology}")
+    elif not raw_geology.exists():
+        print("INFO: operator-supplied data/raw/geological.csv is absent.")
+        print("INFO: running the smoke test requires --demo-geology for the repository demo dataset.")
+        print("INFO: production/API live inference remains strict and requires real geological context.")
+        return 2
+
     try:
         result = LiveSatelliteReserveService().predict(
             site_id=args.site_id,
@@ -47,6 +69,7 @@ def main() -> int:
             max_temporal_days=args.max_temporal_days,
             max_geology_distance_m=args.max_geology_distance_m,
             limit=args.limit,
+            geology_path=geology_path,
         )
     except (DataUnavailableError, ModelUnavailableError) as exc:
         print(f"FAIL: {exc}")
@@ -76,9 +99,15 @@ def main() -> int:
     print(f"boundary: {result['boundary_notice']}")
     print(f"satellite source: {result['satellite_provenance']['source_name']}")
     print(f"satellite checksum: {result['satellite_provenance']['checksum']}")
+    print(f"geology source: {result['geology_provenance']['source_name']}")
+    print(f"geology mode: {result['geology_provenance']['mode']}")
     print(f"geology checksum: {result['geology_provenance']['checksum']}")
-    print("PASS: real satellite + geological context reached reserve inference.")
-    print("NOTE: reserve models must be field-trained/validated before operational or regulatory use.")
+    if result.get("mixed_data"):
+        print("PASS: real satellite + synthetic geological context reached the reserve inference path.")
+        print("BOUNDARY: this is a demonstration only; replace synthetic geology with operator-supplied geological data for real inference.")
+    else:
+        print("PASS: real satellite + geological context reached reserve inference.")
+        print("NOTE: reserve models must be field-trained/validated before operational or regulatory use.")
     return 0
 
 
