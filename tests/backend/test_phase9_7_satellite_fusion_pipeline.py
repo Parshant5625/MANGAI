@@ -28,14 +28,23 @@ class FakeLandsat:
 
 
 class FakeOptical:
-    def ingest_scene(self, scene, site_id):
-        return DataBatch([{"scene_id": scene["scene_id"]}], _provenance("satellite", 1))
+    def ingest_scene(self, scene, site_id, *, aoi_bbox=None):
+        return DataBatch(
+            [{"scene_id": scene["scene_id"], "aoi_bbox": aoi_bbox}],
+            _provenance("satellite", 1),
+        )
 
 
 class FakeFusion:
-    def fuse(self, optical, thermal):
+    def fuse(self, optical, thermal, *, aoi_bbox=None):
         return DataBatch(
-            [{"scene_id": optical.records[0]["scene_id"], "thermal_scene_id": thermal["scene_id"]}],
+            [
+                {
+                    "scene_id": optical.records[0]["scene_id"],
+                    "thermal_scene_id": thermal["scene_id"],
+                    "aoi_bbox": aoi_bbox,
+                }
+            ],
             _provenance("satellite", 1),
         )
 
@@ -73,6 +82,7 @@ def test_pipeline_discovers_matches_and_fuses(monkeypatch):
     assert result.temporal_distance_days == (1.0,)
     assert result.batch.records[0]["thermal_scene_id"] == "l1"
     assert provider.calls == [(20.0, 76.0, "2026-08-01", "2026-08-31")]
+    assert result.batch.records[0]["aoi_bbox"] == pytest.approx((75.98, 19.98, 76.02, 20.02))
 
 
 def test_pipeline_fails_when_no_thermal_scene_exists():
@@ -94,4 +104,11 @@ def test_pipeline_fails_when_temporal_match_is_outside_window():
         FakeFusion(),
     )
     with pytest.raises(DataUnavailableError, match="temporal matching window"):
-        pipeline.run(site_id="demo", start="2026-08-01", end="2026-08-31", latitude=20.0, longitude=76.0, max_temporal_days=5)
+        pipeline.run(
+            site_id="demo",
+            start="2026-08-01",
+            end="2026-08-31",
+            latitude=20.0,
+            longitude=76.0,
+            max_temporal_days=5,
+        )
