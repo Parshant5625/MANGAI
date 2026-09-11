@@ -175,6 +175,28 @@ export interface ModelRegistryResponse extends DemoEnvelope {
   }>;
 }
 
+export interface ModelMonitoringResponse extends DemoEnvelope {
+  checked_at: string;
+  registry: {
+    registry_exists: boolean;
+    record_count: number;
+    champions: Record<string, string>;
+    issue_count: number;
+    issues: Array<Record<string, unknown>>;
+    status: string;
+  };
+  drift: Array<{
+    feature: string;
+    psi: number;
+    status: string;
+    baseline_count: number;
+    current_count: number;
+    note: string;
+  }>;
+  status: string;
+  alerts: Array<Record<string, unknown>>;
+}
+
 export interface DataQualityResponse extends DemoEnvelope {
   overall_score: number;
   runs: Array<{
