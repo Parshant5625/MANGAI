@@ -8,6 +8,8 @@ from rasterio.io import MemoryFile
 from rasterio.transform import from_origin
 
 from backend.app.adapters.satellite.landsat_st_fusion import (
+    QA_RADSAT_DROPPED_PIXEL,
+    QA_RADSAT_TERRAIN_OCCLUSION,
     ST_OFFSET_K,
     ST_SCALE,
     LandsatSurfaceTemperatureFusion,
@@ -60,6 +62,15 @@ def test_masked_uint16_array_accepts_nan_safely():
     array = np.ma.array(np.array([[0, 30000], [0, 0]], dtype=np.uint16), mask=np.array([[True, False], [True, True]]))
     value = LandsatSurfaceTemperatureFusion._nearest_valid_from_array(array, 0, 1)
     assert value == pytest.approx(30000.0)
+
+
+def test_qa_radsat_ignores_unrelated_band_saturation():
+    # QA_RADSAT bits 0-8 describe other bands. They must not invalidate a
+    # thermal ST pixel merely because a reflective/cirrus band saturated.
+    unrelated_saturation = 1 << 0
+    assert not LandsatSurfaceTemperatureFusion._qa_radsat_is_bad(unrelated_saturation)
+    assert LandsatSurfaceTemperatureFusion._qa_radsat_is_bad(QA_RADSAT_DROPPED_PIXEL)
+    assert LandsatSurfaceTemperatureFusion._qa_radsat_is_bad(QA_RADSAT_TERRAIN_OCCLUSION)
 
 
 def test_rejects_demo_batch():
