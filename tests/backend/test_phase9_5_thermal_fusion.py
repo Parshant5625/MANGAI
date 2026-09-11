@@ -58,7 +58,7 @@ def test_drops_fill_pixels(monkeypatch):
 def test_masked_uint16_array_accepts_nan_safely():
     # Regression for: TypeError: Cannot convert fill_value nan to dtype uint16
     array = np.ma.array(np.array([[0, 30000], [0, 0]], dtype=np.uint16), mask=np.array([[True, False], [True, True]]))
-    value = LandsatSurfaceTemperatureFusion._nearest_valid_from_array(array, 0, 0)
+    value = LandsatSurfaceTemperatureFusion._nearest_valid_from_array(array, 0, 1)
     assert value == pytest.approx(30000.0)
 
 
