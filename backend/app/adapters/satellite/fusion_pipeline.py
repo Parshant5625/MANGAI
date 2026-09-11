@@ -119,7 +119,12 @@ class LiveSatelliteFusionPipeline:
                     selected_scene = candidate
                     break
                 except DataUnavailableError as exc:
-                    failure: dict[str, Any] = {"scene_id": candidate.get("scene_id"), "error": str(exc)}
+                    failure: dict[str, Any] = {
+                        "scene_id": candidate.get("scene_id"),
+                        "cloud_cover_land_pct": candidate.get("cloud_cover_land_pct"),
+                        "cloud_cover_pct": candidate.get("cloud_cover_pct"),
+                        "error": str(exc),
+                    }
                     if exc.details:
                         failure["details"] = exc.details
                     candidate_failures.append(failure)
@@ -155,12 +160,23 @@ class LiveSatelliteFusionPipeline:
             except DataUnavailableError:
                 continue
             distance_days = abs((scene_time - reference).total_seconds()) / 86400.0
-            if distance_days <= max_days:
-                selected = dict(scene)
-                selected["temporal_distance_days"] = distance_days
-                candidates.append((distance_days, selected))
-        candidates.sort(key=lambda item: (item[0], str(item[1].get("scene_id", ""))))
-        return [scene for _, scene in candidates]
+            if distance_days > max_days:
+                continue
+            selected = dict(scene)
+            selected["temporal_distance_days"] = distance_days
+            # Cloud cover is the first ranking signal because QA_PIXEL is the
+            # authoritative pixel-level gate. Temporal proximity breaks ties.
+            land_cloud = selected.get("cloud_cover_land_pct")
+            scene_cloud = selected.get("cloud_cover_pct")
+            cloud = land_cloud if land_cloud is not None else scene_cloud
+            try:
+                cloud_rank = float(cloud) if cloud is not None else 100.0
+            except (TypeError, ValueError):
+                cloud_rank = 100.0
+            tier_rank = 0 if str(selected.get("processing_level", "")).endswith("T1") else 1
+            candidates.append((cloud_rank, tier_rank, distance_days, str(selected.get("scene_id", "")), selected))
+        candidates.sort(key=lambda item: item[:4])
+        return [scene for *_, scene in candidates]
 
     @staticmethod
     def _combine_batches(batches: list[DataBatch]) -> DataBatch:
