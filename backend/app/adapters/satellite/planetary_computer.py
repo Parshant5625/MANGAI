@@ -63,26 +63,11 @@ class PlanetaryComputerSentinel2Provider(_PlanetaryComputerBase):
         self.lon = settings.sentinel2_longitude
         self.bbox_delta = settings.sentinel2_bbox_delta
 
-    def search_scenes(
-        self,
-        site_id: str,
-        start: str,
-        end: str,
-        limit: int = 10,
-        *,
-        latitude: float | None = None,
-        longitude: float | None = None,
-    ) -> DataBatch:
-        search_lat = self.lat if latitude is None else latitude
-        search_lon = self.lon if longitude is None else longitude
-        if search_lat is None or search_lon is None:
+    def search_scenes(self, site_id: str, start: str, end: str, limit: int = 10) -> DataBatch:
+        if self.lat is None or self.lon is None:
             raise DataUnavailableError(
                 "Live Sentinel-2 requires coordinates.",
-                details={
-                    "provider": "microsoft-planetary-computer",
-                    "configuration": "missing_coordinates",
-                    "required": ["latitude", "longitude"],
-                },
+                details={"provider": "microsoft-planetary-computer", "configuration": "missing_coordinates"},
             )
         if not start.strip() or not end.strip():
             raise DataUnavailableError("Sentinel-2 search requires a start and end date.")
@@ -90,10 +75,10 @@ class PlanetaryComputerSentinel2Provider(_PlanetaryComputerBase):
             raise DataUnavailableError("Sentinel-2 end date must not precede start date.")
 
         bbox = [
-            search_lon - self.bbox_delta,
-            search_lat - self.bbox_delta,
-            search_lon + self.bbox_delta,
-            search_lat + self.bbox_delta,
+            self.lon - self.bbox_delta,
+            self.lat - self.bbox_delta,
+            self.lon + self.bbox_delta,
+            self.lat + self.bbox_delta,
         ]
         try:
             search = self.catalog.search(
