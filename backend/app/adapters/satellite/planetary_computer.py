@@ -154,11 +154,13 @@ class PlanetaryComputerSentinel2Provider(_PlanetaryComputerBase):
 class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase):
     """Discover signed Landsat Collection 2 Level-2 ST assets from Planetary Computer."""
 
-    def __init__(self, max_cloud_cover: float = 30.0, max_items: int = 5) -> None:
+    def __init__(self, max_cloud_cover: float | None = None, max_items: int = 5) -> None:
         super().__init__()
-        if not 0 <= max_cloud_cover <= 100:
+        settings = get_settings()
+        configured_cloud = settings.landsat_max_cloud_cover if max_cloud_cover is None else max_cloud_cover
+        if not 0 <= configured_cloud <= 100:
             raise DataUnavailableError("Landsat cloud threshold must be between 0 and 100.")
-        self.max_cloud_cover = max_cloud_cover
+        self.max_cloud_cover = configured_cloud
         self.max_items = max(1, max_items)
 
     def discover(
