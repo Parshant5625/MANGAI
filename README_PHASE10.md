@@ -4,7 +4,7 @@ Phase 10 connects real Sentinel-2 + Landsat surface-temperature data to the exis
 
 ## Live data source
 
-MANGAI uses the **Microsoft Planetary Computer STAC API** for live satellite discovery and signed HTTPS raster assets. This avoids direct CDSE S3 credential management while keeping the data path live and reproducible. Planetary Computer's STAC API is public; hosted raster assets are exposed through signed URLs. See the official Microsoft Planetary Computer documentation for the access model.
+MANGAI uses the **Microsoft Planetary Computer STAC API** for live satellite discovery and signed HTTPS raster assets. This avoids direct CDSE S3 credential management while keeping the data path live and reproducible.
 
 ## Live flow
 
@@ -46,7 +46,7 @@ python -m pip install -e .
 
 The project declares `pystac-client` and `planetary-computer` as runtime dependencies.
 
-## Live smoke test
+## Live satellite smoke test
 
 Required environment variables:
 
@@ -63,14 +63,16 @@ Optional:
 Run:
 
 ```powershell
-python scripts/live_satellite_smoke.py
+python -m scripts.live_satellite_smoke
 ```
+
+This validates real Sentinel-2 discovery, bounded COG pixel reads, SCL masking, Landsat ST discovery, temporal matching, thermal fusion, and the canonical satellite feature contract.
 
 No `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, or CDSE S3 credentials are required for this Planetary Computer path.
 
-## Geological input boundary
+## End-to-end live reserve inference smoke test
 
-The live serving path intentionally does **not** use synthetic geological data. It expects an operator-supplied file at:
+The reserve smoke test additionally requires an operator-supplied target-free geological context file:
 
 `data/raw/geological.csv`
 
@@ -85,7 +87,28 @@ Required context columns:
 - `depth_m`
 - `formation`
 
-Target columns such as `mn_pct`, `ore_thickness_m`, and `is_manganese` are not required and are deliberately excluded from the serving join to prevent target leakage.
+It also requires the reserve model artifacts in the configured model directory. Run:
+
+```powershell
+python -m scripts.live_reserve_smoke
+```
+
+Optional arguments:
+
+```text
+--site-id
+--start
+--end
+--latitude
+--longitude
+--max-temporal-days
+--max-geology-distance-m
+--limit
+```
+
+The command prints matched geological rows, satellite/thermal scene counts, prediction ranges, P50 prototype resource potential, provenance checksums, and the scientific boundary notice.
+
+The live serving path intentionally does **not** use synthetic geological data. Target columns such as `mn_pct`, `ore_thickness_m`, and `is_manganese` are not required and are deliberately excluded from the serving join to prevent target leakage.
 
 ## API
 
