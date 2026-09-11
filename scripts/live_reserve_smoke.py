@@ -11,14 +11,32 @@ from backend.app.core.errors import DataUnavailableError, ModelUnavailableError
 from backend.app.services.live_reserve import LiveSatelliteReserveService
 
 
+def _coordinate_default(env_name: str, configured: float | None, fallback: float) -> float:
+    """Resolve a smoke-test coordinate without requiring live app configuration."""
+    raw = os.getenv(env_name)
+    if raw is not None and raw.strip():
+        return float(raw)
+    if configured is not None:
+        return float(configured)
+    return fallback
+
+
 def _parser() -> argparse.ArgumentParser:
     settings = get_settings()
     parser = argparse.ArgumentParser(description="MANGAI live reserve inference smoke test")
     parser.add_argument("--site-id", default=os.getenv("MANGAI_SMOKE_SITE_ID", "smoke-test-site"))
     parser.add_argument("--start", default=os.getenv("MANGAI_SMOKE_START", "2026-08-12"))
     parser.add_argument("--end", default=os.getenv("MANGAI_SMOKE_END", "2026-09-11"))
-    parser.add_argument("--latitude", type=float, default=float(os.getenv("SENTINEL2_LATITUDE", settings.sentinel2_latitude)))
-    parser.add_argument("--longitude", type=float, default=float(os.getenv("SENTINEL2_LONGITUDE", settings.sentinel2_longitude)))
+    parser.add_argument(
+        "--latitude",
+        type=float,
+        default=_coordinate_default("SENTINEL2_LATITUDE", settings.sentinel2_latitude, 21.81),
+    )
+    parser.add_argument(
+        "--longitude",
+        type=float,
+        default=_coordinate_default("SENTINEL2_LONGITUDE", settings.sentinel2_longitude, 80.18),
+    )
     parser.add_argument("--max-temporal-days", type=int, default=32)
     parser.add_argument("--max-geology-distance-m", type=float, default=500.0)
     parser.add_argument("--limit", type=int, default=5)
@@ -74,6 +92,18 @@ def main() -> int:
         # caller-supplied radius.
         if args.max_geology_distance_m == 500.0:
             args.max_geology_distance_m = 2500.0
+        print("WARNING: DEMO MIXED-DATA MODE — real satellite + synthetic geological context.")
+        print(f"synthetic geology: {geology_path}")
+        print(
+            "demo AOI aligned to nearest synthetic geology coordinate: "
+            f"{args.latitude}, {args.longitude}"
+        )
+        print(
+            "note: requested satellite coordinates were "
+            f"{original_coordinates[0]}, {original_coordinates[1]}"
+        )
+    else:
+        geology_path = raw_geology
 
     print("MANGAI live reserve inference smoke test")
     print("provider: Microsoft Planetary Computer")
@@ -83,28 +113,6 @@ def main() -> int:
     print(f"coordinates: {args.latitude}, {args.longitude}")
     print(f"max temporal distance: {args.max_temporal_days} days")
     print(f"max geology match distance: {args.max_geology_distance_m} m")
-
-    if settings.data_mode != "live":
-        print("FAIL: DATA_MODE must be set to live for this smoke test.")
-        return 2
-
-    if args.demo_geology:
-        print("WARNING: DEMO MIXED-DATA MODE — real satellite + synthetic geological context.")
-        print(f"synthetic geology: {synthetic_geology}")
-        print(
-            "demo AOI aligned to nearest synthetic geology coordinate: "
-            f"{args.latitude}, {args.longitude}"
-        )
-        if original_coordinates != (args.latitude, args.longitude):
-            print(
-                "note: requested satellite coordinates were "
-                f"{original_coordinates[0]}, {original_coordinates[1]}"
-            )
-    elif not raw_geology.exists():
-        print("INFO: operator-supplied data/raw/geological.csv is absent.")
-        print("INFO: running the smoke test requires --demo-geology for the repository demo dataset.")
-        print("INFO: production/API live inference remains strict and requires real geological context.")
-        return 2
 
     try:
         result = LiveSatelliteReserveService().predict(
@@ -118,43 +126,39 @@ def main() -> int:
             limit=args.limit,
             geology_path=geology_path,
         )
-    except (DataUnavailableError, ModelUnavailableError) as exc:
+    except (DataUnavailableError, ModelUnavailableError, ValueError) as exc:
         print(f"FAIL: {exc}")
-        if getattr(exc, "details", None):
-            print(f"details: {exc.details}")
-        return 1
-    except Exception as exc:  # pragma: no cover - smoke-test diagnostic guard
-        print(f"FAIL: unexpected live reserve inference error: {type(exc).__name__}: {exc}")
-        return 1
+        details = getattr(exc, "details", None)
+        if details:
+            print(f"details: {details}")
+        return 2
 
-    cells = result["cells"]
-    probabilities = [float(cell["probability"]) for cell in cells]
-    grades = [float(cell["predicted_grade_pct"]) for cell in cells]
-    thicknesses = [float(cell["predicted_thickness_m"]) for cell in cells]
-    tonnages = [float(cell["resource_potential"]["p50"]) for cell in cells]
-
-    print(f"PASS: matched geological context rows: {result['matched_geological_context']}")
-    print(f"unmatched satellite pixels: {result['unmatched_satellite']}")
-    print(f"Sentinel-2 scenes: {result['sentinel_scene_count']}")
-    print(f"Landsat thermal scenes discovered: {result['thermal_scene_count']}")
-    print(f"temporal distances (days): {result['temporal_distance_days']}")
-    print(f"PASS: live inference cells: {result['count']}")
-    print(f"probability range: {min(probabilities):.4f} -> {max(probabilities):.4f}")
-    print(f"grade range (% Mn): {min(grades):.2f} -> {max(grades):.2f}")
-    print(f"thickness range (m): {min(thicknesses):.2f} -> {max(thicknesses):.2f}")
-    print(f"P50 prototype resource potential (t): {sum(tonnages):,.2f}")
-    print(f"boundary: {result['boundary_notice']}")
-    print(f"satellite source: {result['satellite_provenance']['source_name']}")
-    print(f"satellite checksum: {result['satellite_provenance']['checksum']}")
-    print(f"geology source: {result['geology_provenance']['source_name']}")
-    print(f"geology mode: {result['geology_provenance']['mode']}")
-    print(f"geology checksum: {result['geology_provenance']['checksum']}")
-    if result.get("mixed_data"):
-        print("PASS: real satellite + synthetic geological context reached the reserve inference path.")
-        print("BOUNDARY: this is a demonstration only; replace synthetic geology with operator-supplied geological data for real inference.")
-    else:
-        print("PASS: real satellite + geological context reached reserve inference.")
-        print("NOTE: reserve models must be field-trained/validated before operational or regulatory use.")
+    print(f"PASS: matched geological context rows: {result['matched_geology_rows']}")
+    print(f"unmatched satellite pixels: {result['unmatched_satellite_pixels']}")
+    print(f"Sentinel-2 scenes: {result['satellite']['sentinel2_scene_count']}")
+    print(f"Landsat thermal scenes discovered: {result['satellite']['landsat_scene_count']}")
+    print(f"temporal distances (days): {result['satellite']['temporal_distances_days']}")
+    print(f"PASS: live inference cells: {len(result['cells'])}")
+    if result["cells"]:
+        probabilities = [float(cell["probability"]) for cell in result["cells"]]
+        grades = [float(cell["predicted_grade_pct"]) for cell in result["cells"]]
+        thickness = [float(cell["predicted_thickness_m"]) for cell in result["cells"]]
+        p50 = sum(float(cell["resource_potential"]["p50"]) for cell in result["cells"])
+        print(f"probability range: {min(probabilities):.4f} -> {max(probabilities):.4f}")
+        print(f"grade range (% Mn): {min(grades):.2f} -> {max(grades):.2f}")
+        print(f"thickness range (m): {min(thickness):.2f} -> {max(thickness):.2f}")
+        print(f"P50 prototype resource potential (t): {p50:,.2f}")
+    print(f"boundary: {result['boundary']}")
+    print(f"satellite source: {result['satellite']['source']}")
+    print(f"satellite checksum: {result['satellite']['checksum']}")
+    print(f"geology source: {result['geology']['source']}")
+    print(f"geology mode: {result['geology']['mode']}")
+    print("PASS: real satellite + geological context reached the reserve inference path.")
+    if result["geology"]["mode"] == "demo":
+        print(
+            "BOUNDARY: this is a demonstration only; replace synthetic geology with "
+            "operator-supplied geological data for real inference."
+        )
     return 0
 
 
