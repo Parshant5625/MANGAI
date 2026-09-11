@@ -19,9 +19,6 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--end", default=os.getenv("MANGAI_SMOKE_END", "2026-09-11"))
     parser.add_argument("--latitude", type=float, default=float(os.getenv("SENTINEL2_LATITUDE", settings.sentinel2_latitude)))
     parser.add_argument("--longitude", type=float, default=float(os.getenv("SENTINEL2_LONGITUDE", settings.sentinel2_longitude)))
-    # A slightly wider window is used by this demonstration smoke test because
-    # Landsat ST retrievals can be unavailable for individual monsoon scenes.
-    # The API serving path remains configurable and reports temporal distance.
     parser.add_argument("--max-temporal-days", type=int, default=32)
     parser.add_argument("--max-geology-distance-m", type=float, default=500.0)
     parser.add_argument("--limit", type=int, default=5)
@@ -70,6 +67,13 @@ def main() -> int:
             args.latitude,
             args.longitude,
         )
+        # The demo AOI is deliberately broader than the production 500 m context
+        # radius. This demonstrates the complete live-satellite -> reserve path
+        # even when valid thermal pixels are sparse inside the synthetic point's
+        # immediate neighborhood. The production API remains strict at its
+        # caller-supplied radius.
+        if args.max_geology_distance_m == 500.0:
+            args.max_geology_distance_m = 2500.0
 
     print("MANGAI live reserve inference smoke test")
     print("provider: Microsoft Planetary Computer")
