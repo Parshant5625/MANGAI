@@ -19,7 +19,10 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--end", default=os.getenv("MANGAI_SMOKE_END", "2026-09-11"))
     parser.add_argument("--latitude", type=float, default=float(os.getenv("SENTINEL2_LATITUDE", settings.sentinel2_latitude)))
     parser.add_argument("--longitude", type=float, default=float(os.getenv("SENTINEL2_LONGITUDE", settings.sentinel2_longitude)))
-    parser.add_argument("--max-temporal-days", type=int, default=16)
+    # A slightly wider window is used by this demonstration smoke test because
+    # Landsat ST retrievals can be unavailable for individual monsoon scenes.
+    # The API serving path remains configurable and reports temporal distance.
+    parser.add_argument("--max-temporal-days", type=int, default=32)
     parser.add_argument("--max-geology-distance-m", type=float, default=500.0)
     parser.add_argument("--limit", type=int, default=5)
     parser.add_argument(
@@ -41,8 +44,6 @@ def _nearest_demo_coordinate(path: Path, latitude: float, longitude: float) -> t
                 row_lon = float(row["longitude"])
             except (KeyError, TypeError, ValueError):
                 continue
-            # Longitude degrees shrink with latitude; this keeps the nearest-point
-            # choice geographically meaningful without requiring a geospatial package.
             distance_sq = (row_lat - latitude) ** 2 + ((row_lon - longitude) * lon_scale) ** 2
             if best is None or distance_sq < best[0]:
                 best = (distance_sq, row_lat, row_lon)
@@ -76,6 +77,7 @@ def main() -> int:
     print(f"window: {args.start} -> {args.end}")
     print(f"site_id: {args.site_id}")
     print(f"coordinates: {args.latitude}, {args.longitude}")
+    print(f"max temporal distance: {args.max_temporal_days} days")
     print(f"max geology match distance: {args.max_geology_distance_m} m")
 
     if settings.data_mode != "live":
