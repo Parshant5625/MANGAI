@@ -143,9 +143,9 @@ class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase)
     """Discover Landsat Collection 2 Level-2 surface-temperature assets.
 
     Scene-level cloud cover is retained as metadata rather than used as a hard
-    acceptance gate. Thermal usability must be decided from pixel-level QA
-    (QA_PIXEL/ST_QA/QA_RADSAT) during fusion because a cloudy scene can still
-    contain valid thermal pixels inside the requested AOI.
+    acceptance gate. Thermal usability is decided from pixel-level QA during
+    fusion because a cloudy scene can still contain valid thermal pixels inside
+    the requested AOI.
     """
 
     def __init__(self, *, max_items: int = 50, max_cloud_cover: float | None = None) -> None:
@@ -190,15 +190,32 @@ class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase)
         for item in items:
             cloud = item.properties.get("eo:cloud_cover")
             assets = self._signed_assets(item)
-            thermal = assets.get("lwir11") or assets.get("lwir") or assets.get("ST_B10")
+            by_lower = {key.lower(): href for key, href in assets.items()}
+            thermal = (
+                by_lower.get("lwir11")
+                or by_lower.get("lwir")
+                or by_lower.get("st_b10")
+                or by_lower.get("st_b10.tif")
+            )
             if not thermal:
                 continue
+            normalized_assets = dict(assets)
+            normalized_assets["surface_temperature"] = thermal
+            for canonical, aliases in {
+                "qa_pixel": ("qa_pixel", "qa_pixel.tif"),
+                "qa_radsat": ("qa_radsat", "qa_radsat.tif"),
+                "st_qa": ("st_qa", "st_qa.tif"),
+            }.items():
+                for alias in aliases:
+                    if alias in by_lower:
+                        normalized_assets[canonical] = by_lower[alias]
+                        break
             records.append(
                 {
                     "scene_id": item.id,
                     "datetime": item.datetime.isoformat() if item.datetime else item.properties.get("datetime"),
                     "cloud_cover_pct": cloud,
-                    "assets": {**assets, "surface_temperature": thermal},
+                    "assets": normalized_assets,
                     "source_uri": item.self_href or self.stac_url,
                     "provider": "microsoft-planetary-computer",
                 }
