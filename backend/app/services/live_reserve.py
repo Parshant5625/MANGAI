@@ -26,7 +26,7 @@ DENSITY_T_PER_M3 = 3.6
 
 
 class LiveSatelliteReserveService:
-    """Run reserve inference from real satellite data without synthetic fallback."""
+    """Run reserve inference from real satellite data without silent fallback."""
 
     def __init__(self, pipeline: LiveSatelliteFusionPipeline | None = None) -> None:
         self.settings = get_settings()
@@ -35,8 +35,8 @@ class LiveSatelliteReserveService:
     def _geology_path(self) -> Path:
         return self.settings.resolved_data_dir / "raw" / "geological.csv"
 
-    def _load_geology(self) -> tuple[pd.DataFrame, DataProvenance]:
-        path = self._geology_path()
+    def _load_geology(self, path: Path | None = None) -> tuple[pd.DataFrame, DataProvenance]:
+        path = path or self._geology_path()
         if not path.exists():
             raise DataUnavailableError(
                 "Live geological context file is unavailable.",
@@ -49,23 +49,28 @@ class LiveSatelliteReserveService:
         missing = [column for column in GEOLOGY_CONTEXT_COLUMNS if column not in frame.columns]
         if missing:
             raise DataUnavailableError(
-                "Live geological context failed the target-free context contract.",
+                "Geological context failed the target-free context contract.",
                 details={"missing_columns": missing, "required_columns": list(GEOLOGY_CONTEXT_COLUMNS)},
             )
         if frame["sample_id"].astype(str).duplicated().any():
-            raise DataUnavailableError("Live geological context contains duplicate sample_id values.")
+            raise DataUnavailableError("Geological context contains duplicate sample_id values.")
         checksum = hashlib.sha256(path.read_bytes()).hexdigest()
+        is_synthetic = "data" + str(Path.sep) + "synthetic" + str(Path.sep) in str(path).lower()
         provenance = DataProvenance(
-            source_name="live_geological_file",
-            source_kind="local_file",
-            mode="live",
+            source_name="synthetic_geological_demo" if is_synthetic else "live_geological_file",
+            source_kind="synthetic" if is_synthetic else "local_file",
+            mode="demo" if is_synthetic else "live",
             dataset="geological",
             acquired_at=None,
             ingested_at=None,
             source_version=None,
             source_uri=str(path),
             checksum=checksum,
-            license_note="Operator-supplied geological context; validate licensing and provenance before production use.",
+            license_note=(
+                "Synthetic geological context used only to demonstrate the live satellite path."
+                if is_synthetic
+                else "Operator-supplied geological context; validate licensing and provenance before production use."
+            ),
             quality_score=1.0,
             row_count=len(frame),
         )
@@ -138,7 +143,7 @@ class LiveSatelliteReserveService:
                 "satellite_source": str(row["satellite_source"]),
                 "satellite_acquired_at": row.get("satellite_acquired_at"),
                 "satellite_provenance_checksum": str(row["satellite_provenance_checksum"]),
-                "geology_source": "operator_supplied_local_file",
+                "geology_source": "synthetic_demo" if str(row["geology_source"]) == "synthetic_demo" else "operator_supplied_local_file",
                 "geology_match_distance_m": round(distance, 2),
                 "feature_completeness": round(completeness, 3),
                 "model_version": model_version,
@@ -185,6 +190,7 @@ class LiveSatelliteReserveService:
         max_temporal_days: int = 16,
         max_geology_distance_m: float = 500.0,
         limit: int = 5,
+        geology_path: Path | None = None,
     ) -> dict[str, Any]:
         if self.settings.data_mode != "live":
             raise DataUnavailableError("Live satellite reserve inference requires DATA_MODE=live.")
@@ -194,7 +200,7 @@ class LiveSatelliteReserveService:
         if resolve_model_path(model_dir, "grade") is None or resolve_model_path(model_dir, "thickness") is None:
             raise ModelUnavailableError("Reserve grade/thickness model artifacts are not available.", details={"models": ["grade", "thickness"]})
 
-        geology, geology_provenance = self._load_geology()
+        geology, geology_provenance = self._load_geology(geology_path)
         fusion = self.pipeline.run(
             site_id=site_id,
             start=start,
@@ -216,6 +222,7 @@ class LiveSatelliteReserveService:
             )
 
         frame = fused.data.copy()
+        frame["geology_source"] = geology_provenance.source_name
         ensemble_path = resolve_ensemble_path(model_dir)
         if ensemble_path is not None:
             scored = predict_ensemble_frame(frame, model_dir)
@@ -244,9 +251,11 @@ class LiveSatelliteReserveService:
             frame["thickness_interval_upper"] = interval["upper"]
 
         model_version = self._version(model_dir, "prospectivity")
+        synthetic_geology = geology_provenance.mode == "demo"
         return {
             "data_mode": "live",
-            "synthetic_data": False,
+            "synthetic_data": synthetic_geology,
+            "mixed_data": synthetic_geology,
             "boundary_notice": "Live-source prototype resource potential; not an official mineral resource or reserve.",
             "site_id": site_id,
             "count": len(frame),
