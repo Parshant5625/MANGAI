@@ -154,7 +154,7 @@ class PlanetaryComputerSentinel2Provider(_PlanetaryComputerBase):
 class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase):
     """Discover signed Landsat Collection 2 Level-2 ST assets from Planetary Computer."""
 
-    def __init__(self, max_cloud_cover: float | None = None, max_items: int = 5) -> None:
+    def __init__(self, max_cloud_cover: float | None = None, max_items: int = 20) -> None:
         super().__init__()
         settings = get_settings()
         configured_cloud = settings.landsat_max_cloud_cover if max_cloud_cover is None else max_cloud_cover
@@ -180,11 +180,15 @@ class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase)
         delta = 0.05
         bbox = [longitude - delta, latitude - delta, longitude + delta, latitude + delta]
         try:
+            # Do not hard-filter by scene-level cloud cover here. A Landsat scene can
+            # still contain usable clear pixels inside the local AOI even when the
+            # scene-wide cloud percentage is high. Pixel-level QA belongs in the
+            # raster extraction stage. We retrieve a larger candidate set and rank
+            # by acquisition time first, while preserving cloud metadata for fusion.
             search = self.catalog.search(
                 collections=[LANDSAT_COLLECTION],
                 bbox=bbox,
                 datetime=f"{start}T00:00:00Z/{end}T23:59:59Z",
-                query={"eo:cloud_cover": {"lte": self.max_cloud_cover}},
                 limit=self.max_items,
                 sortby=[{"field": "datetime", "direction": "desc"}],
             )
@@ -208,6 +212,8 @@ class PlanetaryComputerLandsatSurfaceTemperatureProvider(_PlanetaryComputerBase)
                     "datetime": item.datetime.isoformat() if item.datetime else item.properties.get("datetime"),
                     "collection": LANDSAT_COLLECTION,
                     "cloud_cover": float(cloud) if cloud is not None else None,
+                    "cloud_threshold_pct": self.max_cloud_cover,
+                    "cloud_threshold_passed": cloud is None or float(cloud) <= self.max_cloud_cover,
                     "assets": {"surface_temperature": st_asset},
                     "source_uri": item.self_href or self.stac_url,
                     "provider": "microsoft-planetary-computer",
