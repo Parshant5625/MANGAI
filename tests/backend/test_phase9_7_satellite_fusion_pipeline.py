@@ -6,6 +6,7 @@ import pytest
 
 from backend.app.adapters.satellite.fusion_pipeline import LiveSatelliteFusionPipeline
 from backend.app.core.errors import DataUnavailableError
+from ml.common.external_contracts import validate_external_batch
 from ml.common.provenance import DataBatch, DataProvenance
 
 
@@ -81,7 +82,7 @@ def test_pipeline_discovers_matches_and_fuses(monkeypatch):
     assert result.thermal_scene_count == 1
     assert result.temporal_distance_days == (1.0,)
     assert result.batch.records[0]["thermal_scene_id"] == "l1"
-    assert provider.calls == [(20.0, 76.0, "2026-08-01", "2026-08-31")]
+    assert provider.calls == [(20.0, 76.0, "2026-07-16", "2026-09-16")]
     assert result.batch.records[0]["aoi_bbox"] == pytest.approx((75.98, 19.98, 76.02, 20.02))
 
 
@@ -103,7 +104,7 @@ def test_pipeline_fails_when_temporal_match_is_outside_window():
         FakeOptical(),
         FakeFusion(),
     )
-    with pytest.raises(DataUnavailableError, match="temporal matching window"):
+    with pytest.raises(DataUnavailableError, match="No Sentinel-2 scene could be thermally fused") as exc_info:
         pipeline.run(
             site_id="demo",
             start="2026-08-01",
@@ -112,3 +113,5 @@ def test_pipeline_fails_when_temporal_match_is_outside_window():
             longitude=76.0,
             max_temporal_days=5,
         )
+
+    assert exc_info.value.details["failures"][0]["error"] == "no temporal Landsat candidate"
