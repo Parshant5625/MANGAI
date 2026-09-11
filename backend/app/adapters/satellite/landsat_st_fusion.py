@@ -26,7 +26,7 @@ ST_OFFSET_K = 149.0
 ST_MIN_C = -50.0
 ST_MAX_C = 85.0
 ST_QA_SCALE_K = 0.01
-MAX_ST_UNCERTAINTY_K = 2.0
+MAX_ST_UNCERTAINTY_K = 5.0
 QA_PIXEL_FILL = 1 << 0
 QA_PIXEL_DILATED_CLOUD = 1 << 1
 QA_PIXEL_CIRRUS = 1 << 2
@@ -46,6 +46,7 @@ class LandsatSurfaceTemperatureFusion:
         if timeout_seconds <= 0:
             raise DataUnavailableError("Landsat ST timeout must be positive.")
         self.timeout_seconds = timeout_seconds
+        self._last_qa_stats: dict[str, int] = {}
 
     def fuse(self, optical_batch: DataBatch, thermal_scene: dict[str, Any], *, aoi_bbox: tuple[float, float, float, float] | None = None) -> DataBatch:
         if optical_batch.provenance.mode != "live":
@@ -60,6 +61,7 @@ class LandsatSurfaceTemperatureFusion:
             raise DataUnavailableError("Cannot fuse thermal data into an empty optical batch.")
 
         href = str(asset)
+        self._last_qa_stats = {}
         try:
             if aoi_bbox is not None and href.startswith(("http://", "https://")):
                 thermal_values, uncertainty_k, qa_rejected = self._sample_remote_cog(href, optical_batch, aoi_bbox, assets)
@@ -91,7 +93,12 @@ class LandsatSurfaceTemperatureFusion:
         if not valid.any():
             raise DataUnavailableError(
                 "Landsat ST scene has no valid thermal pixels at Sentinel locations.",
-                details={"temperature_range_c": [ST_MIN_C, ST_MAX_C], "qa_rejected": int(qa_rejected.sum())},
+                details={
+                    "temperature_range_c": [ST_MIN_C, ST_MAX_C],
+                    "qa_rejected": int(qa_rejected.sum()),
+                    "qa_stats": dict(self._last_qa_stats),
+                    "max_st_uncertainty_k": MAX_ST_UNCERTAINTY_K,
+                },
             )
 
         records: list[dict[str, Any]] = []
