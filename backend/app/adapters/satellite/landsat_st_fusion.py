@@ -207,9 +207,11 @@ class LandsatSurfaceTemperatureFusion:
             uncertainty_k = np.full(len(values), np.nan, dtype=np.float32)
             qa_x, qa_y = transform(source_crs, qa_pixel_crs, xs, ys)
             stqa_x, stqa_y = transform(source_crs, st_qa_crs, xs, ys)
-            for index, (x, y, ux, uy) in enumerate(zip(target_x, target_y, stqa_x, stqa_y)):
-                qrow, qcol = rasterio.transform.rowcol(qa_pixel_transform, *transform(source_crs, qa_pixel_crs, [xs[index]], [ys[index]]))
-                qvalue = self._value_from_array(qa_pixel, int(qrow[0]), int(qcol[0]))
+            for index, (x, y, qx, qy, ux, uy) in enumerate(
+                zip(target_x, target_y, qa_x, qa_y, stqa_x, stqa_y)
+            ):
+                qrow, qcol = rasterio.transform.rowcol(qa_pixel_transform, qx, qy)
+                qvalue = self._value_from_array(qa_pixel, int(qrow), int(qcol))
                 if qvalue is None or self._qa_pixel_is_bad(int(qvalue)):
                     qa_rejected[index] = True
                     continue
