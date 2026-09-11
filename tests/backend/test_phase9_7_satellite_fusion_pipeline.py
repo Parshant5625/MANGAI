@@ -6,7 +6,6 @@ import pytest
 
 from backend.app.adapters.satellite.fusion_pipeline import LiveSatelliteFusionPipeline
 from backend.app.core.errors import DataUnavailableError
-from ml.common.external_contracts import validate_external_batch
 from ml.common.provenance import DataBatch, DataProvenance
 
 
