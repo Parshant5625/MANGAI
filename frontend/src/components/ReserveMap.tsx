@@ -7,10 +7,10 @@ import "../reserve-intelligence.css";
 import "../reserve-intelligence-details.css";
 
 type LayerKey = "probability" | "grade" | "thickness" | "confidence";
-type BaseMapKey = "satellite" | "dark";
+type BaseMapKey = "satellite" | "terrain";
 
 const SATELLITE_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-const DARK_TILES = "https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png";
+const TERRAIN_TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
 export function ReserveMap({
   cells,
@@ -53,15 +53,17 @@ export function ReserveMap({
         version: 8,
         sources: {
           satellite: { type: "raster", tiles: [SATELLITE_TILES], tileSize: 256, attribution: "© Esri" },
-          dark: { type: "raster", tiles: [DARK_TILES], tileSize: 256, attribution: "© OpenStreetMap © CARTO" }
+          terrain: { type: "raster", tiles: [TERRAIN_TILES], tileSize: 256, attribution: "© OpenStreetMap contributors" }
         },
         layers: [
-          { id: "dark-base", type: "raster", source: "dark", layout: { visibility: "none" }, paint: { "raster-opacity": 0.92 } },
-          { id: "satellite-base", type: "raster", source: "satellite", paint: { "raster-opacity": 0.86, "raster-saturation": -0.15, "raster-contrast": 0.08 } }
+          { id: "terrain-base", type: "raster", source: "terrain", paint: { "raster-opacity": 0 } },
+          { id: "satellite-base", type: "raster", source: "satellite", paint: { "raster-opacity": 1, "raster-saturation": -0.05, "raster-contrast": 0.04, "raster-brightness-min": 0.08, "raster-brightness-max": 1 } }
         ]
       },
       center: [80.3, 21.4],
       zoom: 9,
+      minZoom: 6,
+      maxZoom: 16,
       attributionControl: false,
       dragRotate: false,
       pitchWithRotate: false
@@ -74,33 +76,34 @@ export function ReserveMap({
 
       map.addLayer({ id: "cells-glow", type: "circle", source: "cells", paint: {
         "circle-radius": ["interpolate", ["linear"], ["get", "probability"], 0, 7, 1, 18],
-        "circle-color": "#4bc392",
-        "circle-opacity": ["interpolate", ["linear"], ["get", "probability"], 0, 0, 0.65, 0.08, 1, 0.22],
+        "circle-color": "#6be0b2",
+        "circle-opacity": ["interpolate", ["linear"], ["get", "probability"], 0, 0, 0.65, 0.10, 1, 0.28],
         "circle-blur": 1
       }});
 
       map.addLayer({ id: "cells-heat", type: "circle", source: "cells", paint: {
-        "circle-radius": ["interpolate", ["linear"], ["get", "probability"], 0, 3.5, 1, 10.5],
-        "circle-color": ["interpolate", ["linear"], ["get", "value"], 0, "#173b35", 0.28, "#236a55", 0.55, "#d6a24b", 0.78, "#ef9d37", 1, "#ff4f3f"],
-        "circle-opacity": 0.9,
-        "circle-stroke-width": ["interpolate", ["linear"], ["get", "probability"], 0, 0.25, 0.7, 0.8, 1, 1.2],
-        "circle-stroke-color": "#07110d"
+        "circle-radius": ["interpolate", ["linear"], ["get", "value"], 0, 4, 0.5, 7, 1, 11],
+        "circle-color": ["interpolate", ["linear"], ["get", "value"], 0, "#16443a", 0.28, "#268264", 0.55, "#d6a24b", 0.78, "#ef9d37", 1, "#ff503f"],
+        "circle-opacity": 0.92,
+        "circle-stroke-width": ["interpolate", ["linear"], ["get", "probability"], 0, 0.3, 0.7, 1, 1, 1.5],
+        "circle-stroke-color": "#092119"
       }});
 
       map.addLayer({ id: "selected-cell", type: "circle", source: "cells", filter: ["==", ["get", "id"], "__none__"], paint: {
-        "circle-radius": 15,
+        "circle-radius": 17,
         "circle-color": "rgba(0,0,0,0)",
         "circle-opacity": 0,
-        "circle-stroke-width": 2,
-        "circle-stroke-color": "#f0c873"
+        "circle-stroke-width": 2.5,
+        "circle-stroke-color": "#ffe08b",
+        "circle-stroke-opacity": 1
       }});
 
       map.addLayer({ id: "boreholes-layer", type: "circle", source: "boreholes", paint: {
-        "circle-radius": 3.2,
-        "circle-color": "#eef7f2",
+        "circle-radius": 3.5,
+        "circle-color": "#f4fff9",
         "circle-stroke-width": 1,
-        "circle-stroke-color": "#183229",
-        "circle-opacity": 0.9
+        "circle-stroke-color": "#12382b",
+        "circle-opacity": 0.95
       }});
 
       map.on("click", "cells-heat", (event) => {
@@ -117,12 +120,9 @@ export function ReserveMap({
 
   useEffect(() => {
     const map = mapRef.current;
-    if (!map) return;
-    const satellite = map.getLayer("satellite-base");
-    const dark = map.getLayer("dark-base");
-    if (!satellite || !dark) return;
-    map.setLayoutProperty("satellite-base", "visibility", baseMap === "satellite" ? "visible" : "none");
-    map.setLayoutProperty("dark-base", "visibility", baseMap === "dark" ? "visible" : "none");
+    if (!map?.getLayer("satellite-base") || !map.getLayer("terrain-base")) return;
+    map.setPaintProperty("satellite-base", "raster-opacity", baseMap === "satellite" ? 1 : 0);
+    map.setPaintProperty("terrain-base", "raster-opacity", baseMap === "terrain" ? 0.96 : 0);
   }, [baseMap]);
 
   useEffect(() => {
@@ -150,7 +150,7 @@ export function ReserveMap({
     if (cells.length) {
       const bounds = new maplibregl.LngLatBounds();
       cells.forEach((cell) => bounds.extend([cell.longitude, cell.latitude]));
-      map.fitBounds(bounds, { padding: 54, maxZoom: 11, duration: 700 });
+      map.fitBounds(bounds, { padding: 54, maxZoom: 12, duration: 650 });
     }
     if (selectedCell) map.easeTo({ center: [selectedCell.longitude, selectedCell.latitude], duration: 450, zoom: Math.max(map.getZoom(), 10) });
   }, [cells, layer, boreholes, selectedCell]);
@@ -164,9 +164,9 @@ export function ReserveMap({
         <div className="reserve-map-stats"><span><b>{cells.length}</b> cells</span><span><b>{mapStats.high}</b> high</span><span><b>{mapStats.veryHigh}</b> very high</span></div>
       </div>
       <div className="reserve-map-corner"><span>AVG P</span><strong>{percent(mapStats.avgProbability)}</strong><span>CONF.</span><strong>{percent(mapStats.avgConfidence)}</strong></div>
-      <div className="reserve-map-controls"><button className={baseMap === "satellite" ? "active" : ""} onClick={() => setBaseMap("satellite")}>Satellite</button><button className={baseMap === "dark" ? "active" : ""} onClick={() => setBaseMap("dark")}>Terrain</button></div>
+      <div className="reserve-map-controls"><button className={baseMap === "satellite" ? "active" : ""} onClick={() => setBaseMap("satellite")}>Satellite</button><button className={baseMap === "terrain" ? "active" : ""} onClick={() => setBaseMap("terrain")}>Map</button></div>
       <div className="map-legend reserve-map-legend"><div className="legend-caption">{layer} intensity</div><div className="legend-scale"><i /><i /><i /><i /><i /></div><div className="legend-labels"><span>low</span><span>high</span></div>{selectedCell && <em><span />{selectedCell.id} · {percent(selectedCell.probability)}</em>}</div>
-      <div className="reserve-map-footnote"><span>● borehole context</span><span>◎ selected target</span><span>© Esri / © OpenStreetMap © CARTO</span></div>
+      <div className="reserve-map-footnote"><span>● borehole context</span><span>◎ selected target</span><span>© Esri · © OpenStreetMap</span></div>
     </div>
   );
 }
