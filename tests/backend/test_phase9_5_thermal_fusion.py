@@ -8,6 +8,10 @@ from rasterio.io import MemoryFile
 from rasterio.transform import from_origin
 
 from backend.app.adapters.satellite.landsat_st_fusion import (
+    MAX_ST_UNCERTAINTY_K,
+    QA_PIXEL_CLOUD,
+    QA_PIXEL_DILATED_CLOUD,
+    QA_PIXEL_FILL,
     QA_RADSAT_DROPPED_PIXEL,
     QA_RADSAT_TERRAIN_OCCLUSION,
     ST_OFFSET_K,
@@ -58,19 +62,27 @@ def test_drops_fill_pixels(monkeypatch):
 
 
 def test_masked_uint16_array_accepts_nan_safely():
-    # Regression for: TypeError: Cannot convert fill_value nan to dtype uint16
     array = np.ma.array(np.array([[0, 30000], [0, 0]], dtype=np.uint16), mask=np.array([[True, False], [True, True]]))
     value = LandsatSurfaceTemperatureFusion._nearest_valid_from_array(array, 0, 1)
     assert value == pytest.approx(30000.0)
 
 
 def test_qa_radsat_ignores_unrelated_band_saturation():
-    # QA_RADSAT bits 0-8 describe other bands. They must not invalidate a
-    # thermal ST pixel merely because a reflective/cirrus band saturated.
     unrelated_saturation = 1 << 0
     assert not LandsatSurfaceTemperatureFusion._qa_radsat_is_bad(unrelated_saturation)
     assert LandsatSurfaceTemperatureFusion._qa_radsat_is_bad(QA_RADSAT_DROPPED_PIXEL)
     assert LandsatSurfaceTemperatureFusion._qa_radsat_is_bad(QA_RADSAT_TERRAIN_OCCLUSION)
+
+
+def test_landsat_qa_pixel_clear_example_is_accepted():
+    assert not LandsatSurfaceTemperatureFusion._qa_pixel_is_bad(21824)
+    assert LandsatSurfaceTemperatureFusion._qa_pixel_is_bad(QA_PIXEL_FILL)
+    assert LandsatSurfaceTemperatureFusion._qa_pixel_is_bad(QA_PIXEL_DILATED_CLOUD)
+    assert LandsatSurfaceTemperatureFusion._qa_pixel_is_bad(QA_PIXEL_CLOUD)
+
+
+def test_st_uncertainty_gate_is_explicit():
+    assert MAX_ST_UNCERTAINTY_K == 5.0
 
 
 def test_rejects_demo_batch():
