@@ -30,9 +30,11 @@ except ImportError:  # pragma: no cover
 class ResilientLandsatSurfaceTemperatureFusion(LandsatSurfaceTemperatureFusion):
     """Strict Landsat ST fusion with an explicitly demo-only degraded fallback.
 
-    Production remains fail-closed. The fallback is enabled only when
-    MANGAI_ALLOW_DEGRADED_THERMAL=1 and uses the physical ST validity range,
-    while clearly marking the resulting provenance as QA-degraded.
+    Production remains fail-closed. QA_PIXEL and ST_QA are always required for
+    remote fusion. QA_RADSAT is supported by the base fusion class but is
+    opt-in for remote public COG reads because some public QA_RADSAT assets do
+    not provide reliable fast range reads. Set MANGAI_USE_QA_RADSAT=1 to apply
+    the additional dropped-pixel/terrain-occlusion mask.
     """
 
     def __init__(self, timeout_seconds: float = 60.0, allow_degraded: bool | None = None) -> None:
@@ -50,8 +52,16 @@ class ResilientLandsatSurfaceTemperatureFusion(LandsatSurfaceTemperatureFusion):
         *,
         aoi_bbox: tuple[float, float, float, float] | None = None,
     ) -> DataBatch:
+        scene = thermal_scene
+        if os.getenv("MANGAI_USE_QA_RADSAT") != "1":
+            # Keep QA_RADSAT out of the default remote-read path. QA_PIXEL and
+            # ST_QA remain mandatory. This avoids a known slow public COG path
+            # while preserving a deterministic opt-in for the extra QA layer.
+            scene = dict(thermal_scene)
+            scene["assets"] = dict(thermal_scene.get("assets") or {})
+            scene["assets"].pop("qa_radsat", None)
         try:
-            return super().fuse(optical_batch, thermal_scene, aoi_bbox=aoi_bbox)
+            return super().fuse(optical_batch, scene, aoi_bbox=aoi_bbox)
         except DataUnavailableError as strict_error:
             if not self.allow_degraded or aoi_bbox is None:
                 raise
