@@ -11,6 +11,7 @@ from backend.app.schemas import (
     DataQualityResponse,
     EquipmentResponse,
     ModelComparisonResponse,
+    ModelMonitoringResponse,
     ModelRegistryResponse,
     OperationsSummaryResponse,
     OverviewResponse,
@@ -29,6 +30,7 @@ from backend.app.schemas.live_reserve import LiveSatelliteReserveRequest, LiveSa
 from backend.app.services.data_quality import DataQualityService
 from backend.app.services.live_reserve import LiveSatelliteReserveService
 from backend.app.services.model_registry import ModelRegistryService
+from backend.app.services.monitoring import ModelMonitoringService
 from backend.app.services.operations import OperationsService
 from backend.app.services.operations_summary import OperationsSummaryService
 from backend.app.services.overview import OverviewService
@@ -142,6 +144,11 @@ def get_models() -> dict:
 @router.get("/models/compare", response_model=ModelComparisonResponse, tags=["mlops"])
 def compare_models(model_name: str | None = None) -> dict:
     return ModelRegistryService().compare(model_name=model_name)
+
+
+@router.get("/models/monitoring", response_model=ModelMonitoringResponse, tags=["mlops"])
+def get_model_monitoring() -> dict:
+    return ModelMonitoringService().health()
 
 
 @router.get("/data-quality", response_model=DataQualityResponse, tags=["mlops"])
