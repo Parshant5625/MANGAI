@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import math
 import os
 from pathlib import Path
 
@@ -32,6 +33,7 @@ def _parser() -> argparse.ArgumentParser:
 def _nearest_demo_coordinate(path: Path, latitude: float, longitude: float) -> tuple[float, float]:
     """Choose a synthetic geology coordinate so demo satellite/geology AOIs overlap."""
     best: tuple[float, float, float] | None = None
+    lon_scale = max(0.1, abs(math.cos(math.radians(latitude))))
     with path.open("r", encoding="utf-8", newline="") as handle:
         for row in csv.DictReader(handle):
             try:
@@ -41,7 +43,6 @@ def _nearest_demo_coordinate(path: Path, latitude: float, longitude: float) -> t
                 continue
             # Longitude degrees shrink with latitude; this keeps the nearest-point
             # choice geographically meaningful without requiring a geospatial package.
-            lon_scale = max(0.1, abs(__import__("math").cos(__import__("math").radians(latitude))))
             distance_sq = (row_lat - latitude) ** 2 + ((row_lon - longitude) * lon_scale) ** 2
             if best is None or distance_sq < best[0]:
                 best = (distance_sq, row_lat, row_lon)
