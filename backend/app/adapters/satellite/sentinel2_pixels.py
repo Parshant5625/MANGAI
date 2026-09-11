@@ -4,10 +4,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from io import BytesIO
 from typing import Any
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
 
 import numpy as np
 
@@ -17,9 +14,9 @@ from ml.common.provenance import DataBatch, DataProvenance
 try:
     import rasterio
     from rasterio.enums import Resampling
-    from rasterio.io import MemoryFile
     from rasterio.transform import Affine
-    from rasterio.warp import reproject, transform, transform_bounds
+    from rasterio.warp import array_bounds, reproject, transform, transform_bounds
+    from rasterio.windows import Window, from_bounds
 except ImportError:  # pragma: no cover
     rasterio = None
     Affine = Any
@@ -50,12 +47,22 @@ class PixelExtractionConfig:
 
 
 class Sentinel2PixelExtractor:
-    """Read real Sentinel-2 L2A assets, align bands, clip AOI and mask SCL."""
+    """Read real Sentinel-2 L2A COGs, align bands, clip AOI and mask SCL."""
 
     def __init__(self, config: PixelExtractionConfig | None = None) -> None:
         self.config = config or PixelExtractionConfig()
         if rasterio is None:
             raise DataUnavailableError("Live Sentinel-2 pixel ingestion requires rasterio to be installed.", details={"dependency": "rasterio"})
+        self._configure_gdal()
+
+    def _configure_gdal(self) -> None:
+        """Configure bounded remote reads without requiring local raster downloads."""
+        if rasterio is not None:
+            rasterio.env.Env(
+                GDAL_HTTP_TIMEOUT=max(1, int(self.config.timeout_seconds)),
+                GDAL_HTTP_MAX_RETRY=2,
+                GDAL_HTTP_RETRY_DELAY=1,
+            ).__enter__()
 
     def extract_scene(self, scene: dict[str, Any], site_id: str) -> DataBatch:
         assets = scene.get("assets") or {}
@@ -115,22 +122,45 @@ class Sentinel2PixelExtractor:
                 return str(value)
         return None
 
-    def _download(self, href: str) -> bytes:
-        request = Request(href, headers={"Accept": "image/tiff, application/octet-stream", "User-Agent": "MANGAI/1.0"})
+    @staticmethod
+    def _open_remote(href: str):
+        """Open a Planetary Computer signed COG directly using GDAL HTTP range requests."""
         try:
-            with urlopen(request, timeout=self.config.timeout_seconds) as response:
-                return response.read()
-        except (HTTPError, URLError, TimeoutError, OSError) as exc:
-            raise DataUnavailableError("Sentinel-2 raster asset is unavailable.", details={"reason": str(exc)}) from exc
-
-    def _read(self, href: str) -> tuple[np.ndarray, Any]:
-        raw = self._download(href)
-        try:
-            with MemoryFile(BytesIO(raw)) as memory_file:
-                with memory_file.open() as dataset:
-                    return dataset.read(1).astype(np.float32), dataset.profile.copy()
+            return rasterio.open(href)
         except Exception as exc:
-            raise DataUnavailableError("Sentinel-2 raster asset could not be decoded.", details={"reason": str(exc)}) from exc
+            raise DataUnavailableError("Sentinel-2 remote COG could not be opened.", details={"reason": str(exc)}) from exc
+
+    @staticmethod
+    def _window_for_aoi(dataset: Any, bbox: tuple[float, float, float, float]) -> Window:
+        try:
+            bounds = transform_bounds("EPSG:4326", dataset.crs, *bbox, densify_pts=21)
+            window = from_bounds(*bounds, transform=dataset.transform)
+            window = window.intersection(Window(0, 0, dataset.width, dataset.height))
+            if window.width <= 0 or window.height <= 0:
+                raise DataUnavailableError("Sentinel-2 AOI does not intersect the raster extent.")
+            return window.round_offsets().round_lengths()
+        except DataUnavailableError:
+            raise
+        except Exception as exc:
+            raise DataUnavailableError("Sentinel-2 AOI could not be mapped to the raster grid.", details={"reason": str(exc)}) from exc
+
+    def _read(self, href: str, window: Window | None = None) -> tuple[np.ndarray, Any]:
+        with self._open_remote(href) as dataset:
+            if dataset.crs is None:
+                raise DataUnavailableError("Sentinel-2 raster is missing CRS information.")
+            read_window = window
+            if read_window is None and self.config.aoi_bbox is not None:
+                read_window = self._window_for_aoi(dataset, self.config.aoi_bbox)
+            try:
+                array = dataset.read(1, window=read_window).astype(np.float32)
+            except Exception as exc:
+                raise DataUnavailableError("Sentinel-2 raster window could not be read.", details={"reason": str(exc)}) from exc
+            profile = dataset.profile.copy()
+            if read_window is not None:
+                profile["transform"] = dataset.window_transform(read_window)
+                profile["width"] = array.shape[1]
+                profile["height"] = array.shape[0]
+            return array, profile
 
     def _read_and_align(self, assets: dict[str, str], reference_profile: dict[str, Any] | None = None) -> tuple[dict[str, np.ndarray], Any]:
         reference_band = next(iter(assets)) if reference_profile is not None else ("B11" if self.config.target_resolution_m == 20 else "B02")
@@ -139,31 +169,35 @@ class Sentinel2PixelExtractor:
             raise DataUnavailableError("Sentinel-2 raster is missing CRS information.")
         if reference_profile is None:
             profile = source_profile.copy()
-            profile["width"] = reference.shape[1]
-            profile["height"] = reference.shape[0]
-            if self.config.aoi_bbox is not None:
-                bounds = transform_bounds("EPSG:4326", profile["crs"], *self.config.aoi_bbox, densify_pts=21)
-                left, bottom, right, top = bounds
-                col_start = max(0, int(np.floor((left - profile["transform"].c) / profile["transform"].a)))
-                col_stop = min(profile["width"], int(np.ceil((right - profile["transform"].c) / profile["transform"].a)))
-                row_start = max(0, int(np.floor((profile["transform"].f - top) / abs(profile["transform"].e))))
-                row_stop = min(profile["height"], int(np.ceil((profile["transform"].f - bottom) / abs(profile["transform"].e))))
-                if col_start >= col_stop or row_start >= row_stop:
-                    raise DataUnavailableError("Sentinel-2 AOI does not intersect the raster extent.")
-                reference = reference[row_start:row_stop, col_start:col_stop]
-                profile["transform"] = profile["transform"] * Affine.translation(col_start, row_start)
-                profile["width"] = reference.shape[1]
-                profile["height"] = reference.shape[0]
             arrays = {reference_band: reference}
         else:
             profile = reference_profile.copy()
             arrays = {}
+
+        dst_bounds = array_bounds(profile["height"], profile["width"], profile["transform"])
         for band, href in assets.items():
             if reference_profile is None and band == reference_band:
                 continue
-            array, band_profile = self._read(href)
-            if band_profile.get("crs") is None:
-                raise DataUnavailableError("Sentinel-2 raster is missing CRS information.", details={"band": band})
+            window = None
+            try:
+                with self._open_remote(href) as source_dataset:
+                    if source_dataset.crs is None:
+                        raise DataUnavailableError("Sentinel-2 raster is missing CRS information.", details={"band": band})
+                    source_bounds = transform_bounds(profile["crs"], source_dataset.crs, *dst_bounds, densify_pts=21)
+                    window = from_bounds(*source_bounds, transform=source_dataset.transform)
+                    window = window.intersection(Window(0, 0, source_dataset.width, source_dataset.height))
+                    if window.width <= 0 or window.height <= 0:
+                        raise DataUnavailableError("Sentinel-2 band does not overlap the target AOI/grid.", details={"band": band})
+                    window = window.round_offsets().round_lengths()
+                    array = source_dataset.read(1, window=window).astype(np.float32)
+                    band_profile = source_dataset.profile.copy()
+                    band_profile["transform"] = source_dataset.window_transform(window)
+                    band_profile["width"] = array.shape[1]
+                    band_profile["height"] = array.shape[0]
+            except DataUnavailableError:
+                raise
+            except Exception as exc:
+                raise DataUnavailableError("Sentinel-2 raster band could not be read.", details={"band": band, "reason": str(exc)}) from exc
             destination = np.full((profile["height"], profile["width"]), np.nan, dtype=np.float32)
             reproject(
                 source=array,
