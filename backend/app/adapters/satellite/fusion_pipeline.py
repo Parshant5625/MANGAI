@@ -67,6 +67,13 @@ class LiveSatelliteFusionPipeline:
         if max_temporal_days < 0:
             raise DataUnavailableError("Maximum temporal matching window must be non-negative.")
 
+        # Runtime coordinates are authoritative for the requested fusion AOI.
+        # This also keeps live provider configuration optional for API callers
+        # that submit site coordinates in the request body.
+        if isinstance(self.sentinel_provider, PlanetaryComputerSentinel2Provider):
+            self.sentinel_provider.lat = float(latitude)
+            self.sentinel_provider.lon = float(longitude)
+
         sentinel_batch = self.sentinel_provider.search_scenes(site_id, start, end, limit=limit)
         if not sentinel_batch.records:
             raise DataUnavailableError("No Sentinel-2 scenes are available for fusion.")
