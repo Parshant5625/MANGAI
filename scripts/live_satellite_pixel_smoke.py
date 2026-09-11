@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 from backend.app.adapters.satellite.planetary_computer import PlanetaryComputerSentinel2Provider
 from backend.app.adapters.satellite.sentinel2_pixel_service import Sentinel2PixelService
+from backend.app.adapters.satellite.fusion_pipeline import LIVE_AOI_HALF_DEG
 from backend.app.core.config import get_settings
 from backend.app.core.errors import DataUnavailableError
 
@@ -27,11 +28,18 @@ def main() -> int:
 
     end = args.end or datetime.now(UTC).date().isoformat()
     start = args.start or (datetime.fromisoformat(end).date() - timedelta(days=30)).isoformat()
+    aoi_bbox = (
+        max(-180.0, longitude - LIVE_AOI_HALF_DEG),
+        max(-90.0, latitude - LIVE_AOI_HALF_DEG),
+        min(180.0, longitude + LIVE_AOI_HALF_DEG),
+        min(90.0, latitude + LIVE_AOI_HALF_DEG),
+    )
 
     print("MANGAI live Sentinel-2 pixel smoke test")
     print("provider: Microsoft Planetary Computer")
     print(f"window: {start} -> {end}")
     print(f"coordinates: {latitude}, {longitude}")
+    print(f"AOI: {aoi_bbox}")
     print(f"cloud threshold: {settings.sentinel2_max_cloud_cover}%")
 
     try:
@@ -53,7 +61,11 @@ def main() -> int:
         print(f"spectral assets: {sum(1 for key in ('B02', 'B03', 'B04', 'B08', 'B11', 'B12') if key in assets)} / 6")
         print(f"SCL asset: {'yes' if 'SCL' in assets else 'no'}")
 
-        pixel_batch = Sentinel2PixelService().ingest_scene(scene, args.site_id)
+        pixel_batch = Sentinel2PixelService().ingest_scene(
+            scene,
+            args.site_id,
+            aoi_bbox=aoi_bbox,
+        )
         print(f"PASS: extracted {len(pixel_batch.records)} valid satellite pixel(s)")
         print(f"quality_score: {pixel_batch.provenance.quality_score}")
         print(f"dataset: {pixel_batch.provenance.dataset}")
