@@ -71,9 +71,6 @@ class LiveSatelliteFusionPipeline:
         if not sentinel_batch.records:
             raise DataUnavailableError("No Sentinel-2 scenes are available for fusion.")
 
-        # Temporal matching is allowed to reach outside the user-requested Sentinel
-        # window. Without this expansion, a Sentinel scene near the start/end of the
-        # window could never match a valid Landsat scene that is within max_temporal_days.
         start_date = parse_scene_datetime(f"{start}T00:00:00Z").date() - timedelta(days=max_temporal_days)
         end_date = parse_scene_datetime(f"{end}T23:59:59Z").date() + timedelta(days=max_temporal_days)
         thermal_scenes = self.landsat_provider.discover(
@@ -118,7 +115,10 @@ class LiveSatelliteFusionPipeline:
                     selected_scene = candidate
                     break
                 except DataUnavailableError as exc:
-                    candidate_failures.append({"scene_id": candidate.get("scene_id"), "error": str(exc)})
+                    failure: dict[str, Any] = {"scene_id": candidate.get("scene_id"), "error": str(exc)}
+                    if exc.details:
+                        failure["details"] = exc.details
+                    candidate_failures.append(failure)
 
             if selected_fused is None or selected_scene is None:
                 failures.append({"sentinel_scene_id": scene.get("scene_id"), "candidate_failures": candidate_failures})
