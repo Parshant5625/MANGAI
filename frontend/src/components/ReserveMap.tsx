@@ -1,5 +1,5 @@
 import maplibregl, { Map as MapLibreMap } from "maplibre-gl";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { ProspectivityCell } from "../types/api";
 import { percent } from "../utils/format";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -29,6 +29,17 @@ export function ReserveMap({
     onSelectRef.current = onSelect;
   }, [cells, onSelect]);
 
+  const mapStats = useMemo(() => {
+    if (!cells.length) {
+      return { high: 0, veryHigh: 0, avgProbability: 0, avgConfidence: 0 };
+    }
+    const high = cells.filter((cell) => cell.probability >= 0.7).length;
+    const veryHigh = cells.filter((cell) => cell.probability >= 0.85).length;
+    const avgProbability = cells.reduce((sum, cell) => sum + cell.probability, 0) / cells.length;
+    const avgConfidence = cells.reduce((sum, cell) => sum + cell.confidence, 0) / cells.length;
+    return { high, veryHigh, avgProbability, avgConfidence };
+  }, [cells]);
+
   useEffect(() => {
     if (!containerRef.current || mapRef.current) {
       return;
@@ -38,49 +49,92 @@ export function ReserveMap({
       style: {
         version: 8,
         sources: {},
-        layers: [{ id: "background", type: "background", paint: { "background-color": "#18231f" } }]
+        layers: [
+          {
+            id: "background",
+            type: "background",
+            paint: { "background-color": "#101b17" }
+          }
+        ]
       },
       center: [80.3, 21.4],
       zoom: 9,
-      attributionControl: false
+      attributionControl: false,
+      dragRotate: false,
+      pitchWithRotate: false
     });
+
     map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
     map.on("load", () => {
       map.addSource("cells", { type: "geojson", data: emptyCollection() });
       map.addSource("boreholes", { type: "geojson", data: emptyCollection() });
+
+      map.addLayer({
+        id: "cells-glow",
+        type: "circle",
+        source: "cells",
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["get", "probability"], 0, 7, 1, 18],
+          "circle-color": "#4bc392",
+          "circle-opacity": ["interpolate", ["linear"], ["get", "probability"], 0, 0, 0.65, 0.08, 1, 0.22],
+          "circle-blur": 1
+        }
+      });
+
       map.addLayer({
         id: "cells-heat",
         type: "circle",
         source: "cells",
         paint: {
-          "circle-radius": ["interpolate", ["linear"], ["get", "probability"], 0, 4, 1, 11],
+          "circle-radius": ["interpolate", ["linear"], ["get", "probability"], 0, 3.5, 1, 10.5],
           "circle-color": [
             "interpolate",
             ["linear"],
             ["get", "value"],
             0,
-            "#7a5a2b",
-            0.5,
+            "#5a4225",
+            0.28,
+            "#9f6e31",
+            0.55,
             "#d6a24b",
+            0.78,
+            "#61bd91",
             1,
-            "#3dd6a0"
+            "#b8f0d1"
           ],
-          "circle-opacity": 0.86,
-          "circle-stroke-width": 0.6,
-          "circle-stroke-color": "#0f1714"
+          "circle-opacity": 0.9,
+          "circle-stroke-width": ["interpolate", ["linear"], ["get", "probability"], 0, 0.25, 0.7, 0.8, 1, 1.2],
+          "circle-stroke-color": "#07110d"
         }
       });
+
+      map.addLayer({
+        id: "selected-cell",
+        type: "circle",
+        source: "cells",
+        filter: ["==", ["get", "id"], "__none__"],
+        paint: {
+          "circle-radius": 15,
+          "circle-color": "rgba(0,0,0,0)",
+          "circle-opacity": 0,
+          "circle-stroke-width": 2,
+          "circle-stroke-color": "#f0c873"
+        }
+      });
+
       map.addLayer({
         id: "boreholes-layer",
         type: "circle",
         source: "boreholes",
         paint: {
           "circle-radius": 3.2,
-          "circle-color": "#dbe7e1",
+          "circle-color": "#eef7f2",
           "circle-stroke-width": 1,
-          "circle-stroke-color": "#1c2924"
+          "circle-stroke-color": "#183229",
+          "circle-opacity": 0.88
         }
       });
+
       map.on("click", "cells-heat", (event) => {
         const id = event.features?.[0]?.properties?.id as string | undefined;
         const match = cellsRef.current.find((cell) => cell.id === id);
@@ -133,24 +187,51 @@ export function ReserveMap({
         }))
       });
     }
+    if (map.getLayer("selected-cell")) {
+      map.setFilter("selected-cell", ["==", ["get", "id"], selectedCell?.id ?? "__none__"]);
+    }
     if (cells.length) {
       const bounds = new maplibregl.LngLatBounds();
       cells.forEach((cell) => bounds.extend([cell.longitude, cell.latitude]));
-      map.fitBounds(bounds, { padding: 48, maxZoom: 11, duration: 600 });
+      map.fitBounds(bounds, { padding: 54, maxZoom: 11, duration: 700 });
     }
     if (selectedCell) {
-      map.easeTo({ center: [selectedCell.longitude, selectedCell.latitude], duration: 400 });
+      map.easeTo({ center: [selectedCell.longitude, selectedCell.latitude], duration: 450, zoom: Math.max(map.getZoom(), 10) });
     }
   }, [cells, layer, boreholes, selectedCell]);
 
   return (
-    <div className="map-surface maplibre-wrap">
+    <div className="map-surface maplibre-wrap reserve-map-command">
       <div ref={containerRef} className="maplibre-canvas" />
-      <div className="map-legend">
-        <span>Low {layer}</span>
-        <i />
-        <span>High</span>
-        {selectedCell && <em>{selectedCell.id} {percent(selectedCell.probability)}</em>}
+      <div className="reserve-map-scanline" />
+      <div className="reserve-map-hud">
+        <div className="reserve-map-title">
+          <span className="hud-live-dot" />
+          <div>
+            <strong>PROSPECTIVITY FIELD</strong>
+            <small>spatial inference · {layer.toUpperCase()}</small>
+          </div>
+        </div>
+        <div className="reserve-map-stats">
+          <span><b>{cells.length}</b> cells</span>
+          <span><b>{mapStats.high}</b> high</span>
+          <span><b>{mapStats.veryHigh}</b> very high</span>
+        </div>
+      </div>
+      <div className="reserve-map-corner">
+        <span>AVG P</span><strong>{percent(mapStats.avgProbability)}</strong>
+        <span>CONF.</span><strong>{percent(mapStats.avgConfidence)}</strong>
+      </div>
+      <div className="map-legend reserve-map-legend">
+        <div className="legend-caption">{layer} intensity</div>
+        <div className="legend-scale"><i /><i /><i /><i /><i /></div>
+        <div className="legend-labels"><span>low</span><span>high</span></div>
+        {selectedCell && <em><span />{selectedCell.id} · {percent(selectedCell.probability)}</em>}
+      </div>
+      <div className="reserve-map-footnote">
+        <span>● borehole context</span>
+        <span>◎ selected target</span>
+        <span>DEMO / SYNTHETIC</span>
       </div>
     </div>
   );
