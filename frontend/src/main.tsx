@@ -10,8 +10,14 @@ import "./reserve-map-view.css";
 import "./global-contrast.css";
 import "./ultimate-contrast.css";
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+const rootElement = document.getElementById("root");
+
+if (!rootElement) {
+  throw new Error("MANGAI frontend root element (#root) was not found.");
+}
+
+ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
     <App />
-  </React.StrictMode>
+  </React.StrictMode>,
 );
