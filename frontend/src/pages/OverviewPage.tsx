@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { DriverList, MetricCard, PanelHeader } from "../components/ui";
 import { OverviewReserveIntelligence } from "../components/OverviewReserveIntelligence";
+import { OverviewSignalRail } from "../components/OverviewSignalRail";
 import {
   DataQualityResponse,
   EquipmentResponse,
@@ -64,6 +65,7 @@ export function OverviewPage({ overview, production, recommendations, equipment,
       </section>
 
       <OverviewReserveIntelligence />
+      <OverviewSignalRail />
 
       <section className="panel wide chart-panel overview-forecast-panel">
         <PanelHeader icon={Activity} title="Production Forecast" meta={`${riskLevel} RISK`} />
