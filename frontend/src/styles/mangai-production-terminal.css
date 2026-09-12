@@ -1,0 +1,28 @@
+.mangai-production-terminal { padding: 18px; overflow: hidden; }
+.mangai-production-terminal-head { display:flex; justify-content:space-between; align-items:flex-start; gap:16px; }
+.mangai-production-terminal-head h2 { margin:7px 0 0; font:600 22px "Space Grotesk",sans-serif; }
+.mangai-production-terminal-head p { margin:5px 0 0; color:#879791; font-size:11px; }
+.mangai-risk-badge { display:flex; align-items:center; gap:6px; padding:7px 9px; border:1px solid rgba(245,185,66,.2); border-radius:7px; color:#f5c768; background:rgba(245,185,66,.05); font-size:8px; font-weight:700; letter-spacing:.1em; }
+.mangai-risk-badge.high { color:#ff8190; border-color:rgba(239,75,95,.24); background:rgba(239,75,95,.06); }
+.mangai-risk-badge.low { color:#65df9f; border-color:rgba(85,214,106,.22); background:rgba(85,214,106,.05); }
+.mangai-production-terminal-grid { display:grid; grid-template-columns:1.15fr 1fr 1.35fr; gap:10px; margin-top:18px; }
+.mangai-production-number-block, .mangai-production-target-block, .mangai-driver-panel { min-height:150px; padding:14px; border:1px solid rgba(255,255,255,.08); border-radius:9px; background:rgba(255,255,255,.018); }
+.mangai-production-number-block > span { color:#72817b; font-size:8px; font-weight:700; letter-spacing:.14em; }
+.mangai-production-number-block > strong { display:block; margin-top:7px; font:600 clamp(30px,4vw,46px) "Space Grotesk",sans-serif; letter-spacing:-.05em; }
+.mangai-production-number-block small { color:#7e8c87; font-size:14px; letter-spacing:0; }
+.mangai-gap { display:flex; align-items:center; gap:4px; margin-top:9px; font-size:10px; font-weight:600; }
+.mangai-gap.negative { color:#ff7181; }
+.mangai-gap.positive { color:#65df9f; }
+.mangai-terminal-metric { display:flex; gap:9px; align-items:center; padding:9px 0; border-bottom:1px solid rgba(255,255,255,.06); color:#687a72; }
+.mangai-terminal-metric:last-child { border-bottom:0; }
+.mangai-terminal-metric div { min-width:0; }
+.mangai-terminal-metric span { display:block; color:#74837d; font-size:8px; }
+.mangai-terminal-metric strong { display:block; margin-top:2px; color:#edf5f1; font-size:12px; }
+.mangai-driver-bars { margin-top:10px; display:grid; gap:10px; }
+.mangai-driver-bar div { display:flex; justify-content:space-between; color:#a9b8b2; font-size:9px; }
+.mangai-driver-bar b { color:#dce8e3; font-size:8px; }
+.mangai-driver-bar .track { display:block; height:4px; margin-top:5px; border-radius:99px; background:#202a26; overflow:hidden; }
+.mangai-driver-bar i { display:block; height:100%; border-radius:99px; background:linear-gradient(90deg,#168a68,#36d6ae); }
+.mangai-production-terminal-foot { display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:14px; padding-top:11px; border-top:1px solid rgba(255,255,255,.07); color:#63736c; font-size:7px; font-weight:700; letter-spacing:.1em; }
+@media (max-width:900px){ .mangai-production-terminal-grid{grid-template-columns:1fr 1fr}.mangai-driver-panel{grid-column:1/-1} }
+@media (max-width:560px){ .mangai-production-terminal-grid{grid-template-columns:1fr}.mangai-driver-panel{grid-column:auto} }
