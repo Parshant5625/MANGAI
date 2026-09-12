@@ -1,137 +1,93 @@
-import type { CSSProperties } from "react";
-import {
-  Activity,
-  AlertTriangle,
-  BarChart3,
-  CheckCircle2,
-  ClipboardList,
-  Database,
-  Map,
-  Satellite,
-  Target,
-  Wrench
-} from "lucide-react";
-import { DriverList, MetricCard, PanelHeader } from "../components/ui";
+import { Activity, AlertTriangle, BarChart3, CheckCircle2, ClipboardList, Database, Satellite, Target, Wrench } from "lucide-react";
+import { DriverList, PanelHeader } from "../components/ui";
 import { OverviewReserveIntelligence } from "../components/OverviewReserveIntelligence";
 import { OverviewSignalRail } from "../components/OverviewSignalRail";
-import {
-  DataQualityResponse,
-  EquipmentResponse,
-  OverviewResponse,
-  ProductionForecastResponse,
-  RecommendationResponse
-} from "../types/api";
+import { DataQualityResponse, EquipmentResponse, OverviewResponse, ProductionForecastResponse, RecommendationResponse } from "../types/api";
 import { compactNumber, number, percent, signedNumber } from "../utils/format";
 
 export function OverviewPage({ overview, production, recommendations, equipment, quality }: { overview: OverviewResponse; production: ProductionForecastResponse; recommendations: RecommendationResponse; equipment: EquipmentResponse; quality: DataQualityResponse }) {
-  const healthScore = quality.overall_score;
+  const risk = overview.shortfall_probability;
+  const riskLabel = risk >= 0.75 ? "CRITICAL" : risk >= 0.65 ? "HIGH" : risk >= 0.45 ? "WATCH" : "LOW";
   const topRecommendation = recommendations.recommendations[0];
-  const riskLevel = overview.shortfall_probability > 0.75 ? "CRITICAL" : overview.shortfall_probability > 0.65 ? "HIGH" : overview.shortfall_probability > 0.45 ? "MEDIUM" : "LOW";
 
   return (
-    <div className="page-grid overview-page">
-      <section className="overview-hero">
-        <div className="hero-copy">
-          <div className="hero-kicker"><Satellite size={15} /> CROSS-DOMAIN MINING INTELLIGENCE</div>
-          <h1>See the mine before you move it.</h1>
-          <p>One operational view connecting geological prospectivity, satellite context, production risk, fleet health and AI-assisted actions.</p>
-          <div className="hero-status-row">
-            <span className="hero-status"><CheckCircle2 size={15} /> Intelligence services online</span>
-            <span>Site · {overview.site_id}</span>
-            <span>Model · {production.model_version}</span>
+    <div className="mangai-page mangai-command-center-page">
+      <section className="command-center-header">
+        <div>
+          <div className="mangai-page-kicker"><Satellite size={12}/> MINE INTELLIGENCE COMMAND CENTER</div>
+          <h1 className="mangai-page-title">See the mine. Understand the risk. Decide what to investigate next.</h1>
+          <p className="mangai-page-description">A cross-domain intelligence surface connecting geology, satellite context, production, fleet health, environment and evidence-backed actions.</p>
+        </div>
+        <div className="command-center-status">
+          <div><span className="status-pulse"/> OPERATIONAL</div>
+          <small>Site {overview.site_id} · Model {production.model_version}</small>
+        </div>
+      </section>
+
+      <section className="command-metric-strip">
+        <CommandMetric label="SHORTFALL RISK" value={percent(risk)} detail={riskLabel} tone={riskLabel === "LOW" ? "good" : "risk"}/>
+        <CommandMetric label="7D PRODUCTION" value={`${compactNumber(production.forecast_mt)} t`} detail={`${signedNumber(production.gap_mt)} vs target`} tone={production.gap_mt < 0 ? "risk" : "good"}/>
+        <CommandMetric label="PROTOTYPE RESOURCE" value={`${compactNumber(overview.resource_potential_tonnage)} t`} detail={`${number(overview.high_prospectivity_area_ha, 1)} ha high prospectivity`}/>
+        <CommandMetric label="FLEET PULSE" value={percent(equipment.fleet_utilization)} detail={`${equipment.critical_equipment_count} critical assets`} tone={equipment.critical_equipment_count ? "warn" : "good"}/>
+        <CommandMetric label="DATA QUALITY" value={percent(quality.overall_score)} detail={overview.model_health} tone={quality.overall_score >= .85 ? "good" : "warn"}/>
+      </section>
+
+      <section className="command-main-grid">
+        <div className="command-map-stage">
+          <OverviewReserveIntelligence />
+        </div>
+        <aside className="command-intelligence-rail">
+          <OverviewSignalRail />
+          <section className="command-driver-panel">
+            <PanelHeader icon={AlertTriangle} title="Risk drivers" meta={production.severity}/>
+            <DriverList drivers={production.top_drivers} />
+          </section>
+        </aside>
+      </section>
+
+      <section className="command-bottom-grid">
+        <section className="panel command-forecast-panel">
+          <PanelHeader icon={BarChart3} title="Production outlook" meta="7 DAY / DECISION WINDOW"/>
+          <div className="command-forecast-values">
+            <div><span>FORECAST</span><strong>{compactNumber(production.forecast_mt)} t</strong></div>
+            <div><span>TARGET</span><strong>{compactNumber(production.target_mt)} t</strong></div>
+            <div><span>GAP</span><strong className={production.gap_mt < 0 ? "negative" : "positive"}>{signedNumber(production.gap_mt)} t</strong></div>
           </div>
-        </div>
-        <div className="hero-orbit" aria-hidden="true">
-          <div className="orbit orbit-one" />
-          <div className="orbit orbit-two" />
-          <div className="orbit orbit-three" />
-          <div className="hero-core"><span>M</span><small>AI</small></div>
-          <span className="orbit-dot dot-one" /><span className="orbit-dot dot-two" /><span className="orbit-dot dot-three" />
-        </div>
+          <div className="command-risk-track"><span style={{ width: `${Math.max(3, Math.min(100, risk * 100))}%` }}/></div>
+          <div className="command-footnote"><span>Shortfall probability</span><b>{percent(risk)}</b></div>
+        </section>
+
+        <section className="panel command-action-panel">
+          <PanelHeader icon={ClipboardList} title="Next investigation" meta="AI ACTION CENTER"/>
+          {topRecommendation ? <>
+            <span className={`command-priority ${topRecommendation.priority.toLowerCase()}`}>{topRecommendation.priority}</span>
+            <h3>{topRecommendation.title}</h3>
+            <p>{topRecommendation.rationale}</p>
+            <div className="command-evidence"><span>CONFIDENCE <b>{percent(topRecommendation.confidence)}</b></span><span>STATUS <b>HUMAN REVIEW</b></span></div>
+          </> : <p>No active recommendations.</p>}
+        </section>
+
+        <section className="panel command-system-panel">
+          <PanelHeader icon={Database} title="System pulse" meta="LIVE SERVICES"/>
+          <SystemRow icon={Target} label="Reserve intelligence" value="READY"/>
+          <SystemRow icon={Activity} label="Production intelligence" value="READY"/>
+          <SystemRow icon={Wrench} label="Fleet intelligence" value="READY"/>
+          <SystemRow icon={Satellite} label="Satellite fusion" value={overview.synthetic_data ? "DEMO" : "LIVE"}/>
+          <SystemRow icon={CheckCircle2} label="Decision boundary" value="ENFORCED"/>
+        </section>
       </section>
 
-      <section className="kpi-grid">
-        <MetricCard icon={Target} label="Prototype resource potential" value={`${compactNumber(overview.resource_potential_tonnage)} t`} />
-        <MetricCard icon={Map} label="High prospectivity area" value={`${number(overview.high_prospectivity_area_ha, 1)} ha`} />
-        <MetricCard icon={BarChart3} label="Next 7-day production" value={`${compactNumber(overview.next_7_day_production_mt)} t`} />
-        <MetricCard icon={AlertTriangle} label="Shortfall probability" value={percent(overview.shortfall_probability)} tone={overview.shortfall_probability > 0.65 ? "risk" : "ok"} />
-      </section>
-
-      <section className="kpi-grid">
-        <MetricCard icon={Activity} label="Production gap" value={`${signedNumber(overview.production_gap_mt)} t`} tone={overview.production_gap_mt < 0 ? "risk" : "ok"} />
-        <MetricCard icon={Wrench} label="Critical equipment" value={number(overview.critical_equipment_count)} tone={overview.critical_equipment_count > 0 ? "risk" : "ok"} />
-        <MetricCard icon={ClipboardList} label="Recommendations" value={number(overview.recommendation_count)} />
-        <MetricCard icon={Database} label="Data quality" value={percent(healthScore)} tone={healthScore >= 0.85 ? "ok" : "risk"} />
-      </section>
-
-      <OverviewReserveIntelligence />
-      <OverviewSignalRail />
-
-      <section className="panel wide chart-panel overview-forecast-panel">
-        <PanelHeader icon={Activity} title="Production Forecast" meta={`${riskLevel} RISK`} />
-        <div className="split">
-          <div>
-            <p className="massive">{signedNumber(production.gap_mt)} t</p>
-            <p className="muted">Forecast gap against the 7-day target.</p>
-            <div className="forecast-strip">
-              <div><span>Forecast</span><strong>{compactNumber(production.forecast_mt)} t</strong></div>
-              <div><span>Target</span><strong>{compactNumber(production.target_mt)} t</strong></div>
-              <div><span>Risk</span><strong>{percent(production.shortfall_probability)}</strong></div>
-            </div>
-          </div>
-          <DriverList drivers={production.top_drivers} />
-        </div>
-      </section>
-
-      <section className="panel">
-        <PanelHeader icon={Wrench} title="Fleet Pulse" meta={`${equipment.critical_equipment_count} critical`} />
-        <div className="pulse-meter">
-          <div className="pulse-ring"><strong>{percent(equipment.fleet_availability)}</strong><span>availability</span></div>
-          <div className="pulse-details">
-            <MetricLine label="Utilization" value={percent(equipment.fleet_utilization)} />
-            {equipment.items.slice(0, 3).map((item) => <MetricLine key={item.equipment_id} label={item.equipment_id} value={`${number(item.downtime_7d_hours, 1)} h`} />)}
-          </div>
-        </div>
-      </section>
-
-      <section className="panel">
-        <PanelHeader icon={ClipboardList} title="AI Action Queue" meta={`${recommendations.recommendations.length} proposed`} />
-        <div className="stack">
-          {recommendations.recommendations.slice(0, 3).map((item, index) => (
-            <div className="action-row action-row-animated" key={item.id} style={{ animationDelay: `${index * 90}ms` }}>
-              <span className={`priority ${item.priority.toLowerCase()}`}>{item.priority}</span><p>{item.title}</p>
-            </div>
-          ))}
-        </div>
-        {topRecommendation && <p className="muted queue-note">Highest-priority signal: {topRecommendation.category.replaceAll("_", " ")} · {percent(topRecommendation.confidence)} confidence.</p>}
-      </section>
-
-      <section className="panel">
-        <PanelHeader icon={Database} title="Data & Model Health" meta={overview.model_health} />
-        <div className="health-grid">
-          <div className="health-ring" style={{ "--score": `${healthScore * 360}deg` } as CSSProperties}><strong>{percent(healthScore)}</strong><span>data quality</span></div>
-          <div className="health-copy"><MetricLine label="Model status" value={overview.model_health} /><MetricLine label="Data mode" value={overview.synthetic_data ? "DEMO" : "LIVE"} /><MetricLine label="Recommendations" value={number(overview.recommendation_count)} /></div>
-        </div>
-      </section>
-
-      <section className="panel wide insight-panel">
-        <PanelHeader icon={Satellite} title="MANGAI Intelligence Loop" meta="geology → operations → action" />
-        <div className="intelligence-loop">
-          <LoopStep number="01" title="Discover" text="Map geological and satellite indicators into prospectivity signals." icon={Map} />
-          <div className="loop-arrow">→</div>
-          <LoopStep number="02" title="Predict" text="Forecast production and quantify shortfall drivers with uncertainty." icon={BarChart3} />
-          <div className="loop-arrow">→</div>
-          <LoopStep number="03" title="Act" text="Prioritize evidence-backed corrective actions for human approval." icon={ClipboardList} />
-        </div>
-      </section>
-
-      <section className="panel wide boundary-panel">
-        <PanelHeader icon={Database} title="Prototype boundary" meta="important" />
-        <p className="boundary">{overview.boundary_notice}</p>
+      <section className="command-boundary">
+        <span>DECISION SUPPORT SYSTEM</span>
+        <p>{overview.boundary_notice}</p>
       </section>
     </div>
   );
 }
 
-function MetricLine({ label, value }: { label: string; value: string }) { return <div className="metric-line"><span>{label}</span><strong>{value}</strong></div>; }
-function LoopStep({ number: stepNumber, title, text, icon: Icon }: { number: string; title: string; text: string; icon: typeof Map }) { return <div className="loop-step"><div className="loop-icon"><Icon size={19} /><span>{stepNumber}</span></div><div><strong>{title}</strong><p>{text}</p></div></div>; }
+function CommandMetric({ label, value, detail, tone = "neutral" }: { label: string; value: string; detail: string; tone?: "neutral" | "good" | "warn" | "risk" }) {
+  return <div className={`command-metric ${tone}`}><span>{label}</span><strong>{value}</strong><small>{detail}</small></div>;
+}
+function SystemRow({ icon: Icon, label, value }: { icon: typeof Target; label: string; value: string }) {
+  return <div className="system-row"><span className="system-icon"><Icon size={13}/></span><span>{label}</span><b>{value}</b></div>;
+}
