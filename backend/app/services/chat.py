@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from backend.app.core.config import get_settings
@@ -19,8 +20,9 @@ class ChatService:
 
     @staticmethod
     def _match(message: str, terms: tuple[str, ...]) -> bool:
-        text = message.lower()
-        return any(term in text for term in terms)
+        """Match whole words/phrases so short terms like ``hi`` cannot false-positive."""
+        text = message.lower().strip()
+        return any(re.search(rf"(?<!\w){re.escape(term.lower())}(?!\w)", text) for term in terms)
 
     @staticmethod
     def _pct(value: float) -> str:
