@@ -10,7 +10,7 @@ import { compactNumber, number, percent, signedNumber } from "./utils/format";
 import { ReserveMap } from "./components/ReserveMap";
 import { OverviewPage } from "./pages/OverviewPage";
 import { Activity, AlertTriangle, BarChart3, ClipboardList, CloudRain, Database, Gauge, Layers, Map, Settings, ShieldCheck, Target, Wrench } from "lucide-react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type PageKey = "overview" | "reserve" | "production" | "equipment" | "weather" | "recommendations" | "health" | "settings";
 const pages: Array<{ key: PageKey; label: string; icon: typeof Activity }> = [
@@ -67,5 +67,5 @@ function SettingsPage({safety}:{safety?:{mode:string;boundary:string}|null}){ret
 function PanelHeader({icon:Icon,title,meta}:{icon:typeof Activity;title:string;meta?:string}){return <div className="panel-header"><div><Icon size={15}/><span className="eyebrow">{title}</span><h3>{title}</h3></div>{meta&&<span className="panel-meta">{meta}</span>}</div>}
 function MetricCard({icon:Icon,label,value,tone="default"}:{icon:typeof Activity;label:string;value:string;tone?:"default"|"risk"|"ok"}){return <article className={`metric-card ${tone}`}><Icon size={18}/><span>{label}</span><strong>{value}</strong></article>}
 function MetricLine({label,value}:{label:string;value:string}){return <div className="metric-line"><span>{label}</span><strong>{value}</strong></div>}
-function DriverList({drivers}:{drivers:Array<{feature:string;direction:string;importance:number}>}){return <div className="driver-list">{drivers.map(driver=><div className="driver" key={driver.feature}><div><span>{driver.feature}</span><strong>{percent(driver.importance)}</strong></div><div className="mini-bar"><span style={{width:`${Math.min(100,Math.max(0,driver.importance*100))}%`}}/></div></div>)}</div>}
+function DriverList({drivers}:{drivers:Array<{feature:string;direction:string;importance:number}>}){return <div className="driver-list">{drivers.map(driver=><div className="driver" key={driver.feature}><div><span>{driver.feature}</span><strong>{percent(driver.importance)}</strong></div><div className="mini-bar"><span style={{width:`${Math.min(100,Math.max(0,driver.importance*100))}%`}}/></div></div>)}
 export default App;
