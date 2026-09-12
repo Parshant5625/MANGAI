@@ -1,0 +1,12 @@
+/* Light shell surfaces: dark typography for reliable readability. */
+.main .topbar h2{color:#17231e!important}
+.main .topbar .eyebrow{color:#56665f!important}
+.main .topbar .badge{color:#34423c!important;background:#fff!important;border-color:#c8d0cc!important}
+.main .topbar .badge.warn{color:#7a4b17!important;background:#fff7e2!important;border-color:#d6a24b!important}
+.main > .state{color:#34423c!important;background:#fbfcfb!important}
+.main > .state.danger{color:#963d24!important;background:#fff2ec!important}
+.main .page-grid > .panel:not(.production-hero):not(.recommendations-hero):not(.health-hero):not(.overview-reserve-command):not(.overview-signal-rail),
+.main .page-grid > .metric-card,
+.main .page-grid > .table-panel{background:#fbfcfb!important}
+.main .page-grid > .panel:not(.production-hero):not(.recommendations-hero):not(.health-hero):not(.overview-reserve-command):not(.overview-signal-rail) .panel-header h3{color:#17231e!important}
+.main .page-grid > .panel:not(.production-hero):not(.recommendations-hero):not(.health-hero):not(.overview-reserve-command):not(.overview-signal-rail) .panel-header span{color:#5c6e66!important}
