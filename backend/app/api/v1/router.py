@@ -137,3 +137,42 @@ def predict_production(payload: ProductionPredictionRequest) -> dict:
 def simulate_recommendations(payload: RecommendationSimulationRequest, site_id: str | None = None) -> dict:
     return RecommendationService().simulate(payload.model_dump(), site_id=site_id)
 
+
+@router.post("/chat", tags=["copilot"])
+def chat(payload: dict) -> dict:
+    """Deterministic decision-support copilot for the demo command center.
+
+    This intentionally avoids pretending to be a general-purpose LLM. It interprets
+    the current dashboard evidence and returns a bounded operational explanation.
+    """
+    question = str(payload.get("message", "")).strip()
+    context = payload.get("context") or {}
+    risk = float(context.get("production_risk", 0) or 0)
+    gap = float(context.get("production_gap_mt", 0) or 0)
+    fleet = float(context.get("fleet_utilization", 0) or 0)
+    quality = float(context.get("data_quality", 0) or 0)
+    target = context.get("selected_target")
+
+    q = question.lower()
+    evidence: list[str] = []
+    if risk >= 0.65:
+        evidence.append(f"shortfall risk is elevated at {risk:.0%}")
+    else:
+        evidence.append(f"shortfall risk is currently {risk:.0%}")
+    evidence.append(f"production gap is {gap:,.0f} t")
+    evidence.append(f"fleet utilization is {fleet:.0%}")
+    evidence.append(f"data quality is {quality:.0%}")
+    if target:
+        evidence.append(f"selected target is {target}")
+
+    if "why" in q and ("production" in q or "risk" in q):
+        answer = "The current production-risk signal is driven by the operating evidence exposed to the dashboard: " + "; ".join(evidence[:4]) + ". Investigate the highest-ranked production driver, then cross-check equipment downtime and blasting/weather constraints before changing the mine plan."
+    elif "next" in q or "investigate" in q:
+        answer = "Recommended investigation order: 1) validate the top production driver, 2) inspect critical-equipment downtime, 3) check weather/blasting overlap, 4) compare the proposed action with the current production target. Do not treat the model output as a clearance or mine-plan approval."
+    elif "evidence" in q or "action" in q:
+        answer = "The strongest dashboard evidence currently available is: " + "; ".join(evidence) + ". Use these signals to prioritize investigation; the final operational decision remains with the accountable mine team."
+    else:
+        answer = "I can explain the current production risk, identify the next investigation step, or summarize evidence for a recommendation. Current evidence: " + "; ".join(evidence) + "."
+
+    confidence = max(0.45, min(0.95, 0.55 + quality * 0.25))
+    return {"answer": answer, "confidence": confidence, "evidence": evidence, "mode": "bounded-decision-support"}
