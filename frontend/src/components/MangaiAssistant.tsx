@@ -5,7 +5,7 @@ import { apiPost } from "../api/client";
 type Evidence = { label: string; value: string };
 type AssistantAction = { label: string; action: string };
 type ChatResponse = { answer: string; intent: string; confidence: number; evidence: Evidence[]; suggested_questions: string[]; actions: AssistantAction[]; data_mode: string; synthetic_data: boolean; disclaimer: string };
-type ChatItem = { role: "user" | "assistant"; content: string; evidence?: Evidence[]; confidence?: number; actions?: AssistantAction[] };
+type ChatItem = { role: "user" | "assistant"; content: string; evidence?: Evidence[]; confidence?: number; actions?: AssistantAction[]; suggestedQuestions?: string[] };
 
 const starters = ["Why is production risk high?", "Which equipment has the highest downtime?", "What is the 7-day production forecast?", "Which reserve area should we investigate first?"];
 const routeForAction: Record<string, string> = { overview: "Overview", production: "Production", reserve: "Reserve", "reserve-thermal": "Reserve", equipment: "Equipment", weather: "Weather", recommendations: "Actions", operations: "Operations", health: "Health" };
@@ -16,7 +16,7 @@ export function MangaiAssistant() {
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState<number | null>(null);
   const [pageContext, setPageContext] = useState(() => window.location.hash || "overview");
-  const [messages, setMessages] = useState<ChatItem[]>([{ role: "assistant", content: "MANGAI AI online. I can investigate the mine intelligence graph, explain risk drivers, surface evidence and take you to the relevant intelligence view." }]);
+  const [messages, setMessages] = useState<ChatItem[]>([{ role: "assistant", content: "MANGAI AI online. I can investigate the mine intelligence graph, explain risk drivers, surface evidence and take you to the relevant intelligence view.", suggestedQuestions: starters }]);
 
   useEffect(() => {
     const update = () => setPageContext(window.location.hash || "overview");
@@ -25,10 +25,7 @@ export function MangaiAssistant() {
     return () => { window.removeEventListener("popstate", update); window.removeEventListener("hashchange", update); };
   }, []);
 
-  const visibleSuggestions = useMemo(() => {
-    const last = messages[messages.length - 1];
-    return last?.role === "assistant" && last.actions?.length ? last.actions.slice(0, 4) : starters;
-  }, [messages]);
+  const visibleSuggestions = useMemo(() => messages[messages.length - 1]?.suggestedQuestions?.slice(0, 4) ?? starters, [messages]);
 
   async function ask(question: string) {
     const clean = question.trim();
@@ -39,9 +36,9 @@ export function MangaiAssistant() {
     setBusy(true);
     try {
       const response = await apiPost<ChatResponse>("/api/v1/chat", { message: clean, history, page_context: pageContext });
-      setMessages((items) => [...items, { role: "assistant", content: response.answer, evidence: response.evidence, confidence: response.confidence, actions: response.actions }]);
+      setMessages((items) => [...items, { role: "assistant", content: response.answer, evidence: response.evidence, confidence: response.confidence, actions: response.actions, suggestedQuestions: response.suggested_questions }]);
     } catch (error) {
-      setMessages((items) => [...items, { role: "assistant", content: `I couldn't reach the MANGAI intelligence service. ${error instanceof Error ? error.message : "Please check the backend."}` }]);
+      setMessages((items) => [...items, { role: "assistant", content: `I couldn't reach the MANGAI intelligence service. ${error instanceof Error ? error.message : "Please check the backend."}`, suggestedQuestions: starters }]);
     } finally { setBusy(false); }
   }
 
@@ -55,7 +52,7 @@ export function MangaiAssistant() {
 
   function submit(event: FormEvent) { event.preventDefault(); void ask(input); }
   async function copyAnswer(content: string, index: number) { try { await navigator.clipboard.writeText(content); setCopied(index); window.setTimeout(() => setCopied(null), 1200); } catch { /* optional browser permission */ } }
-  function reset() { setMessages([{ role: "assistant", content: "Conversation reset. MANGAI AI is ready for a fresh investigation." }]); }
+  function reset() { setMessages([{ role: "assistant", content: "Conversation reset. MANGAI AI is ready for a fresh investigation.", suggestedQuestions: starters }]); }
 
   return <>
     {open && <section className="mangai-assistant" aria-label="MANGAI AI Assistant">
@@ -73,7 +70,7 @@ export function MangaiAssistant() {
         </article>)}
         {busy && <article className="assistant-message assistant"><div className="assistant-bubble assistant-thinking"><Sparkles size={14}/> Correlating MANGAI signals<span className="thinking-dots">•••</span></div></article>}
       </div>
-      {!busy && <div className="assistant-starters">{visibleSuggestions.map((item) => typeof item === "string" ? <button key={item} onClick={() => void ask(item)}>{item}</button> : <button key={item.action} onClick={() => executeAction(item.action)}>{item.label}<ExternalLink size={10}/></button>)}</div>}
+      {!busy && <div className="assistant-starters"><span className="assistant-starters-label">Suggested investigation</span>{visibleSuggestions.map((item) => <button key={item} onClick={() => void ask(item)}>{item}</button>)}</div>}
       <form className="assistant-input" onSubmit={submit}><input value={input} onChange={(event) => setInput(event.target.value)} placeholder="Ask MANGAI about the mine..." maxLength={2000}/><button type="submit" disabled={busy || !input.trim()} aria-label="Send question"><Send size={16}/></button></form>
       <footer className="assistant-disclaimer">Decision support only · Human approval required · Demo/live mode is always disclosed.</footer>
     </section>}
