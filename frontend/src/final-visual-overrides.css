@@ -1,0 +1,103 @@
+/* Final visual corrections: high contrast typography, compact controls, readable geospatial layers. */
+
+/* Typography: never let dark panels inherit the old light-theme text. */
+.main, .main * { color-scheme: dark; }
+.main p, .main span, .main label, .main td, .main th, .main li { text-shadow: 0 1px 1px rgba(0,0,0,.18); }
+.panel, .metric-card, .table-panel, .state { color: #eaf8f2 !important; }
+.panel h1, .panel h2, .panel h3, .panel h4, .metric-card strong { color: #f3fff9 !important; }
+.panel p, .panel .muted, .panel .boundary { color: #a9c4b8 !important; }
+.panel-header span, .metric-card span, .metric-line span, .driver span { color: #9ab8ab !important; }
+.panel-header h3 { color: #f0fff8 !important; }
+button { -webkit-font-smoothing: antialiased; }
+
+/* Make the base-map selector impossible to collapse vertically. */
+.reserve-map-command .reserve-map-controls {
+  position: absolute !important;
+  top: 62px !important;
+  right: 16px !important;
+  bottom: auto !important;
+  left: auto !important;
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  max-width: max-content !important;
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: nowrap !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 3px !important;
+  padding: 4px !important;
+  z-index: 12 !important;
+}
+.reserve-map-command .reserve-map-controls button {
+  width: 78px !important;
+  min-width: 78px !important;
+  max-width: 78px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  max-height: 30px !important;
+  flex: 0 0 78px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  writing-mode: horizontal-tb !important;
+  transform: none !important;
+  color: #d9eee6 !important;
+}
+.reserve-map-command .reserve-map-controls button.active {
+  color: #04130e !important;
+  background: linear-gradient(135deg,#54e2b0,#28a77e) !important;
+}
+
+/* Keep MapLibre's zoom control separate from the basemap selector. */
+.reserve-map-command .maplibregl-ctrl-top-right { top: 106px !important; right: 16px !important; }
+
+/* Geographic context should remain visible beneath the intelligence field. */
+.reserve-map-command .reserve-map-vignette {
+  z-index: 2;
+  background: radial-gradient(circle at 50% 50%, transparent 46%, rgba(2,10,17,.24) 100%) !important;
+}
+.reserve-map-command .reserve-map-scanline { opacity: .09 !important; }
+.reserve-map-command .maplibregl-canvas { filter: saturate(1.12) contrast(1.04) brightness(1.08); }
+
+/* Layer controls: compact, legible and visually separated from the imagery. */
+.reserve-map-command .reserve-map-layerbar {
+  top: 62px !important;
+  left: 16px !important;
+  max-width: calc(100% - 210px) !important;
+  background: rgba(3,15,24,.9) !important;
+  border-color: rgba(121,220,181,.28) !important;
+}
+.reserve-map-command .reserve-map-layerbar button {
+  color: #a9c5b9 !important;
+  min-height: 29px;
+}
+.reserve-map-command .reserve-map-layerbar button.active {
+  color: #03140f !important;
+}
+
+/* Heatmap should read as a field, not a giant solid red rectangle. */
+.reserve-map-command .reserve-map-legend { background: rgba(3,15,24,.91) !important; }
+.reserve-map-command .reserve-map-stats span,
+.reserve-map-command .reserve-map-title,
+.reserve-map-command .reserve-map-corner {
+  background: rgba(3,15,24,.86) !important;
+}
+
+/* Selected-target panel contrast. */
+.overview-reserve-detail, .overview-target-empty { color: #eaf8f2 !important; }
+.overview-target-empty p, .overview-reserve-detail .muted { color: #9db9ad !important; }
+.overview-detail-metrics span { color: #8eafa1 !important; }
+.overview-detail-metrics strong { color: #f0fff8 !important; }
+
+/* Risk states remain obvious without relying on pale backgrounds. */
+.priority.high, .priority.critical, .priority.risk { color:#ffb1a7 !important; }
+.priority.medium, .priority.watch { color:#ffdc8b !important; }
+.priority.normal, .priority.low { color:#7fe9be !important; }
+
+@media (max-width: 900px) {
+  .reserve-map-command .reserve-map-layerbar { max-width: calc(100% - 32px) !important; top: 58px !important; }
+  .reserve-map-command .reserve-map-controls { top: 112px !important; right: 16px !important; }
+}
