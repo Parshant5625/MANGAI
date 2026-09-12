@@ -1,6 +1,4 @@
 /* Final visual corrections: high contrast typography, compact controls, readable geospatial layers. */
-
-/* Typography: never let dark panels inherit the old light-theme text. */
 .main, .main * { color-scheme: dark; }
 .main p, .main span, .main label, .main td, .main th, .main li { text-shadow: 0 1px 1px rgba(0,0,0,.18); }
 .panel, .metric-card, .table-panel, .state { color: #eaf8f2 !important; }
@@ -10,7 +8,7 @@
 .panel-header h3 { color: #f0fff8 !important; }
 button { -webkit-font-smoothing: antialiased; }
 
-/* Make the base-map selector impossible to collapse vertically. */
+/* Base-map selector: deliberately compact so it never becomes a tall strip. */
 .reserve-map-command .reserve-map-controls {
   position: absolute !important;
   top: 62px !important;
@@ -26,35 +24,36 @@ button { -webkit-font-smoothing: antialiased; }
   flex-wrap: nowrap !important;
   align-items: center !important;
   justify-content: center !important;
-  gap: 3px !important;
-  padding: 4px !important;
+  gap: 2px !important;
+  padding: 3px !important;
   z-index: 12 !important;
 }
 .reserve-map-command .reserve-map-controls button {
-  width: 78px !important;
-  min-width: 78px !important;
-  max-width: 78px !important;
-  height: 30px !important;
-  min-height: 30px !important;
-  max-height: 30px !important;
-  flex: 0 0 78px !important;
+  width: 58px !important;
+  min-width: 58px !important;
+  max-width: 58px !important;
+  height: 25px !important;
+  min-height: 25px !important;
+  max-height: 25px !important;
+  flex: 0 0 58px !important;
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
   white-space: nowrap !important;
   writing-mode: horizontal-tb !important;
   transform: none !important;
+  padding: 4px 5px !important;
+  font-size: .49rem !important;
+  letter-spacing: .045em !important;
   color: #d9eee6 !important;
 }
 .reserve-map-command .reserve-map-controls button.active {
   color: #04130e !important;
   background: linear-gradient(135deg,#54e2b0,#28a77e) !important;
 }
+.reserve-map-command .maplibregl-ctrl-top-right { top: 100px !important; right: 16px !important; }
 
-/* Keep MapLibre's zoom control separate from the basemap selector. */
-.reserve-map-command .maplibregl-ctrl-top-right { top: 106px !important; right: 16px !important; }
-
-/* Geographic context should remain visible beneath the intelligence field. */
+/* Keep geographic imagery visible beneath the intelligence field. */
 .reserve-map-command .reserve-map-vignette {
   z-index: 2;
   background: radial-gradient(circle at 50% 50%, transparent 46%, rgba(2,10,17,.24) 100%) !important;
@@ -62,42 +61,52 @@ button { -webkit-font-smoothing: antialiased; }
 .reserve-map-command .reserve-map-scanline { opacity: .09 !important; }
 .reserve-map-command .maplibregl-canvas { filter: saturate(1.12) contrast(1.04) brightness(1.08); }
 
-/* Layer controls: compact, legible and visually separated from the imagery. */
 .reserve-map-command .reserve-map-layerbar {
   top: 62px !important;
   left: 16px !important;
-  max-width: calc(100% - 210px) !important;
+  max-width: calc(100% - 190px) !important;
   background: rgba(3,15,24,.9) !important;
   border-color: rgba(121,220,181,.28) !important;
 }
-.reserve-map-command .reserve-map-layerbar button {
-  color: #a9c5b9 !important;
-  min-height: 29px;
-}
-.reserve-map-command .reserve-map-layerbar button.active {
-  color: #03140f !important;
-}
-
-/* Heatmap should read as a field, not a giant solid red rectangle. */
+.reserve-map-command .reserve-map-layerbar button { color: #a9c5b9 !important; min-height: 29px; }
+.reserve-map-command .reserve-map-layerbar button.active { color: #03140f !important; }
 .reserve-map-command .reserve-map-legend { background: rgba(3,15,24,.91) !important; }
 .reserve-map-command .reserve-map-stats span,
 .reserve-map-command .reserve-map-title,
-.reserve-map-command .reserve-map-corner {
-  background: rgba(3,15,24,.86) !important;
-}
+.reserve-map-command .reserve-map-corner { background: rgba(3,15,24,.86) !important; }
 
 /* Selected-target panel contrast. */
 .overview-reserve-detail, .overview-target-empty { color: #eaf8f2 !important; }
 .overview-target-empty p, .overview-reserve-detail .muted { color: #9db9ad !important; }
 .overview-detail-metrics span { color: #8eafa1 !important; }
 .overview-detail-metrics strong { color: #f0fff8 !important; }
-
-/* Risk states remain obvious without relying on pale backgrounds. */
 .priority.high, .priority.critical, .priority.risk { color:#ffb1a7 !important; }
 .priority.medium, .priority.watch { color:#ffdc8b !important; }
 .priority.normal, .priority.low { color:#7fe9be !important; }
 
-@media (max-width: 900px) {
-  .reserve-map-command .reserve-map-layerbar { max-width: calc(100% - 32px) !important; top: 58px !important; }
-  .reserve-map-command .reserve-map-controls { top: 112px !important; right: 16px !important; }
+/* New right-side command-center visual rail. */
+.overview-signal-rail {
+  grid-column: span 4;
+  min-height: 560px;
+  padding: 0 !important;
+  overflow: hidden;
+  position: relative;
+  border-color: rgba(62,133,105,.35) !important;
+  background: radial-gradient(circle at 50% 8%, rgba(42,128,100,.2), transparent 32%), linear-gradient(180deg,#071b15,#04120e) !important;
+  box-shadow: 0 20px 50px rgba(2,20,13,.18) !important;
 }
+.signal-rail-header { display:flex;align-items:center;justify-content:space-between;gap:12px;padding:17px 18px 12px;border-bottom:1px solid rgba(121,220,181,.12); }
+.signal-rail-header h3 { margin:5px 0 0 !important;font-size:.95rem !important;letter-spacing:-.02em; }
+.signal-live { display:inline-flex;align-items:center;gap:6px;padding:5px 7px;border:1px solid rgba(85,223,173,.22);border-radius:999px;color:#8ed9bc;font-size:.5rem;font-weight:900;letter-spacing:.1em; }
+.signal-live i { width:6px;height:6px;border-radius:50%;background:#54e2b0;box-shadow:0 0 12px #54e2b0;animation:signalPulse 1.8s infinite; }
+.signal-orbit-card { position:relative;height:180px;margin:12px 16px;border:1px solid rgba(121,220,181,.12);border-radius:14px;overflow:hidden;background:radial-gradient(circle at 50% 50%,rgba(47,147,112,.22),transparent 34%),linear-gradient(135deg,rgba(8,35,27,.95),rgba(3,16,12,.96)); }
+.signal-orbit { position:absolute;left:50%;top:50%;border:1px solid rgba(92,210,170,.25);border-radius:50%;transform:translate(-50%,-50%) rotate(-12deg); }
+.signal-orbit.orbit-a{width:102px;height:46px;animation:orbitFloat 5s ease-in-out infinite}.signal-orbit.orbit-b{width:138px;height:72px;transform:translate(-50%,-50%) rotate(24deg);opacity:.7;animation:orbitFloat 6s ease-in-out infinite reverse}.signal-orbit.orbit-c{width:174px;height:100px;transform:translate(-50%,-50%) rotate(-36deg);opacity:.45}
+.signal-core{position:absolute;left:50%;top:50%;width:46px;height:46px;transform:translate(-50%,-50%);border-radius:50%;display:grid;place-items:center;align-content:center;background:linear-gradient(145deg,#3ed3a0,#14785b);border:1px solid rgba(221,255,241,.45);box-shadow:0 0 30px rgba(61,213,162,.28),0 0 0 7px rgba(61,213,162,.05);z-index:2}.signal-core span{font-size:1rem;font-weight:950;color:#042017}.signal-core small{font-size:.43rem;font-weight:900;color:#d9fff0;letter-spacing:.08em}
+.signal-node{position:absolute;width:6px;height:6px;border-radius:50%;background:#59e2b2;box-shadow:0 0 12px rgba(89,226,178,.8)}.node-a{left:20%;top:31%}.node-b{right:17%;top:63%;background:#efc76b}.node-c{left:71%;top:18%;background:#51a9ff}.signal-orbit-label{position:absolute;left:50%;bottom:9px;transform:translateX(-50%);font-size:.47rem;letter-spacing:.16em;color:#759b8c;font-weight:900}
+.signal-chart-card,.thermal-proxy-card{margin:0 16px 10px;padding:12px;border:1px solid rgba(121,220,181,.12);border-radius:12px;background:rgba(7,27,20,.74)}
+.signal-chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.signal-chart-head div{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.signal-chart-head span{display:inline-flex;align-items:center;gap:5px;color:#9bbcae;font-size:.57rem;font-weight:800}.signal-chart-head strong{color:#5ce2b4;font-size:.76rem}.signal-chart-head small{color:#617f72;font-size:.47rem;font-weight:900;letter-spacing:.09em}.signal-chart-card svg{display:block;width:100%;height:74px;margin-top:6px}.signal-axis,.thermal-values{display:flex;justify-content:space-between;color:#5f7e70;font-size:.44rem;text-transform:uppercase;letter-spacing:.07em}
+.thermal-ramp{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-top:11px}.thermal-ramp i{height:7px;border-radius:999px}.thermal-ramp i:nth-child(1){background:#1e6ea2}.thermal-ramp i:nth-child(2){background:#16a6a0}.thermal-ramp i:nth-child(3){background:#54c96a}.thermal-ramp i:nth-child(4){background:#d7dc4e}.thermal-ramp i:nth-child(5){background:#f3b943}.thermal-ramp i:nth-child(6){background:#ed6d38}.thermal-ramp i:nth-child(7){background:#df3e36}.thermal-proxy-card p{margin:8px 0 0;color:#617f72;font-size:.51rem;line-height:1.45}.signal-health-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;padding:2px 16px 16px}.signal-status{display:grid;grid-template-columns:auto 1fr;gap:3px 7px;align-items:center;padding:9px;border:1px solid rgba(121,220,181,.1);border-radius:9px;background:rgba(8,31,23,.55)}.signal-status svg{grid-row:1 / span 2;color:#5acba4}.signal-status span{color:#769789;font-size:.47rem;text-transform:uppercase;letter-spacing:.05em}.signal-status strong{font-size:.55rem}.signal-status strong.ok{color:#6de1b9}.signal-status strong.gold{color:#f0ca6c}
+@keyframes signalPulse{0%,100%{opacity:.45;transform:scale(.8)}50%{opacity:1;transform:scale(1.25)}}@keyframes orbitFloat{0%,100%{transform:translate(-50%,-50%) rotate(-12deg) scale(1)}50%{transform:translate(-50%,-50%) rotate(-4deg) scale(1.04)}}
+@media(max-width:900px){.overview-signal-rail{grid-column:1 / -1;min-height:auto}.signal-orbit-card{height:155px}.reserve-map-command .reserve-map-layerbar{max-width:calc(100% - 32px)!important;top:58px!important}.reserve-map-command .reserve-map-controls{top:98px!important;right:16px!important}}
+@media(max-width:560px){.signal-health-grid{grid-template-columns:1fr}.reserve-map-command .reserve-map-controls button{width:52px!important;min-width:52px!important;max-width:52px!important;flex-basis:52px!important;font-size:.45rem!important}}
