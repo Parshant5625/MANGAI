@@ -1,19 +1,18 @@
 import { useState } from "react";
-import { Activity, AlertTriangle, Cpu, Crosshair, Database, Gauge, Layers, Satellite, ShieldCheck, Target, TrendingDown, Wrench } from "lucide-react";
-import { DataQualityResponse, EquipmentResponse, OverviewResponse, ProductionForecastResponse, RecommendationResponse, ProspectivityCell, ReserveProspectivityResponse } from "../types/api";
+import { Activity, AlertTriangle, Cpu, Crosshair, Database, Layers, Satellite, ShieldCheck, Target, TrendingDown, Wrench } from "lucide-react";
+import { DataQualityResponse, EquipmentResponse, OverviewResponse, ProductionForecastResponse, RecommendationResponse, ProspectivityCell } from "../types/api";
 import { ReserveMap } from "../components/ReserveMap";
-import { useApi } from "../hooks/useApi";
 import { number } from "../utils/format";
 
-export function OverviewPage({ overview, production, recommendations, equipment, quality }: {
+export function OverviewPage({ overview, production, recommendations, equipment, quality, reserveCells }: {
   overview: OverviewResponse;
   production: ProductionForecastResponse;
   recommendations: RecommendationResponse;
   equipment: EquipmentResponse;
   quality: DataQualityResponse;
+  reserveCells: ProspectivityCell[];
 }) {
   const [selectedCell, setSelectedCell] = useState<ProspectivityCell | null>(null);
-  const reserve = useApi<ReserveProspectivityResponse>("/api/v1/reserves/prospectivity?limit=450&min_probability=0.55");
   const risk = overview.shortfall_probability ?? production.shortfall_probability ?? 0;
   const fleet = equipment.fleet_utilization ?? 0;
   const health = quality.overall_score ?? overview.data_quality_score ?? 0;
@@ -21,7 +20,6 @@ export function OverviewPage({ overview, production, recommendations, equipment,
   const topRecommendation = recommendations.recommendations?.[0];
   const pct = (value: number) => `${(value * 100).toFixed(0)}%`;
   const tonnes = (value: number | null | undefined) => value == null ? "—" : value.toLocaleString("en-IN", { maximumFractionDigits: 0 });
-  const cells = reserve.data?.cells ?? [];
 
   return (
     <section className="cc-page" aria-label="MANGAI mining intelligence command center">
@@ -31,9 +29,9 @@ export function OverviewPage({ overview, production, recommendations, equipment,
       </header>
       <div className="cc-grid">
         <article className="cc-map-card cc-panel cc-span-8">
-          <div className="cc-panel-head"><div><span className="cc-label">GEOSPATIAL INTELLIGENCE</span><strong>Prospectivity field</strong></div><span className="cc-map-mode"><Satellite size={13}/> {reserve.loading ? "LOADING" : `${cells.length} TARGET CELLS`}</span></div>
-          <div className="cc-real-map"><ReserveMap cells={cells} selectedCell={selectedCell} onSelect={setSelectedCell} layer="probability" boreholes={[]} /></div>
-          <div className="cc-map-footer"><span><Layers size={13}/> PROBABILITY OVERLAY</span><span>{reserve.error ? `Map unavailable: ${reserve.error}` : "Threshold ≥ 55% · click a target for intelligence"}</span><em>PROTOTYPE / DECISION SUPPORT</em></div>
+          <div className="cc-panel-head"><div><span className="cc-label">GEOSPATIAL INTELLIGENCE</span><strong>Prospectivity field</strong></div><span className="cc-map-mode"><Satellite size={13}/> {reserveCells.length} TARGET CELLS</span></div>
+          <div className="cc-real-map"><ReserveMap cells={reserveCells} selectedCell={selectedCell} onSelect={setSelectedCell} layer="probability" boreholes={[]} /></div>
+          <div className="cc-map-footer"><span><Layers size={13}/> PROBABILITY OVERLAY</span><span>Threshold ≥ 55% · click a target for intelligence</span><em>PROTOTYPE / DECISION SUPPORT</em></div>
         </article>
         <aside className="cc-panel cc-span-4 cc-rail">
           <div className="cc-panel-head"><div><span className="cc-label">LIVE SIGNALS</span><strong>Intelligence rail</strong></div><Activity size={15}/></div>
