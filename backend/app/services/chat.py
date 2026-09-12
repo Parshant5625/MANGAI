@@ -4,11 +4,11 @@ from typing import Any
 
 from backend.app.core.config import get_settings
 from backend.app.services.data_quality import DataQualityService
+from backend.app.services.monitoring import ModelMonitoringService
 from backend.app.services.operations import OperationsService
 from backend.app.services.production import ProductionService
 from backend.app.services.recommendations import RecommendationService
 from backend.app.services.reserve import ReserveService
-from backend.app.services.monitoring import ModelMonitoringService
 
 
 class ChatService:
@@ -39,7 +39,7 @@ class ChatService:
         }
         if self._match(text, ("hello", "hi", "hey", "help", "what can you do")):
             return {**common, "intent": "help", "confidence": 0.99, "answer": "I can explain MANGAI's reserve intelligence, production forecast, equipment health, weather and blasting risk, recommendations, and model health. Ask me a specific question or use one of the suggested prompts below.", "evidence": [], "suggested_questions": self.suggestions()}
-        if self._match(text, ("production", "forecast", "shortfall", "target", "risk", "output")):
+        if self._match(text, ("production", "forecast", "shortfall", "target", "output")):
             forecast = ProductionService().forecast(site_id=site_id, horizon=7)
             risk = float(forecast["shortfall_probability"])
             drivers = forecast.get("top_drivers", [])[:3]
