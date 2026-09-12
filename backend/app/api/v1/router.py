@@ -8,6 +8,8 @@ from backend.app.core.config import get_settings
 from backend.app.core.errors import NotFoundError, ValidationFailedError
 from backend.app.schemas import (
     BlastingResponse,
+    ChatRequest,
+    ChatResponse,
     DataQualityResponse,
     EquipmentResponse,
     ModelComparisonResponse,
@@ -27,6 +29,7 @@ from backend.app.schemas import (
     WeatherResponse,
 )
 from backend.app.schemas.live_reserve import LiveSatelliteReserveRequest, LiveSatelliteReserveResponse
+from backend.app.services.chat import ChatService
 from backend.app.services.data_quality import DataQualityService
 from backend.app.services.live_reserve import LiveSatelliteReserveService
 from backend.app.services.model_registry import ModelRegistryService
@@ -54,6 +57,11 @@ def _validate_site_id(site_id: str | None) -> str | None:
 @router.get("/overview", response_model=OverviewResponse, tags=["overview"])
 def get_overview(site_id: SiteId = None) -> dict:
     return OverviewService().get_overview(site_id=_validate_site_id(site_id))
+
+
+@router.post("/chat", response_model=ChatResponse, tags=["assistant"])
+def chat(payload: ChatRequest) -> dict:
+    return ChatService().answer(payload.message, site_id=_validate_site_id(payload.site_id))
 
 
 @router.get("/reserves/prospectivity", response_model=ReserveProspectivityResponse, tags=["reserve"])
