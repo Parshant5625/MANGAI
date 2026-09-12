@@ -2,62 +2,22 @@ import { useState } from "react";
 import { apiPost } from "./api/client";
 import { useApi } from "./hooks/useApi";
 import {
-  BlastingResponse,
-  DataQualityResponse,
-  EquipmentResponse,
-  ModelRegistryResponse,
-  OverviewResponse,
-  ProductionForecastResponse,
-  ProductionHistoryRecord,
-  ProspectivityCell,
-  RecommendationResponse,
-  ReserveProspectivityResponse,
-  ReserveSummaryResponse,
-  WeatherResponse
+  BlastingResponse, DataQualityResponse, EquipmentResponse, ModelRegistryResponse, OverviewResponse,
+  ProductionForecastResponse, ProductionHistoryRecord, ProspectivityCell, RecommendationResponse,
+  ReserveProspectivityResponse, ReserveSummaryResponse, WeatherResponse
 } from "./types/api";
 import { compactNumber, number, percent, signedNumber } from "./utils/format";
 import { ReserveMap } from "./components/ReserveMap";
 import { OverviewPage } from "./pages/OverviewPage";
-import {
-  Activity,
-  AlertTriangle,
-  BarChart3,
-  ClipboardList,
-  CloudRain,
-  Database,
-  Gauge,
-  Layers,
-  Map,
-  Settings,
-  ShieldCheck,
-  Target,
-  Wrench
-} from "lucide-react";
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis
-} from "recharts";
+import { Activity, AlertTriangle, BarChart3, ClipboardList, CloudRain, Database, Gauge, Layers, Map, Settings, ShieldCheck, Target, Wrench } from "lucide-react";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 type PageKey = "overview" | "reserve" | "production" | "equipment" | "weather" | "recommendations" | "health" | "settings";
-
 const pages: Array<{ key: PageKey; label: string; icon: typeof Activity }> = [
-  { key: "overview", label: "Overview", icon: Gauge },
-  { key: "reserve", label: "Reserve", icon: Map },
-  { key: "production", label: "Production", icon: BarChart3 },
-  { key: "equipment", label: "Equipment", icon: Wrench },
-  { key: "weather", label: "Weather", icon: CloudRain },
-  { key: "recommendations", label: "Actions", icon: ClipboardList },
-  { key: "health", label: "Health", icon: Database },
-  { key: "settings", label: "Settings", icon: Settings }
+  { key: "overview", label: "Overview", icon: Gauge }, { key: "reserve", label: "Reserve", icon: Map },
+  { key: "production", label: "Production", icon: BarChart3 }, { key: "equipment", label: "Equipment", icon: Wrench },
+  { key: "weather", label: "Weather", icon: CloudRain }, { key: "recommendations", label: "Actions", icon: ClipboardList },
+  { key: "health", label: "Health", icon: Database }, { key: "settings", label: "Settings", icon: Settings }
 ];
 
 function App() {
@@ -65,15 +25,10 @@ function App() {
   const [threshold, setThreshold] = useState(0.55);
   const [layer, setLayer] = useState<"probability" | "grade" | "thickness" | "confidence">("probability");
   const [selectedCell, setSelectedCell] = useState<ProspectivityCell | null>(null);
-
   const overview = useApi<OverviewResponse>("/api/v1/overview");
   const reserveSummary = useApi<ReserveSummaryResponse>("/api/v1/reserves/summary");
-  const reserveCells = useApi<ReserveProspectivityResponse>(
-    `/api/v1/reserves/prospectivity?limit=450&min_probability=${threshold.toFixed(2)}`
-  );
-  const boreholes = useApi<{ boreholes: Array<{ borehole_id: string; latitude: number; longitude: number; lithology?: string }> }>(
-    "/api/v1/reserves/boreholes?limit=250"
-  );
+  const reserveCells = useApi<ReserveProspectivityResponse>(`/api/v1/reserves/prospectivity?limit=450&min_probability=${threshold.toFixed(2)}`);
+  const boreholes = useApi<{ boreholes: Array<{ borehole_id: string; latitude: number; longitude: number; lithology?: string }> }>("/api/v1/reserves/boreholes?limit=250");
   const production = useApi<ProductionForecastResponse>("/api/v1/production/forecast?horizon=7");
   const productionHistory = useApi<{ records: ProductionHistoryRecord[] }>("/api/v1/production/history?days=90");
   const equipment = useApi<EquipmentResponse>("/api/v1/equipment");
@@ -83,309 +38,34 @@ function App() {
   const models = useApi<ModelRegistryResponse>("/api/v1/models");
   const dataQuality = useApi<DataQualityResponse>("/api/v1/data-quality");
   const safety = useApi<{ mode: string; boundary: string }>("/api/v1/settings/safety");
-
   const loading = overview.loading || production.loading;
   const error = overview.error || production.error;
   const ready = Boolean(overview.data && production.data);
-
-  return (
-    <div className="app">
-      <aside className="sidebar">
-        <div className="brand">
-          <div className="brand-mark">M</div>
-          <div>
-            <h1>MANGAI</h1>
-            <span>Mining Intelligence</span>
-          </div>
-        </div>
-        <nav>
-          {pages.map((page) => {
-            const Icon = page.icon;
-            return (
-              <button key={page.key} className={activePage === page.key ? "nav-item active" : "nav-item"} onClick={() => setActivePage(page.key)}>
-                <Icon size={18} />
-                <span>{page.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-        <div className="sidebar-foot">
-          <ShieldCheck size={18} />
-          <span>{overview.data?.model_health ?? "READY"}</span>
-        </div>
-      </aside>
-      <main className="main">
-        <header className="topbar">
-          <div>
-            <p className="eyebrow">SIH 26009 · Ministry of Steel / MOIL</p>
-            <h2>{overview.data?.site_name ?? "MANGAI Demo Mine"}</h2>
-          </div>
-          <div className="badges">
-            <span className="badge warn">DEMO / SYNTHETIC DATA</span>
-            <span className="badge">{production.data?.model_version ?? "loading"}</span>
-          </div>
-        </header>
-        {loading && <StatePanel label="Loading MANGAI intelligence services" />}
-        {error && <StatePanel label={`API unavailable: ${error}`} tone="danger" />}
-        {ready && overview.data && production.data && (
-          <>
-            {activePage === "overview" && recommendations.data && equipment.data && dataQuality.data && reserveCells.data && (
-              <OverviewPage
-                overview={overview.data}
-                production={production.data}
-                recommendations={recommendations.data}
-                equipment={equipment.data}
-                quality={dataQuality.data}
-                reserveCells={reserveCells.data.cells}
-              />
-            )}
-            {activePage === "reserve" && reserveSummary.data && reserveCells.data && (
-              <ReservePage
-                summary={reserveSummary.data}
-                cells={reserveCells.data.cells}
-                boreholes={boreholes.data?.boreholes ?? []}
-                threshold={threshold}
-                setThreshold={setThreshold}
-                layer={layer}
-                setLayer={setLayer}
-                selectedCell={selectedCell}
-                setSelectedCell={setSelectedCell}
-              />
-            )}
-            {activePage === "production" && <ProductionPage forecast={production.data} history={productionHistory.data?.records ?? []} />}
-            {activePage === "equipment" && equipment.data && <EquipmentPage equipment={equipment.data} />}
-            {activePage === "weather" && weather.data && blasting.data && <WeatherBlastingPage weather={weather.data} blasting={blasting.data} />}
-            {activePage === "recommendations" && recommendations.data && <RecommendationsPage initial={recommendations.data} />}
-            {activePage === "health" && models.data && dataQuality.data && <HealthPage models={models.data} dataQuality={dataQuality.data} boundary={overview.data.boundary_notice} />}
-            {activePage === "settings" && <SettingsPage safety={safety.data} />}
-          </>
-        )}
-      </main>
-    </div>
-  );
+  return <div className="app">
+    <aside className="sidebar"><div className="brand"><div className="brand-mark">M</div><div><h1>MANGAI</h1><span>Mining Intelligence</span></div></div>
+      <nav aria-label="Intelligence navigation">{pages.map((page) => { const Icon = page.icon; return <button key={page.key} aria-current={activePage === page.key ? "page" : undefined} className={activePage === page.key ? "nav-item active" : "nav-item"} onClick={() => setActivePage(page.key)}><Icon size={18}/><span>{page.label}</span></button>; })}</nav>
+      <div className="sidebar-foot"><ShieldCheck size={18}/><span>{overview.data?.model_health ?? "READY"}</span></div>
+    </aside>
+    <main className="main"><header className="topbar"><div><p className="eyebrow">SIH 26009 · Ministry of Steel / MOIL</p><h2>{overview.data?.site_name ?? "MANGAI Demo Mine"}</h2></div><div className="badges"><span className="badge warn">DEMO / SYNTHETIC DATA</span><span className="badge">{production.data?.model_version ?? "loading"}</span></div></header>
+      {loading && <StatePanel label="Loading MANGAI intelligence services"/>}{error && <StatePanel label={`API unavailable: ${error}`} tone="danger"/>}
+      {ready && overview.data && production.data && <>{activePage === "overview" && recommendations.data && equipment.data && dataQuality.data && reserveCells.data && <OverviewPage overview={overview.data} production={production.data} recommendations={recommendations.data} equipment={equipment.data} quality={dataQuality.data} reserveCells={reserveCells.data.cells}/>} {activePage === "reserve" && reserveSummary.data && reserveCells.data && <ReservePage summary={reserveSummary.data} cells={reserveCells.data.cells} boreholes={boreholes.data?.boreholes ?? []} threshold={threshold} setThreshold={setThreshold} layer={layer} setLayer={setLayer} selectedCell={selectedCell} setSelectedCell={setSelectedCell}/>} {activePage === "production" && <ProductionPage forecast={production.data} history={productionHistory.data?.records ?? []}/>} {activePage === "equipment" && equipment.data && <EquipmentPage equipment={equipment.data}/>} {activePage === "weather" && weather.data && blasting.data && <WeatherBlastingPage weather={weather.data} blasting={blasting.data}/>} {activePage === "recommendations" && recommendations.data && <RecommendationsPage initial={recommendations.data}/>} {activePage === "health" && models.data && dataQuality.data && <HealthPage models={models.data} dataQuality={dataQuality.data} boundary={overview.data.boundary_notice}/>} {activePage === "settings" && <SettingsPage safety={safety.data}/>}</>}
+    </main>
+  </div>;
 }
-
-function StatePanel({ label, tone = "default" }: { label: string; tone?: "default" | "danger" }) {
-  return <section className={tone === "danger" ? "state danger" : "state"}>{label}</section>;
+function StatePanel({label,tone="default"}:{label:string;tone?:"default"|"danger"}){return <section className={tone === "danger" ? "state danger" : "state"} role={tone === "danger" ? "alert" : "status"}>{label}</section>}
+function ReservePage({summary,cells,boreholes,threshold,setThreshold,layer,setLayer,selectedCell,setSelectedCell}:{summary:ReserveSummaryResponse;cells:ProspectivityCell[];boreholes:Array<{borehole_id:string;latitude:number;longitude:number;lithology?:string}>;threshold:number;setThreshold:(v:number)=>void;layer:"probability"|"grade"|"thickness"|"confidence";setLayer:(v:"probability"|"grade"|"thickness"|"confidence")=>void;selectedCell:ProspectivityCell|null;setSelectedCell:(c:ProspectivityCell)=>void}){
+  return <div className="page-grid reserve-layout"><section className="panel wide"><PanelHeader icon={Layers} title="Reserve Intelligence" meta={`${cells.length} cells`}/><div className="toolbar"><label>Threshold<input aria-label="Prospectivity threshold" type="range" min="0" max="0.95" step="0.05" value={threshold} onChange={e=>setThreshold(Number(e.target.value))}/><strong>{percent(threshold)}</strong></label><div className="layer-toggles">{(["probability","grade","thickness","confidence"] as const).map(item=><button key={item} className={layer===item?"chip active":"chip"} aria-pressed={layer===item} onClick={()=>setLayer(item)}>{item}</button>)}</div></div><ReserveMap cells={cells} selectedCell={selectedCell} onSelect={setSelectedCell} layer={layer} boreholes={boreholes}/></section>
+    <section className="panel detail-panel"><PanelHeader icon={Target} title="Cell Detail" meta={selectedCell?.prospectivity_class ?? "select a cell"}/>{selectedCell?<div className="detail-stack"><h3>{selectedCell.id}</h3><MetricLine label="Coordinates" value={`${number(selectedCell.latitude,4)}, ${number(selectedCell.longitude,4)}`}/><MetricLine label="Probability" value={percent(selectedCell.probability)}/><MetricLine label="Grade" value={`${number(selectedCell.predicted_grade_pct,1)}% Mn`}/><MetricLine label="Thickness" value={`${number(selectedCell.predicted_thickness_m,1)} m`}/><MetricLine label="Confidence" value={percent(selectedCell.confidence)}/><MetricLine label="Resource P50" value={`${compactNumber(selectedCell.resource_potential.p50)} t`}/><p className="muted">{String(selectedCell.resource_potential.assumptions.classification_boundary ?? "")}</p><DriverList drivers={selectedCell.top_contributors}/></div>:<p className="muted">Click a high-prospectivity cell to inspect grade, thickness, confidence and prototype resource potential.</p>}</section>
+    <section className="panel"><PanelHeader icon={Gauge} title="Summary" meta="prototype"/><MetricLine label="High cells" value={number(summary.high_prospectivity_cells)}/><MetricLine label="Very high cells" value={number(summary.very_high_prospectivity_cells)}/><MetricLine label="Average grade" value={`${number(summary.average_predicted_grade_pct,1)}% Mn`}/><MetricLine label="Average thickness" value={`${number(summary.average_predicted_thickness_m,1)} m`}/><p className="muted">{summary.validation_note}</p></section></div>
 }
-
-function ReservePage({
-  summary,
-  cells,
-  boreholes,
-  threshold,
-  setThreshold,
-  layer,
-  setLayer,
-  selectedCell,
-  setSelectedCell
-}: {
-  summary: ReserveSummaryResponse;
-  cells: ProspectivityCell[];
-  boreholes: Array<{ borehole_id: string; latitude: number; longitude: number; lithology?: string }>;
-  threshold: number;
-  setThreshold: (value: number) => void;
-  layer: "probability" | "grade" | "thickness" | "confidence";
-  setLayer: (value: "probability" | "grade" | "thickness" | "confidence") => void;
-  selectedCell: ProspectivityCell | null;
-  setSelectedCell: (cell: ProspectivityCell) => void;
-}) {
-  return (
-    <div className="page-grid reserve-layout">
-      <section className="panel wide">
-        <PanelHeader icon={Layers} title="Reserve Intelligence" meta={`${cells.length} cells`} />
-        <div className="toolbar">
-          <label>
-            Threshold
-            <input type="range" min="0" max="0.95" step="0.05" value={threshold} onChange={(event) => setThreshold(Number(event.target.value))} />
-            <strong>{percent(threshold)}</strong>
-          </label>
-          <div className="layer-toggles">
-            {(["probability", "grade", "thickness", "confidence"] as const).map((item) => (
-              <button key={item} className={layer === item ? "chip active" : "chip"} onClick={() => setLayer(item)}>{item}</button>
-            ))}
-          </div>
-        </div>
-        <ReserveMap cells={cells} selectedCell={selectedCell} onSelect={setSelectedCell} layer={layer} boreholes={boreholes} />
-      </section>
-      <section className="panel detail-panel">
-        <PanelHeader icon={Target} title="Cell Detail" meta={selectedCell?.prospectivity_class ?? "select a cell"} />
-        {selectedCell ? (
-          <div className="detail-stack">
-            <h3>{selectedCell.id}</h3>
-            <MetricLine label="Coordinates" value={`${number(selectedCell.latitude, 4)}, ${number(selectedCell.longitude, 4)}`} />
-            <MetricLine label="Probability" value={percent(selectedCell.probability)} />
-            <MetricLine label="Grade" value={`${number(selectedCell.predicted_grade_pct, 1)}% Mn`} />
-            <MetricLine label="Thickness" value={`${number(selectedCell.predicted_thickness_m, 1)} m`} />
-            <MetricLine label="Confidence" value={percent(selectedCell.confidence)} />
-            <MetricLine label="Resource P50" value={`${compactNumber(selectedCell.resource_potential.p50)} t`} />
-            <p className="muted">{String(selectedCell.resource_potential.assumptions.classification_boundary ?? "")}</p>
-            <DriverList drivers={selectedCell.top_contributors} />
-          </div>
-        ) : <p className="muted">Click a high-prospectivity cell to inspect grade, thickness, confidence and prototype resource potential.</p>}
-      </section>
-      <section className="panel">
-        <PanelHeader icon={Gauge} title="Summary" meta="prototype" />
-        <MetricLine label="High cells" value={number(summary.high_prospectivity_cells)} />
-        <MetricLine label="Very high cells" value={number(summary.very_high_prospectivity_cells)} />
-        <MetricLine label="Average grade" value={`${number(summary.average_predicted_grade_pct, 1)}% Mn`} />
-        <MetricLine label="Average thickness" value={`${number(summary.average_predicted_thickness_m, 1)} m`} />
-        <p className="muted">{summary.validation_note}</p>
-      </section>
-    </div>
-  );
-}
-
-function ProductionPage({ forecast, history }: { forecast: ProductionForecastResponse; history: ProductionHistoryRecord[] }) {
-  return (
-    <div className="page-grid">
-      <section className="kpi-grid">
-        <MetricCard icon={Activity} label="Forecast" value={`${compactNumber(forecast.forecast_mt)} t`} />
-        <MetricCard icon={Target} label="Target" value={`${compactNumber(forecast.target_mt)} t`} />
-        <MetricCard icon={AlertTriangle} label="Gap" value={`${signedNumber(forecast.gap_mt)} t`} tone={forecast.gap_mt < 0 ? "risk" : "ok"} />
-        <MetricCard icon={Gauge} label="Risk" value={percent(forecast.shortfall_probability)} tone={forecast.shortfall_probability > 0.65 ? "risk" : "ok"} />
-      </section>
-      <section className="panel wide chart-panel">
-        <PanelHeader icon={BarChart3} title="Actual vs Target" meta={forecast.model_version} />
-        <ResponsiveContainer width="100%" height={330}>
-          <LineChart data={history}>
-            <CartesianGrid stroke="#d8ded7" strokeDasharray="3 3" />
-            <XAxis dataKey="date" minTickGap={28} />
-            <YAxis width={68} />
-            <Tooltip />
-            <Line type="monotone" dataKey="production_mt" stroke="#1f7a5f" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="target_mt" stroke="#9a5323" strokeWidth={2} dot={false} />
-          </LineChart>
-        </ResponsiveContainer>
-      </section>
-      <section className="panel">
-        <PanelHeader icon={AlertTriangle} title="Top Drivers" meta={forecast.severity} />
-        <DriverList drivers={forecast.top_drivers} />
-      </section>
-      <section className="panel">
-        <PanelHeader icon={Gauge} title="Prediction Interval" meta={forecast.forecast_date} />
-        <MetricLine label="P10" value={`${compactNumber(forecast.prediction_interval.p10)} t`} />
-        <MetricLine label="P50" value={`${compactNumber(forecast.prediction_interval.p50)} t`} />
-        <MetricLine label="P90" value={`${compactNumber(forecast.prediction_interval.p90)} t`} />
-        <MetricLine label="Baseline" value={`${compactNumber(forecast.baseline_forecast_mt)} t`} />
-      </section>
-    </div>
-  );
-}
-
-function EquipmentPage({ equipment }: { equipment: EquipmentResponse }) {
-  return (
-    <div className="page-grid">
-      <section className="kpi-grid">
-        <MetricCard icon={ShieldCheck} label="Fleet availability" value={percent(equipment.fleet_availability)} />
-        <MetricCard icon={Gauge} label="Fleet utilization" value={percent(equipment.fleet_utilization)} />
-        <MetricCard icon={AlertTriangle} label="Critical equipment" value={number(equipment.critical_equipment_count)} tone={equipment.critical_equipment_count > 0 ? "risk" : "ok"} />
-      </section>
-      <section className="panel wide chart-panel">
-        <PanelHeader icon={Wrench} title="Downtime Ranking" meta={`${equipment.items.length} assets · DEMO telemetry`} />
-        <ResponsiveContainer width="100%" height={330}>
-          <BarChart data={equipment.items}>
-            <CartesianGrid stroke="#d8ded7" strokeDasharray="3 3" />
-            <XAxis dataKey="equipment_id" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="downtime_7d_hours" fill="#9a5323" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
-      </section>
-      <section className="table-panel">
-        <table>
-          <thead><tr><th>Asset</th><th>Type</th><th>Availability</th><th>Utilization</th><th>Status</th></tr></thead>
-          <tbody>{equipment.items.map((item) => <tr key={item.equipment_id}><td>{item.equipment_id}</td><td>{item.equipment_type}</td><td>{percent(item.availability)}</td><td>{percent(item.utilization)}</td><td><span className={`priority ${item.status.toLowerCase()}`}>{item.status}</span></td></tr>)}</tbody>
-        </table>
-      </section>
-    </div>
-  );
-}
-
-function WeatherBlastingPage({ weather, blasting }: { weather: WeatherResponse; blasting: BlastingResponse }) {
-  return (
-    <div className="page-grid">
-      <section className="kpi-grid">
-        <MetricCard icon={CloudRain} label="7-day rainfall" value={`${number(weather.rainfall_7d_mm, 1)} mm`} />
-        <MetricCard icon={Activity} label="Soil moisture" value={number(weather.soil_moisture, 2)} />
-        <MetricCard icon={AlertTriangle} label="Weather risk" value={weather.weather_risk} tone={weather.weather_risk === "HIGH" ? "risk" : "ok"} />
-        <MetricCard icon={Target} label="Blast overlap" value={blasting.overlap_risk} tone={blasting.overlap_risk === "HIGH" ? "risk" : "ok"} />
-      </section>
-      <section className="panel wide">
-        <PanelHeader icon={CloudRain} title="Weather + Blasting Signal" meta={`${weather.latest_date} · ${blasting.delay_trend}`} />
-        <div className="detail-stack">
-          <MetricLine label="Rainfall 30d" value={`${number(weather.rainfall_30d_mm, 1)} mm`} />
-          <MetricLine label="Temperature" value={`${number(weather.temperature_c, 1)} °C`} />
-          <MetricLine label="Planned blasts (7d)" value={number(blasting.planned_blasts_7d)} />
-          <MetricLine label="Delay (7d)" value={`${number(blasting.delay_hours_7d, 1)} h`} />
-        </div>
-      </section>
-      <section className="panel wide">
-        <PanelHeader icon={Target} title="Operational Interpretation" meta="decision support" />
-        <p className="muted">Use rainfall, soil moisture and blast overlap together when evaluating the next operating window. This is a decision-support signal and does not replace site safety procedures.</p>
-      </section>
-    </div>
-  );
-}
-
-function RecommendationsPage({ initial }: { initial: RecommendationResponse }) {
-  const [items, setItems] = useState(initial.recommendations);
-  const [simulated, setSimulated] = useState<string | null>(null);
-  const simulate = async (id: string) => {
-    const result = await apiPost<{ status: string }>("/api/v1/recommendations/simulate", { recommendation_id: id });
-    setSimulated(result.status);
-    setItems((current) => current.map((item) => item.id === id ? { ...item, status: "SIMULATED" } : item));
-  };
-  return (
-    <div className="page-grid">
-      <section className="panel wide">
-        <PanelHeader icon={ClipboardList} title="Recommendation Center" meta={`${items.length} actions`} />
-        <div className="recommendation-list">
-          {items.map((item) => <article className="recommendation" key={item.id}><div><span className={`priority ${item.priority.toLowerCase()}`}>{item.priority}</span><h3>{item.title}</h3><p>{item.rationale}</p></div><button onClick={() => void simulate(item.id)}>Simulate</button></article>)}
-        </div>
-        {simulated && <p className="muted">Simulation status: {simulated}. Human approval remains required before operational action.</p>}
-      </section>
-    </div>
-  );
-}
-
-function HealthPage({ models, dataQuality, boundary }: { models: ModelRegistryResponse; dataQuality: DataQualityResponse; boundary: string }) {
-  return (
-    <div className="page-grid">
-      <section className="kpi-grid">
-        <MetricCard icon={Database} label="Data quality" value={percent(dataQuality.overall_score)} />
-        <MetricCard icon={ShieldCheck} label="Registered models" value={number(models.models.length)} />
-      </section>
-      <section className="table-panel">
-        <table><thead><tr><th>Model</th><th>Task</th><th>Algorithm</th><th>Status</th><th>Version</th></tr></thead><tbody>{models.models.map((model) => <tr key={`${model.model_name}-${model.version}`}><td>{model.model_name}</td><td>{model.task}</td><td>{model.algorithm}</td><td>{model.status}</td><td>{model.version}</td></tr>)}</tbody></table>
-      </section>
-      <section className="panel wide">
-        <PanelHeader icon={ShieldCheck} title="Validation Boundary" meta="safety" />
-        <p className="muted">{boundary}</p>
-      </section>
-    </div>
-  );
-}
-
-function SettingsPage({ safety }: { safety?: { mode: string; boundary: string } | null }) {
-  return <div className="page-grid"><section className="panel wide"><PanelHeader icon={Settings} title="Safety + Data Mode" meta="read-only" /><MetricLine label="Mode" value={safety?.mode ?? "unknown"} /><p className="muted">{safety?.boundary ?? "Safety boundary unavailable."}</p></section></div>;
-}
-
-function PanelHeader({ icon: Icon, title, meta }: { icon: typeof Activity; title: string; meta?: string }) {
-  return <div className="panel-header"><div><span className="eyebrow">{title}</span><h3>{title}</h3></div>{meta && <span className="panel-meta">{meta}</span>}</div>;
-}
-
-function MetricCard({ icon: Icon, label, value, tone = "default" }: { icon: typeof Activity; label: string; value: string; tone?: "default" | "risk" | "ok" }) {
-  return <article className={`metric-card ${tone}`}><Icon size={18} /><span>{label}</span><strong>{value}</strong></article>;
-}
-
-function MetricLine({ label, value }: { label: string; value: string }) {
-  return <div className="metric-line"><span>{label}</span><strong>{value}</strong></div>;
-}
-
-function DriverList({ drivers }: { drivers: Array<{ feature: string; direction: string; importance: number }> }) {
-  return <div className="driver-list">{drivers.map((driver) => <div className="driver" key={driver.feature}><span>{driver.feature}</span><strong>{percent(driver.importance)}</strong></div>)}</div>;
-}
-
+function ProductionPage({forecast,history}:{forecast:ProductionForecastResponse;history:ProductionHistoryRecord[]}){return <div className="page-grid"><section className="kpi-grid"><MetricCard icon={Activity} label="Forecast" value={`${compactNumber(forecast.forecast_mt)} t`}/><MetricCard icon={Target} label="Target" value={`${compactNumber(forecast.target_mt)} t`}/><MetricCard icon={AlertTriangle} label="Gap" value={`${signedNumber(forecast.gap_mt)} t`} tone={forecast.gap_mt<0?"risk":"ok"}/><MetricCard icon={Gauge} label="Risk" value={percent(forecast.shortfall_probability)} tone={forecast.shortfall_probability>.65?"risk":"ok"}/></section><section className="panel wide chart-panel"><PanelHeader icon={BarChart3} title="Actual vs Target" meta="90-day operating history"/><ResponsiveContainer width="100%" height={330}><LineChart data={history}><CartesianGrid stroke="rgba(145,174,162,.14)" strokeDasharray="3 3"/><XAxis dataKey="date" minTickGap={28} stroke="#6f847b"/><YAxis width={68} stroke="#6f847b"/><Tooltip contentStyle={{background:"#0b1713",border:"1px solid rgba(151,184,171,.16)",color:"#e8f1ed"}}/><Line type="monotone" dataKey="production_mt" stroke="#35d39f" strokeWidth={2} dot={false}/><Line type="monotone" dataKey="target_mt" stroke="#e7b75b" strokeWidth={2} dot={false}/></LineChart></ResponsiveContainer></section><section className="panel"><PanelHeader icon={AlertTriangle} title="Top Drivers" meta={forecast.severity}/><DriverList drivers={forecast.top_drivers}/></section><section className="panel"><PanelHeader icon={Gauge} title="Prediction Interval" meta={forecast.forecast_date}/><MetricLine label="P10" value={`${compactNumber(forecast.prediction_interval.p10)} t`}/><MetricLine label="P50" value={`${compactNumber(forecast.prediction_interval.p50)} t`}/><MetricLine label="P90" value={`${compactNumber(forecast.prediction_interval.p90)} t`}/><MetricLine label="Baseline" value={`${compactNumber(forecast.baseline_forecast_mt)} t`}/></section></div>}
+function EquipmentPage({equipment}:{equipment:EquipmentResponse}){return <div className="page-grid"><section className="kpi-grid"><MetricCard icon={ShieldCheck} label="Fleet availability" value={percent(equipment.fleet_availability)}/><MetricCard icon={Gauge} label="Fleet utilization" value={percent(equipment.fleet_utilization)}/><MetricCard icon={AlertTriangle} label="Critical equipment" value={number(equipment.critical_equipment_count)} tone={equipment.critical_equipment_count>0?"risk":"ok"}/></section><section className="panel wide chart-panel"><PanelHeader icon={Wrench} title="Downtime Ranking" meta={`${equipment.items.length} assets · DEMO telemetry`}/><ResponsiveContainer width="100%" height={330}><BarChart data={equipment.items.slice().sort((a,b)=>b.downtime_7d_hours-a.downtime_7d_hours).slice(0,12)}><CartesianGrid stroke="rgba(145,174,162,.14)" strokeDasharray="3 3"/><XAxis dataKey="equipment_id" stroke="#6f847b"/><YAxis stroke="#6f847b"/><Tooltip contentStyle={{background:"#0b1713",border:"1px solid rgba(151,184,171,.16)",color:"#e8f1ed"}}/><Bar dataKey="downtime_7d_hours" fill="#e7b75b" radius={[3,3,0,0]}/></BarChart></ResponsiveContainer></section><section className="table-panel"><table><thead><tr><th>Asset</th><th>Type</th><th>Availability</th><th>Utilization</th><th>Downtime 7d</th><th>Status</th></tr></thead><tbody>{equipment.items.map(item=><tr key={item.equipment_id}><td className="mono">{item.equipment_id}</td><td>{item.equipment_type}</td><td>{percent(item.availability)}</td><td>{percent(item.utilization)}</td><td>{number(item.downtime_7d_hours,1)} h</td><td><span className={`priority ${item.status.toLowerCase()}`}>{item.status}</span></td></tr>)}</tbody></table></section></div>}
+function WeatherBlastingPage({weather,blasting}:{weather:WeatherResponse;blasting:BlastingResponse}){return <div className="page-grid"><section className="kpi-grid"><MetricCard icon={CloudRain} label="7-day rainfall" value={`${number(weather.rainfall_7d_mm,1)} mm`}/><MetricCard icon={Activity} label="Soil moisture" value={number(weather.soil_moisture,2)}/><MetricCard icon={AlertTriangle} label="Weather risk" value={weather.weather_risk} tone={weather.weather_risk==="HIGH"?"risk":"ok"}/><MetricCard icon={Target} label="Blast overlap" value={blasting.overlap_risk} tone={blasting.overlap_risk==="HIGH"?"risk":"ok"}/></section><section className="panel wide"><PanelHeader icon={CloudRain} title="Weather + Blasting Signal" meta={`${weather.latest_date} · ${blasting.delay_trend}`}/><div className="detail-stack"><MetricLine label="Rainfall 30d" value={`${number(weather.rainfall_30d_mm,1)} mm`}/><MetricLine label="Temperature" value={`${number(weather.temperature_c,1)} °C`}/><MetricLine label="Planned blasts (7d)" value={number(blasting.planned_blasts_7d)}/><MetricLine label="Delay (7d)" value={`${number(blasting.delay_hours_7d,1)} h`}/></div></section><section className="panel wide"><PanelHeader icon={Target} title="Operational Interpretation" meta="decision support"/><p className="muted">Use rainfall, soil moisture and blast overlap together when evaluating the next operating window. This signal does not replace site safety procedures or blast clearance rules.</p></section></div>}
+function RecommendationsPage({initial}:{initial:RecommendationResponse}){const [items,setItems]=useState(initial.recommendations);const [simulated,setSimulated]=useState<string|null>(null);const simulate=async(id:string)=>{try{const result=await apiPost<{status:string}>("/api/v1/recommendations/simulate",{recommendation_id:id});setSimulated(result.status);setItems(current=>current.map(item=>item.id===id?{...item,status:"SIMULATED"}:item));}catch(error){setSimulated(`Simulation failed: ${String(error)}`)}};return <div className="page-grid"><section className="panel wide"><PanelHeader icon={ClipboardList} title="Recommendation Center" meta={`${items.length} actions`}/><div className="recommendation-list">{items.map(item=><article className="recommendation" key={item.id}><div className="rec-head"><span className={`priority ${item.priority.toLowerCase()}`}>{item.priority}</span><span className="rec-status">{item.status}</span></div><h3>{item.title}</h3><p>{item.rationale}</p><div className="evidence-grid"><MetricLine label="Confidence" value={percent(item.confidence)}/><MetricLine label="Equipment" value={item.affected_equipment.join(", ")||"—"}/></div><button className="action-button" onClick={()=>void simulate(item.id)}>Simulate impact</button></article>)}</div>{simulated&&<p className="muted">Simulation status: {simulated}. Human approval remains required before operational action.</p>}</section></div>}
+function HealthPage({models,dataQuality,boundary}:{models:ModelRegistryResponse;dataQuality:DataQualityResponse;boundary:string}){return <div className="page-grid"><section className="kpi-grid"><MetricCard icon={Database} label="Data quality" value={percent(dataQuality.overall_score)}/><MetricCard icon={ShieldCheck} label="Registered models" value={number(models.models.length)}/></section><section className="table-panel"><table><thead><tr><th>Model</th><th>Task</th><th>Algorithm</th><th>Status</th><th>Version</th></tr></thead><tbody>{models.models.map(model=><tr key={`${model.model_name}-${model.version}`}><td className="mono">{model.model_name}</td><td>{model.task}</td><td>{model.algorithm}</td><td><span className="priority normal">{model.status}</span></td><td className="mono">{model.version}</td></tr>)}</tbody></table></section><section className="panel wide"><PanelHeader icon={ShieldCheck} title="Validation Boundary" meta="safety"/><p className="muted">{boundary}</p></section></div>}
+function SettingsPage({safety}:{safety?:{mode:string;boundary:string}|null}){return <div className="page-grid"><section className="panel wide"><PanelHeader icon={Settings} title="Safety + Data Mode" meta="read-only"/><MetricLine label="Mode" value={safety?.mode??"unknown"}/><p className="muted">{safety?.boundary??"Safety boundary unavailable."}</p></section></div>}
+function PanelHeader({icon:Icon,title,meta}:{icon:typeof Activity;title:string;meta?:string}){return <div className="panel-header"><div><Icon size={15}/><span className="eyebrow">{title}</span><h3>{title}</h3></div>{meta&&<span className="panel-meta">{meta}</span>}</div>}
+function MetricCard({icon:Icon,label,value,tone="default"}:{icon:typeof Activity;label:string;value:string;tone?:"default"|"risk"|"ok"}){return <article className={`metric-card ${tone}`}><Icon size={18}/><span>{label}</span><strong>{value}</strong></article>}
+function MetricLine({label,value}:{label:string;value:string}){return <div className="metric-line"><span>{label}</span><strong>{value}</strong></div>}
+function DriverList({drivers}:{drivers:Array<{feature:string;direction:string;importance:number}>}){return <div className="driver-list">{drivers.map(driver=><div className="driver" key={driver.feature}><div><span>{driver.feature}</span><strong>{percent(driver.importance)}</strong></div><div className="mini-bar"><span style={{width:`${Math.min(100,Math.max(0,driver.importance*100))}%`}}/></div></div>)}</div>}
 export default App;
