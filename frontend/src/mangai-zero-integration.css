@@ -1,0 +1,91 @@
+:root {
+  --mangai-bg: #07100e;
+  --mangai-surface: #0b1714;
+  --mangai-surface-2: #0f1e1a;
+  --mangai-border: rgba(151, 184, 171, 0.16);
+  --mangai-text: #e8f1ed;
+  --mangai-muted: #8fa59c;
+  --mangai-green: #35d39f;
+  --mangai-green-soft: rgba(53, 211, 159, 0.12);
+  --mangai-amber: #e7b75b;
+  --mangai-red: #ef6b65;
+}
+
+html, body, #root { min-height: 100%; }
+body { margin: 0; background: var(--mangai-bg); color: var(--mangai-text); }
+
+/* The legacy App remains the data/page engine. The new chrome owns navigation and framing. */
+.mangai-zero-chrome { position: relative; z-index: 100; }
+.mangai-command-bar {
+  position: fixed; inset: 0 0 auto 0; height: 68px; display: grid; grid-template-columns: 250px minmax(260px, 1fr) auto auto; align-items: center; gap: 22px;
+  padding: 0 22px; box-sizing: border-box; background: rgba(6, 15, 13, .96); border-bottom: 1px solid var(--mangai-border); backdrop-filter: blur(18px);
+}
+.mangai-command-brand, .mangai-command-context, .mangai-command-statuses, .mangai-command-actions { display: flex; align-items: center; }
+.mangai-command-brand { gap: 11px; min-width: 0; }
+.mangai-command-mark { width: 34px; height: 34px; display: grid; place-items: center; border: 1px solid rgba(53,211,159,.5); color: var(--mangai-green); font-weight: 800; border-radius: 8px; background: var(--mangai-green-soft); }
+.mangai-command-title { font-size: 16px; font-weight: 800; letter-spacing: .13em; }
+.mangai-command-subtitle { margin-top: 2px; font-size: 8px; color: var(--mangai-muted); letter-spacing: .18em; }
+.mangai-command-context { gap: 14px; min-width: 0; }
+.mangai-command-context-item { display: flex; align-items: center; gap: 7px; min-width: 0; color: var(--mangai-muted); font-size: 11px; }
+.mangai-command-context-item strong { color: var(--mangai-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mangai-command-label { font-size: 8px; letter-spacing: .12em; }
+.mangai-command-context-item svg { color: var(--mangai-green); }
+.mangai-command-context-item .is-demo { color: var(--mangai-amber); }
+.mangai-command-context-item .is-live { color: var(--mangai-green); }
+.mangai-command-statuses { gap: 8px; justify-content: flex-end; }
+.mangai-status-pill { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border: 1px solid var(--mangai-border); border-radius: 7px; background: rgba(255,255,255,.025); color: var(--mangai-muted); font-size: 9px; font-weight: 700; letter-spacing: .06em; }
+.mangai-status-pill.compact { font-weight: 600; letter-spacing: 0; }
+.mangai-status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--mangai-green); box-shadow: 0 0 0 3px rgba(53,211,159,.1); }
+.mangai-command-actions { gap: 8px; }
+.mangai-icon-button, .mangai-copilot-button { border: 1px solid var(--mangai-border); background: rgba(255,255,255,.025); color: var(--mangai-text); border-radius: 7px; cursor: pointer; }
+.mangai-icon-button { width: 34px; height: 34px; display: grid; place-items: center; }
+.mangai-copilot-button { height: 34px; display: inline-flex; align-items: center; gap: 7px; padding: 0 12px; color: #06120f; background: var(--mangai-green); border-color: var(--mangai-green); font-size: 9px; font-weight: 800; letter-spacing: .08em; }
+.mangai-command-safety { display: inline-flex; align-items: center; gap: 5px; color: var(--mangai-muted); font-size: 8px; letter-spacing: .09em; white-space: nowrap; }
+.mangai-command-safety svg { color: var(--mangai-green); }
+
+.mangai-sidebar { position: fixed; top: 68px; left: 0; bottom: 0; width: 236px; box-sizing: border-box; padding: 22px 12px 16px; background: rgba(7,16,14,.98); border-right: 1px solid var(--mangai-border); overflow-y: auto; }
+.mangai-sidebar-section + .mangai-sidebar-section { margin-top: 24px; }
+.mangai-sidebar-kicker { padding: 0 10px 9px; color: #60766d; font-size: 8px; font-weight: 800; letter-spacing: .18em; }
+.mangai-nav-item { position: relative; width: 100%; display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 0 10px; margin: 2px 0; border: 0; border-radius: 7px; background: transparent; color: #82978f; text-align: left; cursor: pointer; }
+.mangai-nav-item:hover { color: var(--mangai-text); background: rgba(255,255,255,.035); }
+.mangai-nav-item.is-active { color: var(--mangai-text); background: linear-gradient(90deg, rgba(53,211,159,.12), rgba(53,211,159,.035)); }
+.mangai-nav-icon { width: 20px; display: grid; place-items: center; }
+.mangai-nav-item.is-active .mangai-nav-icon { color: var(--mangai-green); }
+.mangai-nav-text { font-size: 11px; font-weight: 650; }
+.mangai-nav-state { position: absolute; left: 0; top: 9px; bottom: 9px; width: 2px; border-radius: 2px; background: var(--mangai-green); }
+.mangai-sidebar-footer { margin-top: 28px; display: grid; gap: 5px; padding: 0 10px; color: #53675f; font-size: 7px; letter-spacing: .12em; }
+.mangai-sidebar-footer-line { height: 1px; background: var(--mangai-border); margin-bottom: 7px; }
+.mangai-zero-layout, .mangai-zero-content-spacer { display: block; }
+
+/* Neutralise the old frame without touching its page components or API wiring. */
+.app { min-height: 100vh; background: var(--mangai-bg); }
+.app > .sidebar { display: none !important; }
+.app > .main { min-width: 0; margin-left: 236px; padding-top: 68px; background: var(--mangai-bg); }
+.app > .main > .topbar { display: none !important; }
+.app > .main > * { color: inherit; }
+
+@media (max-width: 1180px) {
+  .mangai-command-bar { grid-template-columns: 220px 1fr auto; gap: 12px; }
+  .mangai-command-context { display: none; }
+  .mangai-command-safety { display: none; }
+}
+@media (max-width: 860px) {
+  .mangai-command-bar { height: 60px; padding: 0 12px; grid-template-columns: 1fr auto; }
+  .mangai-command-statuses { display: none; }
+  .mangai-command-subtitle { display: none; }
+  .mangai-sidebar { top: 60px; width: 62px; padding: 15px 7px; }
+  .mangai-sidebar-kicker, .mangai-nav-text, .mangai-sidebar-footer { display: none; }
+  .mangai-nav-item { justify-content: center; padding: 0; }
+  .mangai-nav-state { left: -7px; }
+  .app > .main { margin-left: 62px; padding-top: 60px; }
+  .mangai-copilot-button span { display: none; }
+  .mangai-copilot-button { width: 34px; padding: 0; justify-content: center; }
+}
+@media (max-width: 560px) {
+  .mangai-command-bar { height: 54px; }
+  .mangai-command-brand { gap: 8px; }
+  .mangai-command-mark { width: 30px; height: 30px; }
+  .mangai-command-title { font-size: 13px; }
+  .mangai-sidebar { top: 54px; width: 54px; }
+  .app > .main { margin-left: 54px; padding-top: 54px; }
+}
