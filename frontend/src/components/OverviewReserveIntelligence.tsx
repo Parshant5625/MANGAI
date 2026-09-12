@@ -26,7 +26,6 @@ export function OverviewReserveIntelligence() {
           {(["probability", "grade", "thickness", "confidence"] as const).map((item) => (
             <button key={item} className={layer === item ? "active" : ""} onClick={() => setLayer(item)}>{item}</button>
           ))}
-          <button className="thermal-tab" onClick={() => document.querySelector<HTMLElement>(".reserve-map-layerbar button:last-child")?.click()}>Thermal</button>
         </div>
       </div>
       <div className="overview-reserve-grid">
