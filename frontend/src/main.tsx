@@ -16,6 +16,7 @@ import "./mangai-assistant.css";
 import "./styles/mangai-command-center.css";
 import "./styles/mangai-shell.css";
 import "./styles/mangai-zero-shell.css";
+import "./styles/command-center-rebuild.css";
 
 const rootElement = document.getElementById("root");
 
