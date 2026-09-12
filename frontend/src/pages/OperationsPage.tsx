@@ -9,6 +9,13 @@ function levelClass(level: string) {
   return `priority ${level.toLowerCase()}`;
 }
 
+function displayEvidenceValue(value: unknown): string {
+  if (typeof value === "number") return number(value, Math.abs(value) >= 10 ? 1 : 3);
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  if (value === null || value === undefined) return "—";
+  return String(value);
+}
+
 export function OperationsPage() {
   const { data, loading, error } = useApi<OperationsSummaryResponse>("/api/v1/operations/summary?days=30");
 
@@ -22,7 +29,7 @@ export function OperationsPage() {
   }));
 
   return (
-    <div className="page-grid">
+    <div className="page-grid operations-command">
       <section className="kpi-grid">
         <MetricCard icon={ShieldCheck} label="Operational risk" value={data.overall_operational_risk} tone={data.overall_operational_risk === "HIGH" ? "risk" : "default"} />
         <MetricCard icon={Wrench} label="Fleet availability" value={percent(data.fleet_availability)} />
@@ -42,9 +49,9 @@ export function OperationsPage() {
               <h3>{signal.title}</h3>
               <div className="evidence-grid">
                 {Object.entries(signal.evidence).map(([key, value]) => (
-                  <div className="metric-line" key={key}>
+                  <div className="evidence-pill" key={key}>
                     <span>{key.replaceAll("_", " ")}</span>
-                    <strong>{typeof value === "object" ? JSON.stringify(value) : String(value)}</strong>
+                    <strong>{displayEvidenceValue(value)}</strong>
                   </div>
                 ))}
               </div>
@@ -71,11 +78,11 @@ export function OperationsPage() {
         <PanelHeader icon={BarChart3} title="Observed Production Associations" meta="descriptive · not causal" />
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={associationData} layout="vertical" margin={{ left: 32, right: 18 }}>
-            <CartesianGrid stroke="#d8ded7" strokeDasharray="3 3" />
+            <CartesianGrid stroke="#2b4640" strokeDasharray="3 3" />
             <XAxis type="number" domain={[-1, 1]} />
             <YAxis type="category" dataKey="driver" width={130} />
             <Tooltip />
-            <Bar dataKey="correlation" fill="#1f7a5f" radius={[0, 4, 4, 0]} />
+            <Bar dataKey="correlation" fill="#36c99a" radius={[0, 4, 4, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </section>
