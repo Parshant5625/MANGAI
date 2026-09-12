@@ -8,6 +8,7 @@ import "../reserve-intelligence-details.css";
 
 type LayerKey = "probability" | "grade" | "thickness" | "confidence" | "thermal";
 type BaseMapKey = "satellite" | "terrain";
+type ViewMode = "cells" | "thermal";
 
 const SATELLITE_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
 const TERRAIN_TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -20,6 +21,7 @@ export function ReserveMap({ cells, selectedCell, onSelect, layer, boreholes }: 
   const onSelectRef = useRef(onSelect);
   const [baseMap, setBaseMap] = useState<BaseMapKey>("satellite");
   const [visualLayer, setVisualLayer] = useState<LayerKey>(layer);
+  const [viewMode, setViewMode] = useState<ViewMode>("thermal");
 
   useEffect(() => { cellsRef.current = cells; onSelectRef.current = onSelect; }, [cells, onSelect]);
   useEffect(() => { setVisualLayer(layer); }, [layer]);
@@ -41,8 +43,8 @@ export function ReserveMap({ cells, selectedCell, onSelect, layer, boreholes }: 
         satellite: { type: "raster", tiles: [SATELLITE_TILES], tileSize: 256, attribution: "© Esri" },
         terrain: { type: "raster", tiles: [TERRAIN_TILES], tileSize: 256, attribution: "© OpenStreetMap contributors" }
       }, layers: [
-        { id: "terrain-base", type: "raster", source: "terrain", paint: { "raster-opacity": 0.12, "raster-saturation": -0.18, "raster-contrast": 0.12 } },
-        { id: "satellite-base", type: "raster", source: "satellite", paint: { "raster-opacity": 0.92, "raster-saturation": 0.05, "raster-contrast": 0.04, "raster-brightness-min": 0.02, "raster-brightness-max": 1 } }
+        { id: "terrain-base", type: "raster", source: "terrain", paint: { "raster-opacity": 0.04, "raster-saturation": -0.05, "raster-contrast": 0.04 } },
+        { id: "satellite-base", type: "raster", source: "satellite", paint: { "raster-opacity": 1, "raster-saturation": 0.08, "raster-contrast": 0.02, "raster-brightness-min": 0.04, "raster-brightness-max": 1 } }
       ] },
       center: [80.3, 21.4], zoom: 9, minZoom: 6, maxZoom: 16, attributionControl: false, dragRotate: false, pitchWithRotate: false
     });
@@ -52,16 +54,27 @@ export function ReserveMap({ cells, selectedCell, onSelect, layer, boreholes }: 
       map.addSource("boreholes", { type: "geojson", data: emptyCollection() });
       map.addLayer({ id: "cells-heatmap", type: "heatmap", source: "cells", maxzoom: 16, paint: {
         "heatmap-weight": ["interpolate", ["linear"], ["get", "intensity"], 0, 0, 0.22, 0.08, 0.55, 0.42, 0.8, 0.75, 1, 1],
-        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 6, 0.35, 9, 0.58, 12, 0.78, 16, 0.95],
-        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 6, 13, 9, 20, 12, 27, 16, 34],
-        "heatmap-opacity": 0.58,
+        "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 6, 0.3, 9, 0.48, 12, 0.68, 16, 0.82],
+        "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 6, 14, 9, 21, 12, 28, 16, 35],
+        "heatmap-opacity": 0.44,
         "heatmap-color": ["interpolate", ["linear"], ["heatmap-density"], ...HEATMAP_COLORS.flat()]
       } });
-      map.addLayer({ id: "selected-cell", type: "circle", source: "cells", filter: ["==", ["get", "id"], "__none__"], paint: { "circle-radius": 7, "circle-color": "rgba(255,255,255,0)", "circle-opacity": 0, "circle-stroke-width": 2, "circle-stroke-color": "#ffe58c", "circle-stroke-opacity": 1 } });
-      map.addLayer({ id: "boreholes-layer", type: "circle", source: "boreholes", paint: { "circle-radius": 2.2, "circle-color": "#eafbf4", "circle-stroke-width": 0.9, "circle-stroke-color": "#06150f", "circle-opacity": 0.88 } });
+      map.addLayer({ id: "cells-circles", type: "circle", source: "cells", paint: {
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], 6, 5, 9, 7, 12, 10, 16, 15],
+        "circle-color": ["interpolate", ["linear"], ["get", "intensity"], ...HEATMAP_COLORS.flat()],
+        "circle-opacity": 0.72,
+        "circle-stroke-width": 1,
+        "circle-stroke-color": "rgba(238,255,248,0.62)",
+        "circle-stroke-opacity": 0.7
+      });
+      map.addLayer({ id: "selected-cell", type: "circle", source: "cells", filter: ["==", ["get", "id"], "__none__"], paint: { "circle-radius": 9, "circle-color": "rgba(255,255,255,0)", "circle-opacity": 0, "circle-stroke-width": 2.5, "circle-stroke-color": "#ffe58c", "circle-stroke-opacity": 1 } });
+      map.addLayer({ id: "boreholes-layer", type: "circle", source: "boreholes", paint: { "circle-radius": 2.2, "circle-color": "#eafbf4", "circle-stroke-width": 0.9, "circle-stroke-color": "#06150f", "circle-opacity": 0.9 } });
       map.on("click", "cells-heatmap", (event) => { const id = event.features?.[0]?.properties?.id as string | undefined; const match = cellsRef.current.find((cell) => cell.id === id); if (match) onSelectRef.current(match); });
+      map.on("click", "cells-circles", (event) => { const id = event.features?.[0]?.properties?.id as string | undefined; const match = cellsRef.current.find((cell) => cell.id === id); if (match) onSelectRef.current(match); });
       map.on("mouseenter", "cells-heatmap", () => { map.getCanvas().style.cursor = "pointer"; });
       map.on("mouseleave", "cells-heatmap", () => { map.getCanvas().style.cursor = ""; });
+      map.on("mouseenter", "cells-circles", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", "cells-circles", () => { map.getCanvas().style.cursor = ""; });
     });
     mapRef.current = map;
     return () => { map.remove(); mapRef.current = null; };
@@ -70,9 +83,16 @@ export function ReserveMap({ cells, selectedCell, onSelect, layer, boreholes }: 
   useEffect(() => {
     const map = mapRef.current;
     if (!map?.getLayer("satellite-base") || !map.getLayer("terrain-base")) return;
-    map.setPaintProperty("satellite-base", "raster-opacity", baseMap === "satellite" ? 0.92 : 0);
-    map.setPaintProperty("terrain-base", "raster-opacity", baseMap === "terrain" ? 0.98 : 0.12);
+    map.setPaintProperty("satellite-base", "raster-opacity", baseMap === "satellite" ? 1 : 0);
+    map.setPaintProperty("terrain-base", "raster-opacity", baseMap === "terrain" ? 0.98 : 0);
   }, [baseMap]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map?.getLayer("cells-heatmap") || !map.getLayer("cells-circles")) return;
+    map.setLayoutProperty("cells-heatmap", "visibility", viewMode === "thermal" ? "visible" : "none");
+    map.setLayoutProperty("cells-circles", "visibility", viewMode === "cells" ? "visible" : "none");
+  }, [viewMode]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -89,13 +109,14 @@ export function ReserveMap({ cells, selectedCell, onSelect, layer, boreholes }: 
     { key: "probability", label: "Prospectivity" }, { key: "grade", label: "Grade" }, { key: "thickness", label: "Thickness" }, { key: "confidence", label: "Confidence" }, { key: "thermal", label: "Thermal" }
   ];
 
-  return <div className={`map-surface maplibre-wrap reserve-map-command ${visualLayer === "thermal" ? "thermal-active" : ""}`}>
+  return <div className={`map-surface maplibre-wrap reserve-map-command ${visualLayer === "thermal" ? "thermal-active" : ""} ${viewMode === "cells" ? "cells-view" : "thermal-view"}`}>
     <div ref={containerRef} className="maplibre-canvas" /><div className="reserve-map-vignette" /><div className="reserve-map-scanline" />
     <div className="reserve-map-hud"><div className="reserve-map-title"><span className="hud-live-dot" /><div><strong>{visualLayer === "thermal" ? "THERMAL SURFACE" : "PROSPECTIVITY FIELD"}</strong><small>{visualLayer === "thermal" ? "Landsat LST-ready thermal visualization · demo proxy" : `satellite + geology · ${visualLayer.toUpperCase()}`}</small></div></div><div className="reserve-map-stats"><span><b>{cells.length}</b> cells</span><span><b>{mapStats.high}</b> high</span><span><b>{mapStats.veryHigh}</b> very high</span></div></div>
-    <div className="reserve-map-layerbar">{layerButtons.map((item) => <button type="button" key={item.key} className={visualLayer === item.key ? "active" : ""} onClick={() => setVisualLayer(item.key)}>{item.label}</button>)}</div>
+    <div className="reserve-map-layerbar">{layerButtons.map((item) => <button type="button" key={item.key} className={visualLayer === item.key ? "active" : ""} onClick={() => { setVisualLayer(item.key); if (item.key === "thermal") setViewMode("thermal"); }}>{item.label}</button>)}</div>
+    <div className="reserve-map-viewbar" role="group" aria-label="Cell visualization"><span>VIEW</span><button type="button" className={viewMode === "cells" ? "active" : ""} onClick={() => setViewMode("cells")}>Circular Cells</button><button type="button" className={viewMode === "thermal" ? "active" : ""} onClick={() => setViewMode("thermal")}>Thermal Heat</button></div>
     <div className="reserve-map-controls" role="group" aria-label="Base map"><button type="button" className={baseMap === "satellite" ? "active" : ""} onClick={() => setBaseMap("satellite")}>Satellite</button><button type="button" className={baseMap === "terrain" ? "active" : ""} onClick={() => setBaseMap("terrain")}>Map</button></div>
     <div className="reserve-map-corner"><span>AVG P</span><strong>{percent(mapStats.avgProbability)}</strong><span>CONF.</span><strong>{percent(mapStats.avgConfidence)}</strong></div>
-    <div className="map-legend reserve-map-legend"><div className="legend-caption">{visualLayer === "thermal" ? "thermal intensity · proxy" : `${visualLayer} intensity`}</div><div className="legend-scale thermal-scale"><i /><i /><i /><i /><i /><i /></div><div className="legend-labels"><span>cool / low</span><span>hot / high</span></div>{selectedCell && <em><span />{selectedCell.id} · {percent(selectedCell.probability)}</em>}</div>
+    <div className="map-legend reserve-map-legend"><div className="legend-caption">{viewMode === "thermal" ? "thermal intensity · proxy" : `${visualLayer} intensity · cell view`}</div><div className="legend-scale thermal-scale"><i /><i /><i /><i /><i /><i /></div><div className="legend-labels"><span>cool / low</span><span>hot / high</span></div>{selectedCell && <em><span />{selectedCell.id} · {percent(selectedCell.probability)}</em>}</div>
     <div className="reserve-map-footnote"><span>● borehole context</span><span>◎ selected target</span><span>Heatmap interpolation · © Esri</span></div>
   </div>;
 }
