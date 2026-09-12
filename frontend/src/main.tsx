@@ -7,6 +7,7 @@ import "./final-command-center.css";
 import "./premium-dashboard.css";
 import "./final-visual-overrides.css";
 import "./reserve-map-view.css";
+import "./global-contrast.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
