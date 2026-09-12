@@ -5,6 +5,7 @@ import "./styles.css";
 import "./phase12-polish.css";
 import "./final-command-center.css";
 import "./premium-dashboard.css";
+import "./final-visual-overrides.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
