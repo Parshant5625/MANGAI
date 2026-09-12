@@ -1,0 +1,4 @@
+/* Keep the map view switch clear of MapLibre navigation controls. */
+.reserve-map-command .reserve-map-viewbar{right:60px!important;top:100px!important;}
+@media(max-width:900px){.reserve-map-command .reserve-map-viewbar{left:16px!important;right:auto!important;top:98px!important}.reserve-map-command .reserve-map-controls{top:136px!important;right:16px!important}}
+@media(max-width:560px){.reserve-map-command .reserve-map-viewbar{left:10px!important;right:auto!important;top:94px!important}.reserve-map-command .reserve-map-controls{top:130px!important;right:10px!important}}
