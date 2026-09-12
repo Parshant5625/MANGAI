@@ -9,6 +9,7 @@ import "./final-visual-overrides.css";
 import "./reserve-map-view.css";
 import "./global-contrast.css";
 import "./ultimate-contrast.css";
+import "./final-theme.css";
 
 const rootElement = document.getElementById("root");
 
