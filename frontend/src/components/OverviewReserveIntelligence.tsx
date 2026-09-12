@@ -5,8 +5,10 @@ import { ProspectivityCell, ReserveProspectivityResponse } from "../types/api";
 import { compactNumber, number, percent } from "../utils/format";
 import { ReserveMap } from "./ReserveMap";
 
+type OverviewLayer = "probability" | "grade" | "thickness" | "confidence";
+
 export function OverviewReserveIntelligence() {
-  const [layer, setLayer] = useState<"probability" | "grade" | "thickness" | "confidence">("probability");
+  const [layer, setLayer] = useState<OverviewLayer>("probability");
   const [selectedCell, setSelectedCell] = useState<ProspectivityCell | null>(null);
   const reserve = useApi<ReserveProspectivityResponse>("/api/v1/reserves/prospectivity?limit=450&min_probability=0.35");
   const boreholes = useApi<{ boreholes: Array<{ borehole_id: string; latitude: number; longitude: number; lithology?: string }> }>("/api/v1/reserves/boreholes?limit=180");
@@ -18,12 +20,13 @@ export function OverviewReserveIntelligence() {
         <div>
           <span className="section-kicker"><Satellite size={14} /> RESERVE INTELLIGENCE</span>
           <h2>See where the ore signal is strongest.</h2>
-          <p>Satellite context + geology + ML prospectivity, with selectable grade, thickness and confidence layers.</p>
+          <p>Satellite context + geology + ML prospectivity, with continuous heatmaps for probability, grade, thickness, confidence and thermal proxy.</p>
         </div>
         <div className="overview-layer-switch">
           {(["probability", "grade", "thickness", "confidence"] as const).map((item) => (
             <button key={item} className={layer === item ? "active" : ""} onClick={() => setLayer(item)}>{item}</button>
           ))}
+          <button className="thermal-tab" onClick={() => document.querySelector<HTMLElement>(".reserve-map-layerbar button:last-child")?.click()}>Thermal</button>
         </div>
       </div>
       <div className="overview-reserve-grid">
@@ -51,6 +54,7 @@ export function OverviewReserveIntelligence() {
               <Layers size={28} />
               <strong>Click a prospectivity cell</strong>
               <p>Inspect probability, Mn grade, thickness, confidence and prototype resource potential.</p>
+              <span className="thermal-note">Thermal is displayed as a demo proxy until spatial Landsat LST is connected.</span>
             </div>
           )}
         </aside>
