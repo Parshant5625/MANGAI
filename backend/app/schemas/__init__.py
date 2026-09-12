@@ -19,11 +19,14 @@ from backend.app.schemas.api import (
     ReserveSummaryResponse,
     WeatherResponse,
 )
+from backend.app.schemas.chat import ChatRequest, ChatResponse
 from backend.app.schemas.monitoring import ModelMonitoringResponse
 from backend.app.schemas.operations import OperationsSummaryResponse
 
 __all__ = [
     "BlastingResponse",
+    "ChatRequest",
+    "ChatResponse",
     "DataQualityResponse",
     "EquipmentResponse",
     "ExtrapolationOut",
