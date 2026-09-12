@@ -30,14 +30,78 @@ button { -webkit-font-smoothing: antialiased; }
 .reserve-map-command .maplibregl-ctrl-top-right { top:100px!important;right:16px!important; }
 
 /* Make the geographic imagery read clearly beneath the intelligence layer. */
-.reserve-map-command .reserve-map-vignette { z-index:2;background:radial-gradient(circle at 50% 50%,transparent 58%,rgba(2,10,17,.12) 100%)!important; }
-.reserve-map-command .reserve-map-scanline { opacity:.045!important; }
-.reserve-map-command .maplibregl-canvas { filter:saturate(1.16) contrast(1.08) brightness(1.13); }
-.reserve-map-command .reserve-map-layerbar { top:62px!important;left:16px!important;max-width:calc(100% - 190px)!important;background:rgba(3,15,24,.86)!important;border-color:rgba(121,220,181,.28)!important; }
+.reserve-map-command .reserve-map-vignette { z-index:2;background:radial-gradient(circle at 50% 50%,transparent 72%,rgba(2,10,17,.04) 100%)!important; }
+.reserve-map-command .reserve-map-scanline { opacity:.025!important; }
+.reserve-map-command .maplibre-canvas { filter:saturate(1.2) contrast(1.06) brightness(1.16); }
+.reserve-map-command .reserve-map-layerbar { top:62px!important;left:16px!important;max-width:calc(100% - 190px)!important;background:rgba(3,15,24,.78)!important;border-color:rgba(121,220,181,.28)!important; }
 .reserve-map-command .reserve-map-layerbar button { color:#b5cec3!important;min-height:29px; }
 .reserve-map-command .reserve-map-layerbar button.active { color:#03140f!important; }
-.reserve-map-command .reserve-map-legend { background:rgba(3,15,24,.86)!important; }
-.reserve-map-command .reserve-map-stats span,.reserve-map-command .reserve-map-title,.reserve-map-command .reserve-map-corner { background:rgba(3,15,24,.78)!important; }
+.reserve-map-command .reserve-map-legend { background:rgba(3,15,24,.78)!important; }
+.reserve-map-command .reserve-map-stats span,.reserve-map-command .reserve-map-title,.reserve-map-command .reserve-map-corner { background:rgba(3,15,24,.72)!important; }
+.reserve-map-command::after { background:transparent!important;mix-blend-mode:normal!important; }
+.reserve-map-command .reserve-map-vignette { pointer-events:none!important; }
+
+/* Switch between the original circular-cell visualization and the thermal heat field. */
+.reserve-map-command .reserve-map-viewbar { position:absolute;right:16px;top:100px;z-index:12;display:flex;align-items:center;gap:2px;padding:3px 4px;border:1px solid rgba(121,220,181,.24);border-radius:9px;background:rgba(3,15,24,.78);backdrop-filter:blur(10px);box-shadow:0 8px 18px rgba(0,0,0,.2); }
+.reserve-map-command .reserve-map-viewbar span { color:#7fa79a!important;font-size:.44rem!important;font-weight:900!important;letter-spacing:.09em!important;padding:0 4px!important; }
+.reserve-map-command .reserve-map-viewbar button { border:0!important;border-radius:6px!important;background:transparent!important;color:#c4ded4!important;padding:6px 8px!important;font:800 .48rem/1 system-ui,sans-serif!important;letter-spacing:.035em!important;white-space:nowrap!important;cursor:pointer!important; }
+.reserve-map-command .reserve-map-viewbar button.active { color:#062117!important;background:linear-gradient(135deg,#61e4b6,#2ca77f)!important; }
+.reserve-map-command.thermal-view .reserve-map-viewbar button:last-child { box-shadow:0 0 0 1px rgba(92,226,180,.14); }
+.reserve-map-command.cells-view .reserve-map-viewbar button:first-of-type { box-shadow:0 0 0 1px rgba(92,226,180,.14); }
+
+/* Light surfaces: use dark text, even though the application shell is dark-themed in places. */
+.main { color:#1b2320!important; }
+.main .panel:not(.production-hero):not(.recommendations-hero):not(.health-hero):not(.overview-reserve-command):not(.overview-signal-rail),
+.main .metric-card,
+.main .table-panel,
+.main .chart-panel,
+.main .recommendation,
+.main .signal-card,
+.main .state,
+.main .toolbar,
+.main .boundary-panel { color:#1b2320!important; }
+.main .panel:not(.production-hero):not(.recommendations-hero):not(.health-hero):not(.overview-reserve-command):not(.overview-signal-rail) h1,
+.main .panel:not(.production-hero):not(.recommendations-hero):not(.health-hero):not(.overview-reserve-command):not(.overview-signal-rail) h2,
+.main .panel:not(.production-hero):not(.recommendations-hero):not(.health-hero):not(.overview-reserve-command):not(.overview-signal-rail) h3,
+.main .panel:not(.production-hero):not(.recommendations-hero):not(.health-hero):not(.overview-reserve-command):not(.overview-signal-rail) h4,
+.main .metric-card h1,.main .metric-card h2,.main .metric-card h3,.main .metric-card h4,.main .metric-card strong,
+.main .table-panel h1,.main .table-panel h2,.main .table-panel h3,.main .table-panel h4,
+.main .recommendation h1,.main .recommendation h2,.main .recommendation h3,.main .recommendation h4,
+.main .signal-card h1,.main .signal-card h2,.main .signal-card h3,.main .signal-card h4 { color:#17231e!important; }
+.main .panel:not(.production-hero):not(.recommendations-hero):not(.health-hero):not(.overview-reserve-command):not(.overview-signal-rail) p,
+.main .panel:not(.production-hero):not(.recommendations-hero):not(.health-hero):not(.overview-reserve-command):not(.overview-signal-rail) small,
+.main .panel:not(.production-hero):not(.recommendations-hero):not(.health-hero):not(.overview-reserve-command):not(.overview-signal-rail) label,
+.main .panel:not(.production-hero):not(.recommendations-hero):not(.health-hero):not(.overview-reserve-command):not(.overview-signal-rail) .muted,
+.main .metric-card span,.main .table-panel span,.main .recommendation p,.main .signal-card p { color:#53635c!important; }
+.main .panel:not(.production-hero):not(.recommendations-hero):not(.health-hero):not(.overview-reserve-command):not(.overview-signal-rail) .panel-header span,
+.main .metric-line span,.main .driver span { color:#5c6e66!important; }
+.main .metric-line strong,.main .driver strong,.main .table-panel td,.main .table-panel th { color:#20332b!important; }
+.main .table-panel th { background:#f3f6f4!important; }
+.main .toolbar label { color:#33473e!important; }
+.main .chip { color:#31413a!important;background:#fff!important; }
+.main .chip.active { color:#fff!important;background:#1f7a5f!important; }
+.main .boundary-panel .boundary { color:#53675e!important; }
+
+/* Explicit dark surfaces keep light typography. */
+.main .production-hero,.main .recommendations-hero,.main .health-hero,
+.main .overview-reserve-command,.main .overview-reserve-command .overview-reserve-header,
+.main .overview-reserve-command .overview-reserve-detail,.main .overview-signal-rail,
+.main .reserve-map-command { color:#eaf8f2!important; }
+.main .production-hero h1,.main .recommendations-hero h1,.main .health-hero h1,
+.main .production-hero strong,.main .recommendations-hero strong,.main .health-hero strong,
+.main .overview-reserve-command h2,.main .overview-reserve-command h3,.main .overview-signal-rail h3,
+.main .reserve-map-command strong { color:#f2fff9!important; }
+.main .production-hero p,.main .recommendations-hero p,.main .health-hero p,
+.main .overview-reserve-command p,.main .overview-signal-rail p { color:#b9d2c7!important; }
+
+/* Keep map imagery visually dominant and the intelligence overlay transparent enough to inspect geography. */
+.reserve-map-command .maplibregl-canvas-container,.reserve-map-command .maplibre-canvas { background:#6f8d79!important; }
+.reserve-map-command .maplibregl-canvas { opacity:1!important; }
+.reserve-map-command.thermal-view .reserve-map-legend { border-color:rgba(255,255,255,.22)!important; }
+.reserve-map-command.cells-view .reserve-map-legend { border-color:rgba(92,226,180,.25)!important; }
+
+@media(max-width:900px){.reserve-map-command .reserve-map-viewbar{top:98px;right:16px}.reserve-map-command .reserve-map-controls{top:136px;right:16px}}
+@media(max-width:560px){.reserve-map-command .reserve-map-viewbar{top:94px;right:10px}.reserve-map-command .reserve-map-viewbar button{padding:5px 6px!important;font-size:.43rem!important}.reserve-map-command .reserve-map-controls{top:130px;right:10px}}
 
 /* Selected-target panel contrast. */
 .overview-reserve-detail,.overview-target-empty { color:#eaf8f2!important; }
