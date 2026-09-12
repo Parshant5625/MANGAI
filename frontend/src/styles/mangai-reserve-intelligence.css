@@ -1,0 +1,85 @@
+.mangai-reserve-command {
+  position: relative;
+  min-height: 680px;
+  overflow: hidden;
+  border: 1px solid rgba(90, 214, 172, .16);
+  border-radius: 14px;
+  background: #0a100e;
+  box-shadow: 0 24px 80px rgba(0,0,0,.34);
+}
+
+.mangai-reserve-command .reserve-map-shell,
+.mangai-reserve-command .reserve-map,
+.mangai-reserve-command .map-container {
+  height: 100%;
+  min-height: 680px;
+}
+
+.mangai-reserve-overlay {
+  position: absolute;
+  z-index: 5;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, rgba(5,10,8,.68), transparent 24%, transparent 70%, rgba(5,10,8,.42));
+}
+
+.mangai-reserve-header {
+  position: absolute;
+  z-index: 8;
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  pointer-events: none;
+}
+
+.mangai-reserve-header h1 { margin: 6px 0 0; font: 600 25px/1.1 "Space Grotesk", sans-serif; text-shadow: 0 2px 14px rgba(0,0,0,.6); }
+.mangai-reserve-header p { margin: 6px 0 0; max-width: 460px; color: #b3c2bc; font-size: 11px; }
+.mangai-reserve-chip { padding: 8px 10px; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(7,14,12,.76); backdrop-filter: blur(12px); color: #dce8e3; font-size: 9px; font-weight: 700; letter-spacing: .1em; }
+
+.mangai-reserve-hud {
+  position: absolute;
+  z-index: 8;
+  left: 18px;
+  bottom: 18px;
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+}
+.mangai-reserve-hud-item { min-width: 118px; padding: 10px 11px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(8,15,13,.78); backdrop-filter: blur(12px); }
+.mangai-reserve-hud-item span { display:block; color:#81918a; font-size:7px; font-weight:700; letter-spacing:.13em; }
+.mangai-reserve-hud-item strong { display:block; margin-top:4px; color:#f1f7f4; font-size:15px; }
+
+.mangai-target-drawer { position: absolute; z-index: 20; top: 12px; right: 12px; bottom: 12px; width: min(350px, calc(100% - 24px)); padding: 18px; overflow:auto; border: 1px solid rgba(80,214,173,.2); border-radius: 12px; background: rgba(10,17,15,.94); backdrop-filter: blur(18px); box-shadow: -20px 0 60px rgba(0,0,0,.35); color: #eef6f2; animation: target-drawer-in .24s ease-out; }
+@keyframes target-drawer-in { from { opacity:0; transform:translateX(18px) } to { opacity:1; transform:none } }
+.mangai-drawer-head { display:flex; justify-content:space-between; gap:12px; }
+.mangai-drawer-head h2 { margin:6px 0 0; font:600 22px "Space Grotesk",sans-serif; }
+.mangai-micro-label { display:inline-flex; align-items:center; gap:5px; color:#31d7c2; font-size:8px; font-weight:700; letter-spacing:.14em; }
+.mangai-drawer-close { width:30px; height:30px; display:grid; place-items:center; border:1px solid rgba(255,255,255,.12); border-radius:7px; background:rgba(255,255,255,.03); color:#c7d3ce; cursor:pointer; }
+.mangai-target-score { margin-top:22px; padding:14px; border:1px solid rgba(255,255,255,.09); border-radius:9px; background:rgba(255,255,255,.025); }
+.mangai-target-score div:first-child { display:flex; justify-content:space-between; align-items:center; }
+.mangai-target-score span { color:#85948e; font-size:8px; font-weight:700; letter-spacing:.13em; }
+.mangai-target-score strong { color:#65e4b1; font:700 25px "Space Grotesk",sans-serif; }
+.mangai-score-track { height:4px; margin-top:10px; overflow:hidden; border-radius:99px; background:#202d28; }
+.mangai-score-track span { display:block; height:100%; border-radius:99px; background:linear-gradient(90deg,#117d62,#48e1ad); box-shadow:0 0 12px rgba(45,220,169,.35); }
+.mangai-target-metrics { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:10px; }
+.mangai-target-metric { padding:11px; border:1px solid rgba(255,255,255,.08); border-radius:8px; background:rgba(255,255,255,.02); }
+.mangai-target-metric span { display:block; color:#82928b; font-size:8px; }
+.mangai-target-metric strong { display:block; margin-top:5px; color:#f0f7f3; font-size:14px; }
+.mangai-evidence-block { margin-top:18px; padding-top:15px; border-top:1px solid rgba(255,255,255,.08); }
+.mangai-evidence-row { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.05); font-size:10px; }
+.mangai-evidence-row span { display:flex; align-items:center; gap:7px; color:#aab8b2; }
+.mangai-evidence-row strong { color:#63dfb1; font-size:8px; letter-spacing:.1em; }
+.mangai-target-location { margin-top:15px; padding:11px; border-radius:8px; background:rgba(36,215,232,.045); }
+.mangai-target-location span { display:block; color:#71847d; font-size:7px; font-weight:700; letter-spacing:.13em; }
+.mangai-target-location strong { display:block; margin-top:4px; font:500 12px "Space Grotesk",sans-serif; }
+.mangai-investigate-button { width:100%; height:38px; margin-top:12px; display:flex; justify-content:center; align-items:center; gap:7px; border:1px solid rgba(24,200,143,.28); border-radius:8px; background:rgba(24,200,143,.09); color:#bdf7df; cursor:pointer; font-size:9px; font-weight:700; letter-spacing:.08em; }
+.mangai-drawer-disclaimer { margin:10px 2px 0; color:#71817b; font-size:8px; line-height:1.5; }
+
+@media (max-width: 760px) {
+  .mangai-reserve-command, .mangai-reserve-command .reserve-map-shell, .mangai-reserve-command .reserve-map, .mangai-reserve-command .map-container { min-height: 560px; }
+  .mangai-reserve-hud { display:none; }
+  .mangai-reserve-header p { display:none; }
+}
