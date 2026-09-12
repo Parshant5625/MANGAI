@@ -49,7 +49,7 @@ export function ReserveMap({
 
   useEffect(() => {
     if (visualLayer !== "thermal") setVisualLayer(layer);
-  }, [layer]);
+  }, [layer, visualLayer]);
 
   const mapStats = useMemo(() => {
     if (!cells.length) return { high: 0, veryHigh: 0, avgProbability: 0, avgConfidence: 0 };
