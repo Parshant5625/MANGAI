@@ -4,6 +4,7 @@ import App from "./App";
 import "./styles.css";
 import "./phase12-polish.css";
 import "./final-command-center.css";
+import "./premium-dashboard.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
