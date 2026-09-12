@@ -13,13 +13,13 @@ const SATELLITE_TILES = "https://server.arcgisonline.com/ArcGIS/rest/services/Wo
 const TERRAIN_TILES = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 
 const HEATMAP_COLORS: [number, string][] = [
-  [0, "#102c5c"],
-  [0.2, "#155c8f"],
-  [0.4, "#16a5a0"],
-  [0.58, "#63c95c"],
-  [0.72, "#f2dc55"],
-  [0.86, "#f58d36"],
-  [1, "#ef3d2f"]
+  [0, "#15345f"],
+  [0.18, "#1676a0"],
+  [0.38, "#15a69e"],
+  [0.58, "#6bc95b"],
+  [0.76, "#f3d84d"],
+  [0.9, "#f48b35"],
+  [1, "#ef4034"]
 ];
 
 export function ReserveMap({
@@ -72,8 +72,18 @@ export function ReserveMap({
           terrain: { type: "raster", tiles: [TERRAIN_TILES], tileSize: 256, attribution: "© OpenStreetMap contributors" }
         },
         layers: [
-          { id: "terrain-base", type: "raster", source: "terrain", paint: { "raster-opacity": 0 } },
-          { id: "satellite-base", type: "raster", source: "satellite", paint: { "raster-opacity": 1, "raster-saturation": -0.15, "raster-contrast": 0.08, "raster-brightness-min": 0.02, "raster-brightness-max": 0.94 } }
+          {
+            id: "terrain-base",
+            type: "raster",
+            source: "terrain",
+            paint: { "raster-opacity": 0.16, "raster-saturation": -0.25, "raster-contrast": 0.18 }
+          },
+          {
+            id: "satellite-base",
+            type: "raster",
+            source: "satellite",
+            paint: { "raster-opacity": 0.94, "raster-saturation": 0, "raster-contrast": 0.02, "raster-brightness-min": 0.05, "raster-brightness-max": 1 }
+          }
         ]
       },
       center: [80.3, 21.4],
@@ -85,7 +95,7 @@ export function ReserveMap({
       pitchWithRotate: false
     });
 
-    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), "top-right");
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false, visualizePitch: false }), "top-right");
     map.on("load", () => {
       map.addSource("cells", { type: "geojson", data: emptyCollection() });
       map.addSource("boreholes", { type: "geojson", data: emptyCollection() });
@@ -96,16 +106,11 @@ export function ReserveMap({
         source: "cells",
         maxzoom: 16,
         paint: {
-          "heatmap-weight": ["interpolate", ["linear"], ["get", "intensity"], 0, 0, 1, 1],
-          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 6, 0.75, 10, 1.15, 14, 1.8],
-          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 6, 20, 9, 30, 12, 44, 16, 58],
-          "heatmap-opacity": 0.88,
-          "heatmap-color": [
-            "interpolate",
-            ["linear"],
-            ["heatmap-density"],
-            ...HEATMAP_COLORS.flat()
-          ]
+          "heatmap-weight": ["interpolate", ["linear"], ["get", "intensity"], 0, 0, 0.22, 0.08, 0.55, 0.42, 0.8, 0.75, 1, 1],
+          "heatmap-intensity": ["interpolate", ["linear"], ["zoom"], 6, 0.45, 9, 0.72, 12, 0.92, 16, 1.1],
+          "heatmap-radius": ["interpolate", ["linear"], ["zoom"], 6, 14, 9, 21, 12, 28, 16, 36],
+          "heatmap-opacity": 0.7,
+          "heatmap-color": ["interpolate", ["linear"], ["heatmap-density"], ...HEATMAP_COLORS.flat()]
         }
       });
 
@@ -115,10 +120,10 @@ export function ReserveMap({
         source: "cells",
         filter: ["==", ["get", "id"], "__none__"],
         paint: {
-          "circle-radius": 8,
+          "circle-radius": 7,
           "circle-color": "rgba(255,255,255,0)",
           "circle-opacity": 0,
-          "circle-stroke-width": 2.5,
+          "circle-stroke-width": 2,
           "circle-stroke-color": "#ffe58c",
           "circle-stroke-opacity": 1
         }
@@ -129,11 +134,11 @@ export function ReserveMap({
         type: "circle",
         source: "boreholes",
         paint: {
-          "circle-radius": 2.5,
+          "circle-radius": 2.2,
           "circle-color": "#eafbf4",
-          "circle-stroke-width": 1,
-          "circle-stroke-color": "#071d16",
-          "circle-opacity": 0.9
+          "circle-stroke-width": 0.9,
+          "circle-stroke-color": "#06150f",
+          "circle-opacity": 0.88
         }
       });
 
@@ -153,8 +158,8 @@ export function ReserveMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map?.getLayer("satellite-base") || !map.getLayer("terrain-base")) return;
-    map.setPaintProperty("satellite-base", "raster-opacity", baseMap === "satellite" ? 1 : 0);
-    map.setPaintProperty("terrain-base", "raster-opacity", baseMap === "terrain" ? 0.96 : 0);
+    map.setPaintProperty("satellite-base", "raster-opacity", baseMap === "satellite" ? 0.94 : 0);
+    map.setPaintProperty("terrain-base", "raster-opacity", baseMap === "terrain" ? 0.98 : 0.12);
   }, [baseMap]);
 
   useEffect(() => {
@@ -173,7 +178,7 @@ export function ReserveMap({
         properties: {
           id: cell.id,
           probability: cell.probability,
-          intensity: (layerValue(cell, visualLayer) - min) / range
+          intensity: Math.max(0, Math.min(1, (layerValue(cell, visualLayer) - min) / range))
         },
         geometry: { type: "Point" as const, coordinates: [cell.longitude, cell.latitude] }
       }))
@@ -199,9 +204,8 @@ export function ReserveMap({
     if (cells.length) {
       const bounds = new maplibregl.LngLatBounds();
       cells.forEach((cell) => bounds.extend([cell.longitude, cell.latitude]));
-      map.fitBounds(bounds, { padding: 54, maxZoom: 12, duration: 650 });
+      map.fitBounds(bounds, { padding: 70, maxZoom: 11, duration: 500 });
     }
-    if (selectedCell) map.easeTo({ center: [selectedCell.longitude, selectedCell.latitude], duration: 450, zoom: Math.max(map.getZoom(), 10) });
   }, [cells, visualLayer, boreholes, selectedCell]);
 
   const layerButtons: Array<{ key: LayerKey; label: string }> = [
@@ -235,7 +239,7 @@ export function ReserveMap({
         ))}
       </div>
 
-      <div className="reserve-map-controls">
+      <div className="reserve-map-controls" role="group" aria-label="Base map">
         <button className={baseMap === "satellite" ? "active" : ""} onClick={() => setBaseMap("satellite")}>Satellite</button>
         <button className={baseMap === "terrain" ? "active" : ""} onClick={() => setBaseMap("terrain")}>Map</button>
       </div>
@@ -265,7 +269,6 @@ function thermalValue(cell: ProspectivityCell): number {
   const geology = cell.geology ?? {};
   const candidate = [geology.land_temperature_c, geology.lst_c, geology.thermal_c, geology.temperature_c].find((value) => typeof value === "number");
   if (typeof candidate === "number") return candidate;
-  // Demo-only thermal proxy. It is deliberately labelled as a proxy until spatial Landsat LST is supplied.
   return 22 + cell.probability * 14 + (1 - cell.confidence) * 4;
 }
 
