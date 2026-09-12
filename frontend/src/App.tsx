@@ -102,11 +102,7 @@ function App() {
           {pages.map((page) => {
             const Icon = page.icon;
             return (
-              <button
-                key={page.key}
-                className={activePage === page.key ? "nav-item active" : "nav-item"}
-                onClick={() => setActivePage(page.key)}
-              >
+              <button key={page.key} className={activePage === page.key ? "nav-item active" : "nav-item"} onClick={() => setActivePage(page.key)}>
                 <Icon size={18} />
                 <span>{page.label}</span>
               </button>
@@ -133,13 +129,14 @@ function App() {
         {error && <StatePanel label={`API unavailable: ${error}`} tone="danger" />}
         {ready && overview.data && production.data && (
           <>
-            {activePage === "overview" && recommendations.data && equipment.data && dataQuality.data && (
+            {activePage === "overview" && recommendations.data && equipment.data && dataQuality.data && reserveCells.data && (
               <OverviewPage
                 overview={overview.data}
                 production={production.data}
                 recommendations={recommendations.data}
                 equipment={equipment.data}
                 quality={dataQuality.data}
+                reserveCells={reserveCells.data.cells}
               />
             )}
             {activePage === "reserve" && reserveSummary.data && reserveCells.data && (
@@ -155,19 +152,11 @@ function App() {
                 setSelectedCell={setSelectedCell}
               />
             )}
-            {activePage === "production" && (
-              <ProductionPage forecast={production.data} history={productionHistory.data?.records ?? []} />
-            )}
+            {activePage === "production" && <ProductionPage forecast={production.data} history={productionHistory.data?.records ?? []} />}
             {activePage === "equipment" && equipment.data && <EquipmentPage equipment={equipment.data} />}
-            {activePage === "weather" && weather.data && blasting.data && (
-              <WeatherBlastingPage weather={weather.data} blasting={blasting.data} />
-            )}
-            {activePage === "recommendations" && recommendations.data && (
-              <RecommendationsPage initial={recommendations.data} />
-            )}
-            {activePage === "health" && models.data && dataQuality.data && (
-              <HealthPage models={models.data} dataQuality={dataQuality.data} boundary={overview.data.boundary_notice} />
-            )}
+            {activePage === "weather" && weather.data && blasting.data && <WeatherBlastingPage weather={weather.data} blasting={blasting.data} />}
+            {activePage === "recommendations" && recommendations.data && <RecommendationsPage initial={recommendations.data} />}
+            {activePage === "health" && models.data && dataQuality.data && <HealthPage models={models.data} dataQuality={dataQuality.data} boundary={overview.data.boundary_notice} />}
             {activePage === "settings" && <SettingsPage safety={safety.data} />}
           </>
         )}
@@ -213,9 +202,7 @@ function ReservePage({
           </label>
           <div className="layer-toggles">
             {(["probability", "grade", "thickness", "confidence"] as const).map((item) => (
-              <button key={item} className={layer === item ? "chip active" : "chip"} onClick={() => setLayer(item)}>
-                {item}
-              </button>
+              <button key={item} className={layer === item ? "chip active" : "chip"} onClick={() => setLayer(item)}>{item}</button>
             ))}
           </div>
         </div>
@@ -235,9 +222,7 @@ function ReservePage({
             <p className="muted">{String(selectedCell.resource_potential.assumptions.classification_boundary ?? "")}</p>
             <DriverList drivers={selectedCell.top_contributors} />
           </div>
-        ) : (
-          <p className="muted">Click a high-prospectivity cell to inspect grade, thickness, confidence and prototype resource potential.</p>
-        )}
+        ) : <p className="muted">Click a high-prospectivity cell to inspect grade, thickness, confidence and prototype resource potential.</p>}
       </section>
       <section className="panel">
         <PanelHeader icon={Gauge} title="Summary" meta="prototype" />
@@ -310,28 +295,8 @@ function EquipmentPage({ equipment }: { equipment: EquipmentResponse }) {
       </section>
       <section className="table-panel">
         <table>
-          <thead>
-            <tr>
-              <th>Asset</th>
-              <th>Type</th>
-              <th>Availability</th>
-              <th>Utilization</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {equipment.items.map((item) => (
-              <tr key={item.equipment_id}>
-                <td>{item.equipment_id}</td>
-                <td>{item.equipment_type}</td>
-                <td>{percent(item.availability)}</td>
-                <td>{percent(item.utilization)}</td>
-                <td>
-                  <span className={`priority ${item.status.toLowerCase()}`}>{item.status}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+          <thead><tr><th>Asset</th><th>Type</th><th>Availability</th><th>Utilization</th><th>Status</th></tr></thead>
+          <tbody>{equipment.items.map((item) => <tr key={item.equipment_id}><td>{item.equipment_id}</td><td>{item.equipment_type}</td><td>{percent(item.availability)}</td><td>{percent(item.utilization)}</td><td><span className={`priority ${item.status.toLowerCase()}`}>{item.status}</span></td></tr>)}</tbody>
         </table>
       </section>
     </div>
@@ -342,34 +307,23 @@ function WeatherBlastingPage({ weather, blasting }: { weather: WeatherResponse; 
   return (
     <div className="page-grid">
       <section className="kpi-grid">
-        <MetricCard icon={CloudRain} label="7-day rainfall" value={`${number(weather.rainfall_7d_mm, 1)} mm`} tone={weather.weather_risk === "HIGH" ? "risk" : "default"} />
-        <MetricCard icon={Gauge} label="Soil moisture" value={percent(weather.soil_moisture)} />
-        <MetricCard icon={Target} label="Planned blasts" value={number(blasting.planned_blasts_7d)} />
-        <MetricCard icon={AlertTriangle} label="Overlap risk" value={blasting.overlap_risk} tone={blasting.overlap_risk === "HIGH" ? "risk" : "default"} />
+        <MetricCard icon={CloudRain} label="7-day rainfall" value={`${number(weather.rainfall_7d_mm, 1)} mm`} />
+        <MetricCard icon={Activity} label="Soil moisture" value={number(weather.soil_moisture, 2)} />
+        <MetricCard icon={AlertTriangle} label="Weather risk" value={weather.weather_risk} tone={weather.weather_risk === "HIGH" ? "risk" : "ok"} />
+        <MetricCard icon={Target} label="Blast overlap" value={blasting.overlap_risk} tone={blasting.overlap_risk === "HIGH" ? "risk" : "ok"} />
       </section>
-      <section className="panel wide chart-panel">
-        <PanelHeader icon={CloudRain} title="Weather Observations" meta={weather.latest_date} />
-        <ResponsiveContainer width="100%" height={330}>
-          <AreaChart data={weather.observations}>
-            <CartesianGrid stroke="#d8ded7" strokeDasharray="3 3" />
-            <XAxis dataKey="date" minTickGap={18} />
-            <YAxis />
-            <Tooltip />
-            <Area type="monotone" dataKey="rainfall_mm" stroke="#1f7a5f" fill="#b7d8c8" />
-          </AreaChart>
-        </ResponsiveContainer>
+      <section className="panel wide">
+        <PanelHeader icon={CloudRain} title="Weather + Blasting Signal" meta={`${weather.latest_date} · ${blasting.delay_trend}`} />
+        <div className="detail-stack">
+          <MetricLine label="Rainfall 30d" value={`${number(weather.rainfall_30d_mm, 1)} mm`} />
+          <MetricLine label="Temperature" value={`${number(weather.temperature_c, 1)} °C`} />
+          <MetricLine label="Planned blasts (7d)" value={number(blasting.planned_blasts_7d)} />
+          <MetricLine label="Delay (7d)" value={`${number(blasting.delay_hours_7d, 1)} h`} />
+        </div>
       </section>
-      <section className="panel wide chart-panel">
-        <PanelHeader icon={Target} title="Blasting Delay" meta={blasting.delay_trend} />
-        <ResponsiveContainer width="100%" height={260}>
-          <BarChart data={blasting.events}>
-            <CartesianGrid stroke="#d8ded7" strokeDasharray="3 3" />
-            <XAxis dataKey="date" minTickGap={18} />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="blasting_delay_hours" fill="#344b6f" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+      <section className="panel wide">
+        <PanelHeader icon={Target} title="Operational Interpretation" meta="decision support" />
+        <p className="muted">Use rainfall, soil moisture and blast overlap together when evaluating the next operating window. This is a decision-support signal and does not replace site safety procedures.</p>
       </section>
     </div>
   );
@@ -377,166 +331,61 @@ function WeatherBlastingPage({ weather, blasting }: { weather: WeatherResponse; 
 
 function RecommendationsPage({ initial }: { initial: RecommendationResponse }) {
   const [items, setItems] = useState(initial.recommendations);
-  const [downtime, setDowntime] = useState(15);
-  async function simulate() {
-    const response = await apiPost<RecommendationResponse>("/api/v1/recommendations/simulate", {
-      reduce_downtime_pct: downtime,
-      defer_weather_sensitive_blasts: true
-    });
-    setItems(response.recommendations);
-  }
+  const [simulated, setSimulated] = useState<string | null>(null);
+  const simulate = async (id: string) => {
+    const result = await apiPost<{ status: string }>("/api/v1/recommendations/simulate", { recommendation_id: id });
+    setSimulated(result.status);
+    setItems((current) => current.map((item) => item.id === id ? { ...item, status: "SIMULATED" } : item));
+  };
   return (
     <div className="page-grid">
       <section className="panel wide">
-        <PanelHeader icon={ClipboardList} title="Recommendation Queue" meta={`${items.length} items`} />
-        <div className="toolbar">
-          <label>
-            Simulated downtime reduction
-            <input type="range" min="0" max="40" value={downtime} onChange={(event) => setDowntime(Number(event.target.value))} />
-            <strong>{downtime}%</strong>
-          </label>
-          <button className="chip active" onClick={() => void simulate()}>
-            Simulate impact
-          </button>
-        </div>
+        <PanelHeader icon={ClipboardList} title="Recommendation Center" meta={`${items.length} actions`} />
         <div className="recommendation-list">
-          {items.map((item) => (
-            <article className="recommendation" key={item.id}>
-              <div className="rec-head">
-                <span className={`priority ${item.priority.toLowerCase()}`}>{item.priority}</span>
-                <span>{item.category}</span>
-                <span>{item.status}</span>
-                <strong>{percent(item.confidence)}</strong>
-              </div>
-              <h3>{item.title}</h3>
-              <p>{item.rationale}</p>
-              <div className="evidence-grid">
-                {Object.entries(item.evidence).map(([key, value]) => (
-                  <MetricLine key={key} label={key.replaceAll("_", " ")} value={String(value)} />
-                ))}
-              </div>
-            </article>
-          ))}
+          {items.map((item) => <article className="recommendation" key={item.id}><div><span className={`priority ${item.priority.toLowerCase()}`}>{item.priority}</span><h3>{item.title}</h3><p>{item.rationale}</p></div><button onClick={() => void simulate(item.id)}>Simulate</button></article>)}
         </div>
+        {simulated && <p className="muted">Simulation status: {simulated}. Human approval remains required before operational action.</p>}
       </section>
     </div>
   );
 }
 
-function HealthPage({
-  models,
-  dataQuality,
-  boundary
-}: {
-  models: ModelRegistryResponse;
-  dataQuality: DataQualityResponse;
-  boundary: string;
-}) {
+function HealthPage({ models, dataQuality, boundary }: { models: ModelRegistryResponse; dataQuality: DataQualityResponse; boundary: string }) {
   return (
     <div className="page-grid">
-      <section className="panel wide">
-        <PanelHeader icon={Database} title="Model Registry" meta={`${models.models.length} versions`} />
-        <div className="model-grid">
-          {models.models.map((model) => (
-            <article className="model-row" key={`${model.model_name}-${model.version}`}>
-              <strong>{model.model_name}</strong>
-              <span>{model.version}</span>
-              <span>{model.algorithm}</span>
-              <span className="badge">{model.status}</span>
-            </article>
-          ))}
-        </div>
+      <section className="kpi-grid">
+        <MetricCard icon={Database} label="Data quality" value={percent(dataQuality.overall_score)} />
+        <MetricCard icon={ShieldCheck} label="Registered models" value={number(models.models.length)} />
+      </section>
+      <section className="table-panel">
+        <table><thead><tr><th>Model</th><th>Task</th><th>Algorithm</th><th>Status</th><th>Version</th></tr></thead><tbody>{models.models.map((model) => <tr key={`${model.model_name}-${model.version}`}><td>{model.model_name}</td><td>{model.task}</td><td>{model.algorithm}</td><td>{model.status}</td><td>{model.version}</td></tr>)}</tbody></table>
       </section>
       <section className="panel wide">
-        <PanelHeader icon={ShieldCheck} title="Data Quality" meta={percent(dataQuality.overall_score)} />
-        <div className="quality-table">
-          {dataQuality.runs.map((run) => (
-            <div className="quality-row" key={run.dataset_name}>
-              <span>{run.dataset_name}</span>
-              <strong>{percent(run.quality_score)}</strong>
-              <span>{number(run.row_count)} rows</span>
-              <span>{run.schema_valid ? "schema ok" : "schema watch"}</span>
-            </div>
-          ))}
-        </div>
-      </section>
-      <section className="panel wide">
-        <PanelHeader icon={Settings} title="Boundary" meta="human approval" />
-        <p className="boundary">{boundary}</p>
+        <PanelHeader icon={ShieldCheck} title="Validation Boundary" meta="safety" />
+        <p className="muted">{boundary}</p>
       </section>
     </div>
   );
 }
 
-function SettingsPage({ safety }: { safety: { mode: string; boundary: string } | null }) {
-  return (
-    <div className="page-grid">
-      <section className="panel wide">
-        <PanelHeader icon={ShieldCheck} title="Safe settings" meta={safety?.mode ?? "demo"} />
-        <p className="boundary">{safety?.boundary}</p>
-        <p className="muted">No operational dispatch, blasting design, or official reserve classification is enabled in this prototype.</p>
-      </section>
-    </div>
-  );
-}
-
-function MetricCard({
-  icon: Icon,
-  label,
-  value,
-  tone = "default"
-}: {
-  icon: typeof Activity;
-  label: string;
-  value: string;
-  tone?: "default" | "risk" | "ok";
-}) {
-  return (
-    <article className={`metric-card ${tone}`}>
-      <Icon size={19} />
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </article>
-  );
+function SettingsPage({ safety }: { safety?: { mode: string; boundary: string } | null }) {
+  return <div className="page-grid"><section className="panel wide"><PanelHeader icon={Settings} title="Safety + Data Mode" meta="read-only" /><MetricLine label="Mode" value={safety?.mode ?? "unknown"} /><p className="muted">{safety?.boundary ?? "Safety boundary unavailable."}</p></section></div>;
 }
 
 function PanelHeader({ icon: Icon, title, meta }: { icon: typeof Activity; title: string; meta?: string }) {
-  return (
-    <div className="panel-header">
-      <div>
-        <Icon size={18} />
-        <h3>{title}</h3>
-      </div>
-      {meta && <span>{meta}</span>}
-    </div>
-  );
+  return <div className="panel-header"><div><span className="eyebrow">{title}</span><h3>{title}</h3></div>{meta && <span className="panel-meta">{meta}</span>}</div>;
+}
+
+function MetricCard({ icon: Icon, label, value, tone = "default" }: { icon: typeof Activity; label: string; value: string; tone?: "default" | "risk" | "ok" }) {
+  return <article className={`metric-card ${tone}`}><Icon size={18} /><span>{label}</span><strong>{value}</strong></article>;
 }
 
 function MetricLine({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="metric-line">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
+  return <div className="metric-line"><span>{label}</span><strong>{value}</strong></div>;
 }
 
-function DriverList({ drivers }: { drivers: Array<{ feature: string; direction: string; importance: number; value?: number | string | null }> }) {
-  return (
-    <div className="driver-list">
-      {drivers.map((driver) => (
-        <div className="driver" key={driver.feature}>
-          <div>
-            <span>{driver.feature.replaceAll("_", " ")}</span>
-            <strong>{driver.direction}</strong>
-          </div>
-          <div className="mini-bar">
-            <span style={{ width: `${Math.max(6, driver.importance * 100)}%` }} />
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+function DriverList({ drivers }: { drivers: Array<{ feature: string; direction: string; importance: number }> }) {
+  return <div className="driver-list">{drivers.map((driver) => <div className="driver" key={driver.feature}><span>{driver.feature}</span><strong>{percent(driver.importance)}</strong></div>)}</div>;
 }
 
 export default App;
