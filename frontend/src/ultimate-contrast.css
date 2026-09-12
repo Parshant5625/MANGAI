@@ -1,0 +1,58 @@
+/* Global accessibility contrast pass. Loaded last so component styles cannot hide text. */
+:root { color: #17231e !important; }
+
+/* Default light surfaces */
+.main, .main p, .main span, .main label, .main td, .main th, .main li, .main small, .main em, .main strong, .main h1, .main h2, .main h3, .main h4, .main h5, .main h6 { color: #17231e; }
+.main .eyebrow, .main .panel-header span, .main .metric-card span, .main .toolbar label, .main .boundary, .main .state, .main .panel-header small { color: #46564f; }
+.main .muted, .main [class*="muted"], .main [class*="subtitle"], .main [class*="caption"] { color: #4b5b54 !important; }
+
+/* Dark/hero surfaces */
+.sidebar, .sidebar *, .production-hero, .production-hero *, .recommendations-hero, .recommendations-hero *, .health-hero, .health-hero *, .overview-signal-rail, .overview-signal-rail *, .overview-reserve-command .reserve-map-hud, .overview-reserve-command .reserve-map-hud *, .reserve-map-command .reserve-map-hud, .reserve-map-command .reserve-map-hud *, .reserve-map-command .reserve-map-layerbar, .reserve-map-command .reserve-map-layerbar * { color: #f2f8f5; }
+.sidebar .nav-item { color: #dce8e2 !important; }
+.sidebar .nav-item.active, .sidebar .nav-item:hover { color: #ffffff !important; }
+.sidebar .brand span, .sidebar .sidebar-foot { color: #cbd9d3 !important; }
+
+/* Cards that intentionally use dark backgrounds */
+.production-hero .eyebrow, .recommendations-hero .eyebrow, .health-hero .eyebrow, .overview-signal-rail .eyebrow { color: #b8cec5 !important; }
+.production-hero p, .recommendations-hero p, .health-hero p, .overview-signal-rail p, .overview-signal-rail small { color: #d7e7e0 !important; }
+
+/* Light cards and tables */
+.metric-card, .panel, .table-panel, .state, .recommendation, .signal-card { color: #17231e; }
+.metric-card span, .metric-card p, .panel p, .panel-header span, .panel-header small, .recommendation p, .signal-card p, .signal-card small { color: #46564f !important; }
+th { color: #33443c !important; background: #edf2ef !important; }
+td { color: #1c2b24 !important; }
+
+/* Buttons/chips */
+button { color: #17231e; }
+.main button:not(.nav-item):not(.chip.active):not(.reserve-map-layerbar button):not(.reserve-map-controls button):not(.reserve-map-viewbar button) { color: #17231e !important; }
+.chip { color: #26372f !important; }
+.chip.active { color: #ffffff !important; }
+
+/* Map: keep the imagery readable; overlays remain translucent. */
+.maplibre-canvas { filter: none !important; opacity: 1 !important; }
+.reserve-map-vignette { background: radial-gradient(circle at 50% 45%, transparent 25%, rgba(4,18,13,.12) 100%) !important; pointer-events: none; }
+.reserve-map-scanline { opacity: .08 !important; }
+.maplibre-wrap .maplibregl-ctrl-group { background: rgba(250,255,252,.94) !important; border: 1px solid rgba(20,45,35,.22) !important; }
+.maplibre-wrap .maplibregl-ctrl button { color: #17231e !important; }
+
+/* Map HUD and controls */
+.reserve-map-layerbar, .reserve-map-viewbar, .reserve-map-controls { background: rgba(5,20,15,.82) !important; border: 1px solid rgba(226,246,237,.28) !important; }
+.reserve-map-layerbar button, .reserve-map-viewbar button, .reserve-map-controls button { color: #e9f8f1 !important; background: transparent !important; }
+.reserve-map-layerbar button.active, .reserve-map-viewbar button.active, .reserve-map-controls button.active { color: #07130e !important; background: #c8f36b !important; }
+.reserve-map-viewbar span { color: #b9d1c7 !important; }
+.reserve-map-corner, .reserve-map-legend, .reserve-map-footnote { color: #effaf5 !important; }
+.reserve-map-legend { background: rgba(4,18,13,.84) !important; border: 1px solid rgba(226,246,237,.24) !important; }
+.reserve-map-legend span, .reserve-map-legend .legend-caption, .reserve-map-legend .legend-labels, .reserve-map-legend em { color: #e8f6f0 !important; }
+.reserve-map-footnote { text-shadow: 0 1px 3px #07130e; }
+
+/* Recharts SVG labels/grid text */
+.recharts-wrapper text { fill: #33443c !important; }
+.dark-panel .recharts-wrapper text, .production-hero .recharts-wrapper text, .recommendations-hero .recharts-wrapper text, .health-hero .recharts-wrapper text, .overview-signal-rail .recharts-wrapper text { fill: #e7f5ef !important; }
+
+/* Ensure status text never becomes low-contrast. */
+.status, .status *, .priority, .priority * { font-weight: 700; }
+
+@media (max-width: 680px) {
+  .main h1, .main h2, .main h3, .main h4 { color: #17231e; }
+  .production-hero h1, .production-hero h2, .production-hero h3, .recommendations-hero h1, .recommendations-hero h2, .health-hero h1, .health-hero h2, .overview-signal-rail h2 { color: #f2f8f5 !important; }
+}
