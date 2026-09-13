@@ -47,8 +47,8 @@ export function ProductionForecastTerminal({ forecast }: ProductionForecastTermi
             {drivers.map((driver, index) => {
               const value = Math.max(14, 88 - index * 17);
               return (
-                <div className="mangai-driver-bar" key={driver}>
-                  <div><span>{driver.replaceAll("_", " ")}</span><b>{value}%</b></div>
+                <div className="mangai-driver-bar" key={String(driver)}>
+                  <div><span>{String(driver).replaceAll("_", " ")}</span><b>{value}%</b></div>
                   <span className="track"><i style={{ width: `${value}%` }} /></span>
                 </div>
               );
