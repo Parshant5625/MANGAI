@@ -87,19 +87,33 @@ def get_blasting(site_id: str | None = None) -> dict:
 def get_satellite_scenes(site_id: str | None = None, limit: Annotated[int, Query(ge=1, le=500)] = 100) -> dict:
     settings = get_settings()
     observations = LocalFileSatelliteProvider().fetch_observations(site_id or settings.demo_site_id, "", "")
-    scenes = []
+    features = []
     for index, observation in enumerate(observations[:limit]):
-        source = str(observation.get("source", observation.get("provider", "Satellite")))
-        scenes.append({
-            "id": str(observation.get("scene_id", observation.get("id", f"demo-scene-{index}"))),
+        source = str(observation.get("source", observation.get("provider", "Synthetic satellite features")))
+        features.append({
+            "id": str(observation.get("scene_id", observation.get("id", f"demo-feature-{index}"))),
+            "sample_id": str(observation.get("sample_id", observation.get("id", f"demo-feature-{index}"))),
             "source": source,
             "date": str(observation.get("date", observation.get("timestamp", ""))),
-            "cloud_cover": float(observation.get("cloud_cover", 0) or 0),
+            "cloud_cover": float(observation["cloud_cover"]) if observation.get("cloud_cover") is not None else None,
             "quality": float(observation.get("quality", 0.8) or 0.8),
             "bands": [str(k) for k in observation.keys() if str(k).lower().startswith(("b", "nir", "red", "swir"))][:12],
-            "thermal_coverage": float(observation.get("thermal_coverage", 0) or 0) if "thermal_coverage" in observation else None,
+            "thermal_coverage": float(observation["thermal_coverage"]) if observation.get("thermal_coverage") is not None else None,
+            "latitude": float(observation["latitude"]) if observation.get("latitude") is not None else None,
+            "longitude": float(observation["longitude"]) if observation.get("longitude") is not None else None,
+            "ndvi": float(observation["ndvi"]) if observation.get("ndvi") is not None else None,
+            "ndwi": float(observation["ndwi"]) if observation.get("ndwi") is not None else None,
+            "swir_ratio": float(observation["swir_ratio"]) if observation.get("swir_ratio") is not None else None,
+            "bare_soil_index": float(observation["bare_soil_index"]) if observation.get("bare_soil_index") is not None else None,
+            "land_surface_temperature": float(observation["land_surface_temperature"]) if observation.get("land_surface_temperature") is not None else None,
         })
-    return {"site_id": site_id or settings.demo_site_id, "count": len(scenes), "scenes": scenes, "data_mode": "DEMO / LOCAL FILE"}
+    return {
+        "site_id": site_id or settings.demo_site_id,
+        "count": len(features),
+        "scenes": features,
+        "data_mode": "DEMO / LOCAL FEATURE DATA",
+        "representation": "georeferenced spectral feature observations; not imagery tiles",
+    }
 
 @router.get("/recommendations", response_model=RecommendationResponse, tags=["recommendations"])
 def get_recommendations(site_id: str | None = None) -> dict:
