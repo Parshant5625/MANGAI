@@ -6,14 +6,31 @@ import { number, percent } from "../utils/format";
 import type { OperationsSummaryResponse } from "../types/api";
 
 function levelClass(level: string) {
-  return `priority ${level.toLowerCase()}`;
+  return `priority ${String(level ?? "").toLowerCase()}`;
+}
+
+function signalCardClass(level: string) {
+  const normalized = String(level ?? "").toLowerCase();
+  return `signal-card ${normalized}`;
 }
 
 function displayEvidenceValue(value: unknown): string {
-  if (typeof value === "number") return number(value, Math.abs(value) >= 10 ? 1 : 3);
+  if (typeof value === "number") return Number.isFinite(value) ? number(value, Math.abs(value) >= 10 ? 1 : 3) : "—";
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (value === null || value === undefined) return "—";
+  if (typeof value === "string") return value;
+  if (Array.isArray(value)) return value.map(displayEvidenceValue).join(", ");
+  if (typeof value === "object") {
+    return Object.entries(value as Record<string, unknown>)
+      .map(([key, nested]) => `${key.replaceAll("_", " ")}: ${displayEvidenceValue(nested)}`)
+      .join(" · ");
+  }
   return String(value);
+}
+
+function safeCorrelation(value: unknown): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(-1, Math.min(1, parsed)) : 0;
 }
 
 export function OperationsPage() {
@@ -25,7 +42,7 @@ export function OperationsPage() {
 
   const associationData = data.production_associations.map((item) => ({
     driver: item.driver.replaceAll("_", " "),
-    correlation: item.correlation
+    correlation: safeCorrelation(item.correlation)
   }));
 
   return (
@@ -41,14 +58,14 @@ export function OperationsPage() {
         <PanelHeader icon={ShieldCheck} title="Operational Risk Signals" meta={`score ${number(data.overall_risk_score, 2)}`} />
         <div className="signal-grid">
           {data.risk_signals.map((signal) => (
-            <article className="signal-card" key={signal.source}>
+            <article className={signalCardClass(signal.level)} key={signal.source}>
               <div className="signal-head">
                 <span className={levelClass(signal.level)}>{signal.level}</span>
                 <strong>{percent(signal.score)}</strong>
               </div>
               <h3>{signal.title}</h3>
               <div className="evidence-grid">
-                {Object.entries(signal.evidence).map(([key, value]) => (
+                {Object.entries(signal.evidence ?? {}).map(([key, value]) => (
                   <div className="evidence-pill" key={key}>
                     <span>{key.replaceAll("_", " ")}</span>
                     <strong>{displayEvidenceValue(value)}</strong>
