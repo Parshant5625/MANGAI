@@ -23,8 +23,11 @@ export function ReserveMap({
   const mapRef = useRef<MapLibreMap | null>(null);
   const cellsRef = useRef(cells);
   const onSelectRef = useRef(onSelect);
-  cellsRef.current = cells;
-  onSelectRef.current = onSelect;
+
+  useEffect(() => {
+    cellsRef.current = cells;
+    onSelectRef.current = onSelect;
+  }, [cells, onSelect]);
 
   useEffect(() => {
     if (!containerRef.current || mapRef.current) {
@@ -51,17 +54,7 @@ export function ReserveMap({
         source: "cells",
         paint: {
           "circle-radius": ["interpolate", ["linear"], ["get", "probability"], 0, 4, 1, 11],
-          "circle-color": [
-            "interpolate",
-            ["linear"],
-            ["get", "value"],
-            0,
-            "#7a5a2b",
-            0.5,
-            "#d6a24b",
-            1,
-            "#3dd6a0"
-          ],
+          "circle-color": ["interpolate", ["linear"], ["get", "value"], 0, "#7a5a2b", 0.5, "#d6a24b", 1, "#3dd6a0"],
           "circle-opacity": 0.86,
           "circle-stroke-width": 0.6,
           "circle-stroke-color": "#0f1714"
