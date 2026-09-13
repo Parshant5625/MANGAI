@@ -5,7 +5,7 @@ import globals from "globals";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist", "node_modules"] },
+  { ignores: ["dist", "node_modules", "tailwind.config.d.ts"] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   {
@@ -20,7 +20,14 @@ export default tseslint.config(
     },
     rules: {
       ...reactHooks.configs["recommended-latest"].rules,
+      "react-hooks/set-state-in-effect": "off",
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+    },
+  },
+  {
+    files: ["**/*.cjs"],
+    languageOptions: {
+      globals: globals.node,
     },
   },
 );
