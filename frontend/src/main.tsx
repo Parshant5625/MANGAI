@@ -9,6 +9,7 @@ import "./reference-dashboard-layout.css";
 import "./command-center-reference.css";
 import "./styles/mangai-production-terminal.css";
 import "./targeted-ui-fixes.css";
+import "./styles/model-monitoring-targeted.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 const rootElement = document.getElementById("root");
