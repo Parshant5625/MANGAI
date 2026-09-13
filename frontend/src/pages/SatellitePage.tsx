@@ -1,23 +1,194 @@
-import { Activity, Cloud, Radio, Satellite, Thermometer } from "lucide-react";
-import { useMemo } from "react";
+import { Activity, Cloud, Layers3, Radio, Satellite, Thermometer } from "lucide-react";
+import maplibregl from "maplibre-gl";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import "maplibre-gl/dist/maplibre-gl.css";
 
-type Scene = { id?: string; source?: string; date?: string; cloud_cover?: number; quality?: number; bands?: string[]; thermal_coverage?: number };
-const Header = ({ icon: Icon, title, meta }: { icon: typeof Satellite; title: string; meta: string }) => <div className="panel-header"><div className="panel-title"><Icon size={17}/><span>{title}</span></div><span className="panel-meta">{meta}</span></div>;
+type Scene = {
+  id?: string;
+  source?: string;
+  date?: string;
+  cloud_cover?: number | null;
+  quality?: number | null;
+  bands?: string[];
+  thermal_coverage?: number | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  sample_id?: string;
+  ndvi?: number | null;
+  ndwi?: number | null;
+  swir_ratio?: number | null;
+  bare_soil_index?: number | null;
+  land_surface_temperature?: number | null;
+};
+
+type Mode = "spectral" | "thermal" | "ndvi" | "swir" | "bare";
+
+const Header = ({ icon: Icon, title, meta }: { icon: typeof Satellite; title: string; meta: string }) => (
+  <div className="panel-header"><div className="panel-title"><Icon size={17}/><span>{title}</span></div><span className="panel-meta">{meta}</span></div>
+);
 const Metric = ({ label, value }: { label: string; value: string }) => <div className="metric-line"><span>{label}</span><strong>{value}</strong></div>;
 
+const MODES: Array<{ id: Mode; label: string; description: string }> = [
+  { id: "spectral", label: "Satellite / Spectral", description: "Multiband feature field" },
+  { id: "thermal", label: "Thermal Map", description: "Synthetic LST proxy" },
+  { id: "ndvi", label: "NDVI", description: "Vegetation signal" },
+  { id: "swir", label: "SWIR Ratio", description: "Surface/mineral signal" },
+  { id: "bare", label: "Bare Soil", description: "Exposure signal" },
+];
+
+function mean(values: Array<number | null | undefined>): number | null {
+  const valid = values.filter((value): value is number => Number.isFinite(value));
+  return valid.length ? valid.reduce((sum, value) => sum + value, 0) / valid.length : null;
+}
+
+function SatelliteEvidenceMap({ scenes, mode, onSelect }: { scenes: Scene[]; mode: Mode; onSelect: (scene: Scene) => void }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const [mapReady, setMapReady] = useState(false);
+
+  const points = useMemo(() => scenes.filter(scene => Number.isFinite(scene.latitude) && Number.isFinite(scene.longitude)), [scenes]);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const map = new maplibregl.Map({
+      container: containerRef.current,
+      center: [80.1855, 21.5998],
+      zoom: 9,
+      minZoom: 5,
+      maxZoom: 17,
+      style: {
+        version: 8,
+        sources: {
+          osm: {
+            type: "raster",
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tileSize: 256,
+            attribution: "© OpenStreetMap contributors",
+            maxzoom: 19,
+          },
+        },
+        layers: [{ id: "osm", type: "raster", source: "osm" }],
+      },
+      attributionControl: { compact: true },
+    });
+    map.addControl(new maplibregl.NavigationControl({ showCompass: true }), "top-right");
+    map.on("load", () => setMapReady(true));
+    map.on("error", event => console.warn("MANGAI satellite map error", event.error));
+    mapRef.current = map;
+    return () => {
+      map.remove();
+      mapRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapReady) return;
+    const data = {
+      type: "FeatureCollection" as const,
+      features: points.map((scene, index) => ({
+        type: "Feature" as const,
+        properties: {
+          index,
+          id: scene.id ?? `feature-${index}`,
+          sample_id: scene.sample_id ?? scene.id ?? `feature-${index}`,
+          ndvi: scene.ndvi ?? 0,
+          swir: scene.swir_ratio ?? 1,
+          bare: scene.bare_soil_index ?? 0,
+          thermal: scene.land_surface_temperature ?? 31,
+        },
+        geometry: { type: "Point" as const, coordinates: [scene.longitude as number, scene.latitude as number] },
+      })),
+    };
+
+    const metric: "ndvi" | "swir" | "bare" | "thermal" = mode === "ndvi" ? "ndvi" : mode === "swir" ? "swir" : mode === "bare" ? "bare" : "thermal";
+    const source = map.getSource("satellite-features") as maplibregl.GeoJSONSource | undefined;
+    if (source) source.setData(data);
+    else {
+      map.addSource("satellite-features", { type: "geojson", data });
+      map.addLayer({
+        id: "satellite-feature-glow",
+        type: "circle",
+        source: "satellite-features",
+        paint: {
+          "circle-radius": ["interpolate", ["linear"], ["zoom"], 5, 4, 12, 8, 17, 13],
+          "circle-color": [
+            "interpolate", ["linear"], ["get", metric],
+            metric === "thermal" ? 24 : metric === "swir" ? 0.7 : metric === "ndvi" ? -0.2 : -0.4, "#123f31",
+            metric === "thermal" ? 31 : metric === "swir" ? 1.1 : metric === "ndvi" ? 0.3 : 0, "#28d7a0",
+            metric === "thermal" ? 38 : metric === "swir" ? 1.6 : metric === "ndvi" ? 0.8 : 0.4, metric === "thermal" ? "#e7b75b" : "#f1f7f4",
+          ],
+          "circle-opacity": 0.76,
+          "circle-stroke-color": "#06110c",
+          "circle-stroke-width": 1,
+        },
+      });
+      map.on("click", "satellite-feature-glow", event => {
+        const feature = event.features?.[0];
+        const index = feature?.properties?.index;
+        if (typeof index === "number" && points[index]) onSelect(points[index]);
+      });
+      map.on("mouseenter", "satellite-feature-glow", () => { map.getCanvas().style.cursor = "pointer"; });
+      map.on("mouseleave", "satellite-feature-glow", () => { map.getCanvas().style.cursor = ""; });
+    }
+    if (map.getLayer("satellite-feature-glow")) {
+      map.setPaintProperty("satellite-feature-glow", "circle-color", [
+        "interpolate", ["linear"], ["get", metric],
+        metric === "thermal" ? 24 : metric === "swir" ? 0.7 : metric === "ndvi" ? -0.2 : -0.4, "#123f31",
+        metric === "thermal" ? 31 : metric === "swir" ? 1.1 : metric === "ndvi" ? 0.3 : 0, "#28d7a0",
+        metric === "thermal" ? 38 : metric === "swir" ? 1.6 : metric === "ndvi" ? 0.8 : 0.4, metric === "thermal" ? "#e7b75b" : "#f1f7f4",
+      ]);
+    }
+    if (points.length > 1) {
+      const bounds = new maplibregl.LngLatBounds();
+      points.forEach(point => bounds.extend([point.longitude as number, point.latitude as number]));
+      map.fitBounds(bounds, { padding: 55, maxZoom: 12, duration: 500 });
+    }
+  }, [mapReady, mode, onSelect, points]);
+
+  return <div className="sat-map-shell">
+    <div ref={containerRef} className="sat-map" />
+    <div className="sat-map-overlay"><span className="map-live-dot"/><b>{MODES.find(item => item.id === mode)?.label}</b><small>DEMO FEATURE FIELD</small></div>
+    <div className="sat-map-legend"><span>low</span><i/><span>high</span><em>{MODES.find(item => item.id === mode)?.description}</em></div>
+    {!points.length && <div className="sat-map-empty">No georeferenced satellite observations are exposed by the current API.</div>}
+  </div>;
+}
+
 export function SatellitePage({ scenes = [] }: { scenes?: Scene[] }) {
-  const stats = useMemo(() => {
-    const qualities = scenes.map(s => s.quality ?? 0).filter(Number.isFinite);
-    const clouds = scenes.map(s => s.cloud_cover ?? 0).filter(Number.isFinite);
-    const thermal = scenes.filter(s => s.thermal_coverage != null);
-    const sourceCounts = scenes.reduce<Record<string, number>>((acc, scene) => { const source = scene.source || "Satellite"; acc[source] = (acc[source] || 0) + 1; return acc; }, {});
-    return { best: qualities.length ? Math.max(...qualities) : 0, avgCloud: clouds.length ? clouds.reduce((a,b)=>a+b,0)/clouds.length : 0, thermal, sourceCounts };
-  }, [scenes]);
+  const [mode, setMode] = useState<Mode>("spectral");
+  const [selected, setSelected] = useState<Scene | null>(null);
+  const stats = useMemo(() => ({
+    ndvi: mean(scenes.map(scene => scene.ndvi)),
+    ndwi: mean(scenes.map(scene => scene.ndwi)),
+    swir: mean(scenes.map(scene => scene.swir_ratio)),
+    bare: mean(scenes.map(scene => scene.bare_soil_index)),
+    lst: mean(scenes.map(scene => scene.land_surface_temperature)),
+    quality: mean(scenes.map(scene => scene.quality)),
+  }), [scenes]);
+  const chartData = [
+    { name: "NDVI", value: stats.ndvi ?? 0 },
+    { name: "NDWI", value: stats.ndwi ?? 0 },
+    { name: "SWIR", value: stats.swir ?? 0 },
+    { name: "Bare soil", value: stats.bare ?? 0 },
+  ];
+
   return <div className="page-grid satellite-layout">
-    <section className="panel wide satellite-stage"><Header icon={Satellite} title="Satellite Intelligence" meta={`${scenes.length} records · remote-sensing evidence`} /><div className="satellite-visual"><div className="sat-grid"/><div className="sat-scan"><span>REMOTE-SENSING EVIDENCE FIELD</span><span>DEMO / LOCAL-FILE DATA</span></div><div className="sat-orbit orbit-a"/><div className="sat-orbit orbit-b"/><div className="sat-signal-core"><div className="sat-core-ring"/><strong>{scenes.length}</strong><span>satellite records</span></div><div className="satellite-callout"><b>Evidence status</b><span>Backend satellite records are connected. Imagery tiles are not exposed by the current API, so this view intentionally shows metadata/feature evidence instead of fabricated imagery.</span></div><div className="sat-coordinates">AOI / DEMO DATASET<br/>Use field validation before geological conclusions.</div></div></section>
-    <section className="panel"><Header icon={Radio} title="Acquisition" meta="connected"/><Metric label="Records" value={String(scenes.length)}/><Metric label="Distinct sources" value={String(Object.keys(stats.sourceCounts).length)}/><Metric label="Best quality" value={scenes.length ? `${Math.round(stats.best*100)}%` : "—"}/><Metric label="Mean cloud" value={scenes.length ? `${Math.round(stats.avgCloud*100)}%` : "—"}/></section>
-    <section className="panel"><Header icon={Thermometer} title="Thermal Evidence" meta="context only"/><Metric label="Thermal records" value={String(stats.thermal.length)}/><Metric label="Coverage" value={stats.thermal.length ? `${Math.round((stats.thermal[0].thermal_coverage ?? 0)*100)}%` : "Not exposed"}/><Metric label="Use" value="Contextual signal"/><p className="muted">Thermal measurements must be checked against acquisition metadata, calibration and field observations.</p></section>
-    <section className="panel wide"><Header icon={Activity} title="Feature Evidence" meta="available to MANGAI"/><div className="satellite-feature-grid">{scenes.slice(0, 12).map((scene, i) => <article className="sat-feature" key={scene.id ?? i}><div><b>{scene.source || "Satellite"}</b><span>{scene.date || "record date unavailable"}</span></div><strong>{scene.quality != null ? `${Math.round(scene.quality*100)}% quality` : "quality n/a"}</strong><small>{scene.bands?.length ? scene.bands.join(" · ") : "spectral feature record"}</small><div className="feature-bar"><i style={{width:`${Math.max(4,Math.min(100,(scene.quality ?? .5)*100))}%`}}/></div></article>)}</div>{!scenes.length && <p className="muted">No satellite records are currently returned by the backend.</p>}</section>
-    <section className="panel wide"><Header icon={Cloud} title="Scientific Boundary" meta="required"/><p className="muted">The current backend endpoint exposes local satellite feature records and metadata. It does not expose Sentinel-2/Landsat image URLs or map tiles. MANGAI therefore does not fabricate an image layer. Connect the live imagery adapter when imagery rendering is required; until then, satellite evidence remains contextual and decision-support only.</p></section>
+    <section className="panel wide satellite-stage"><Header icon={Satellite} title="Satellite Intelligence" meta={`${scenes.length} feature observations · DEMO / LOCAL FILE`} />
+      <div className="satellite-modebar"><div><b>Evidence layers</b><span>These are feature fields, not fabricated satellite imagery.</span></div><div className="satellite-mode-buttons">{MODES.map(item => <button key={item.id} className={mode === item.id ? "chip active" : "chip"} onClick={() => setMode(item.id)}>{item.label}</button>)}</div></div>
+      <SatelliteEvidenceMap scenes={scenes} mode={mode} onSelect={setSelected}/>
+    </section>
+
+    <section className="panel"><Header icon={Radio} title="Acquisition" meta="feature dataset"/><Metric label="Observations" value={String(scenes.length)}/><Metric label="Georeferenced" value={String(scenes.filter(scene => Number.isFinite(scene.latitude) && Number.isFinite(scene.longitude)).length)}/><Metric label="Mean quality" value={stats.quality != null ? `${Math.round(stats.quality * 100)}%` : "n/a"}/><Metric label="Source" value="Synthetic feature set"/></section>
+
+    <section className="panel"><Header icon={Thermometer} title="Thermal Evidence" meta={stats.lst != null ? "LST proxy available" : "not exposed"}/><Metric label="Mean LST" value={stats.lst != null ? `${stats.lst.toFixed(1)} °C` : "Not exposed"}/><Metric label="Thermal map" value={stats.lst != null ? "Available as proxy" : "Unavailable"}/><Metric label="Interpretation" value="Contextual only"/><p className="muted">Thermal values come from the demo feature dataset. They are not calibrated thermal imagery and must not be treated as field temperature measurements.</p></section>
+
+    <section className="panel wide chart-panel"><Header icon={Activity} title="Spectral Feature Profile" meta="dataset-level signal"/><div className="sat-chart"><ResponsiveContainer width="100%" height={250}><BarChart data={chartData}><CartesianGrid stroke="rgba(145,174,162,.14)" strokeDasharray="3 3"/><XAxis dataKey="name" stroke="#9ab0a6"/><YAxis stroke="#9ab0a6"/><Tooltip/><Bar dataKey="value" fill="#28d7a0" radius={[4,4,0,0]}/></BarChart></ResponsiveContainer></div></section>
+
+    <section className="panel"><Header icon={Layers3} title="Selected Evidence" meta={selected ? selected.sample_id ?? selected.id ?? "point" : "select a map point"}/>{selected ? <div className="detail-stack"><Metric label="Coordinates" value={`${Number(selected.latitude).toFixed(5)}, ${Number(selected.longitude).toFixed(5)}`}/><Metric label="NDVI" value={selected.ndvi != null ? selected.ndvi.toFixed(3) : "n/a"}/><Metric label="SWIR ratio" value={selected.swir_ratio != null ? selected.swir_ratio.toFixed(3) : "n/a"}/><Metric label="Bare soil" value={selected.bare_soil_index != null ? selected.bare_soil_index.toFixed(3) : "n/a"}/><Metric label="LST proxy" value={selected.land_surface_temperature != null ? `${selected.land_surface_temperature.toFixed(1)} °C` : "n/a"}/></div> : <p className="muted">Click a georeferenced observation on the map to inspect its spectral and thermal-proxy values.</p>}</section>
+
+    <section className="panel wide"><Header icon={Cloud} title="Feature Evidence Records" meta="sampled observations · no fake scene cards"/><div className="data-table-wrap"><table className="sat-evidence-table"><thead><tr><th>Sample</th><th>Lat</th><th>Lon</th><th>NDVI</th><th>SWIR</th><th>Bare soil</th><th>LST</th><th>Quality</th></tr></thead><tbody>{scenes.slice(0, 10).map((scene, index) => <tr key={scene.id ?? index}><td className="mono">{scene.sample_id ?? scene.id ?? `feature-${index + 1}`}</td><td>{scene.latitude != null ? scene.latitude.toFixed(4) : "—"}</td><td>{scene.longitude != null ? scene.longitude.toFixed(4) : "—"}</td><td>{scene.ndvi != null ? scene.ndvi.toFixed(3) : "—"}</td><td>{scene.swir_ratio != null ? scene.swir_ratio.toFixed(3) : "—"}</td><td>{scene.bare_soil_index != null ? scene.bare_soil_index.toFixed(3) : "—"}</td><td>{scene.land_surface_temperature != null ? `${scene.land_surface_temperature.toFixed(1)}°C` : "—"}</td><td>{scene.quality != null ? `${Math.round(scene.quality * 100)}%` : "—"}</td></tr>)}</tbody></table></div></section>
+
+    <section className="panel wide"><Header icon={Cloud} title="Scientific Boundary" meta="required"/><p className="muted">The current branch exposes local satellite feature records, not Sentinel-2/Landsat image tiles. The new map therefore visualizes georeferenced spectral and LST-proxy observations on a geographic basemap. Real satellite imagery and calibrated thermal rasters should be connected through the live satellite adapter before being presented as imagery evidence.</p></section>
   </div>;
 }
