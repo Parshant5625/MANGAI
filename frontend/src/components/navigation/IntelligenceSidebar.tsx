@@ -4,7 +4,6 @@ import {
   CloudRain,
   Database,
   Gauge,
-  Map,
   Settings,
   ShieldCheck,
   Target,
