@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Activity, AlertTriangle, BarChart3, CloudRain, Cpu, Crosshair, Database, Layers, MessageSquare, Radio, Send, ShieldCheck, Target, Thermometer, TrendingDown, Wrench } from "lucide-react";
+import { Activity, BarChart3, CloudRain, Cpu, Crosshair, Database, Layers, MessageSquare, Radio, Send, ShieldCheck, Target, Thermometer, TrendingDown, Wrench } from "lucide-react";
 import { apiPost } from "../api/client";
 import { useApi } from "../hooks/useApi";
 import { BlastingResponse, DataQualityResponse, EquipmentResponse, ModelRegistryResponse, OverviewResponse, ProductionForecastResponse, ProductionHistoryRecord, ProspectivityCell, RecommendationResponse, WeatherResponse } from "../types/api";
@@ -54,3 +54,4 @@ function Metric({label,value}:{label:string;value:string}){return <div className
 function Value({label,value}:{label:string;value:string}){return <div><span>{label}</span><strong>{value}</strong></div>}
 function Integrity({icon:Icon,label,value}:{icon:typeof Activity;label:string;value:string}){return <div className="cc-integrity-row"><span><Icon size={14}/>{label}</span><b>{value}</b></div>}
 function MetricMini({label,value}:{label:string;value:string}){return <div className="sat-mini"><span>{label}</span><strong>{value}</strong></div>}
+
