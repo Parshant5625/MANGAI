@@ -35,7 +35,7 @@ export function ReserveMap({ cells, selectedCell, onSelect, layer, boreholes }: 
       zoom: 11,
       minZoom: 5,
       maxZoom: 18,
-      attributionControl: true,
+      attributionControl: { compact: true },
       style: {
         version: 8,
         sources: {
