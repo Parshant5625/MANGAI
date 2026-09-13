@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { Activity, AlertTriangle, BarChart3, Bot, CheckCircle2, Database, FileText, Gauge, Map as MapIcon, MessageSquare, RefreshCw, Settings, ShieldCheck, Target, Truck, X } from "lucide-react";
+import { Activity, AlertTriangle, BarChart3, Bot, CheckCircle2, Database, FileDown, FileText, Gauge, Map as MapIcon, MessageSquare, RefreshCw, Settings, ShieldCheck, Target, Truck, X } from "lucide-react";
 import { ResponsiveContainer, CartesianGrid, LineChart, Line, Tooltip, XAxis, YAxis } from "recharts";
 import { useApi } from "../hooks/useApi";
+import { apiPost } from "../api/client";
 import { ReserveMap } from "./ReserveMap";
 import { ModelMonitoringPanel } from "./ModelMonitoringPanel";
 import { OperationsPage } from "../pages/OperationsPage";
@@ -11,6 +12,10 @@ import { number, percent } from "../utils/format";
 
 type Page = "overview" | "reserve" | "production" | "models" | "operations" | "assistant" | "reports";
 type Layer = "probability" | "grade" | "thickness" | "confidence";
+type ChatMessage = { role: "user" | "assistant"; content: string; evidence?: Array<{ label: string; value: string }> };
+type ChatResponse = { answer: string; intent: string; confidence: number; evidence: Array<{ label: string; value: string }>; suggested_questions: string[]; actions: Array<{ label: string; action: string }>; data_mode: string; synthetic_data: boolean; disclaimer: string };
+type ReportState = { status: "ready" | "generating" | "generated"; generatedAt?: string };
+
 const nav: Array<{ id: Page; label: string; icon: typeof Activity }> = [
   { id: "overview", label: "Overview", icon: Gauge },
   { id: "reserve", label: "Reserve Intelligence", icon: Target },
@@ -21,6 +26,15 @@ const nav: Array<{ id: Page; label: string; icon: typeof Activity }> = [
   { id: "reports", label: "Reports", icon: FileText },
 ];
 
+const assistantQuestions = [
+  "Why is production risk high?",
+  "Which equipment has the highest downtime?",
+  "What is the 7-day production forecast?",
+  "Which reserve area should we investigate first?",
+  "What are the current recommended actions?",
+  "What is the weather and blasting risk?",
+];
+
 export function MANGAICommandCenter() {
   const [page, setPage] = useState<Page>("overview");
   const [assistantOpen, setAssistantOpen] = useState(true);
@@ -28,7 +42,8 @@ export function MANGAICommandCenter() {
   const [selectedCell, setSelectedCell] = useState<ProspectivityCell | null>(null);
   const [layer, setLayer] = useState<Layer>("probability");
   const [threshold, setThreshold] = useState(0.45);
-  const [reportStatus, setReportStatus] = useState<Record<string, string>>({});
+  const [assistantSeed, setAssistantSeed] = useState<string | null>(null);
+  const [reportStatus, setReportStatus] = useState<Record<string, ReportState>>({});
 
   const overview = useApi<OverviewResponse>(`/api/v1/overview?refresh=${refresh}`);
   const production = useApi<ProductionForecastResponse>(`/api/v1/production/forecast?horizon=7&refresh=${refresh}`);
@@ -47,6 +62,7 @@ export function MANGAICommandCenter() {
   const resource = overview.data?.resource_potential_tonnage ?? reserveSummary.data?.resource_potential_tonnage ?? 1240000000;
   const fleet = equipment.data?.fleet_utilization ?? 0.78;
   const go = (next: Page) => { setPage(next); if (next === "assistant") setAssistantOpen(true); };
+  const openAssistant = (question?: string) => { setAssistantSeed(question ?? null); setPage("assistant"); setAssistantOpen(true); };
   const doRefresh = () => setRefresh((v) => v + 1);
 
   return <div className="mc-app">
@@ -65,7 +81,7 @@ export function MANGAICommandCenter() {
       <button className="mc-nav" onClick={() => go("reports")}><FileText size={15}/><span>Reports</span></button>
       <div className="mc-divider"/><small className="mc-label">SYSTEM</small>
       <button className="mc-nav" onClick={() => go("models")}><Settings size={15}/><span>Settings</span></button>
-      <button className="mc-nav" onClick={() => go("assistant")}><MessageSquare size={15}/><span>Help</span></button>
+      <button className="mc-nav" onClick={() => openAssistant("help")}><MessageSquare size={15}/><span>Help</span></button>
       <div className="mc-sidebar-brand"><b>MANGAI<span>▲</span></b><small>Smarter Decisions.<br/>Greater Value.</small><em>╱╲╱╲╱╲╱╲</em></div>
     </aside>
 
@@ -75,11 +91,11 @@ export function MANGAICommandCenter() {
       {page === "production" && <ProductionPage forecast={production.data} history={history.data?.records ?? []} onRefresh={doRefresh}/>} 
       {page === "models" && <ModelsPage models={models.data} monitoring={monitoring.data} quality={quality.data} onRefresh={doRefresh}/>} 
       {page === "operations" && <OperationsPage/>}
-      {page === "assistant" && <AssistantPage recommendations={recommendations.data}/>} 
-      {page === "reports" && <ReportsPage statuses={reportStatus} setStatus={setReportStatus}/>} 
+      {page === "assistant" && <AssistantPage initialQuestion={assistantSeed} recommendations={recommendations.data} onNavigate={go}/>} 
+      {page === "reports" && <ReportsPage statuses={reportStatus} setStatus={setReportStatus} data={{ overview: overview.data, production: production.data, reserve: reserveSummary.data, equipment: equipment.data, monitoring: monitoring.data, quality: quality.data }}/>} 
     </main>
 
-    {page === "overview" && assistantOpen && <aside className="mc-assistant-rail"><AssistantRail onClose={() => setAssistantOpen(false)} onOpen={() => go("assistant")} recommendations={recommendations.data}/></aside>}
+    {page === "overview" && assistantOpen && <aside className="mc-assistant-rail"><AssistantRail onClose={() => setAssistantOpen(false)} onOpen={openAssistant} recommendations={recommendations.data}/></aside>}
     {page === "overview" && !assistantOpen && <button className="mc-assistant-fab" onClick={() => setAssistantOpen(true)}><Bot/></button>}
     <footer className="mc-footer"><span>MANGAI <b>|</b> Industrial Intelligence for a Smarter Tomorrow</span><span><i/> Backend Online &nbsp; | &nbsp; Frontend Connected &nbsp; | &nbsp; v1.0.0</span></footer>
   </div>;
@@ -97,11 +113,11 @@ function Overview({ data, production, confidence, resource, fleet, cells, recomm
       <div className="mc-map-shape a"/><div className="mc-map-shape b"/><div className="mc-map-shape c"/>
       {["North Ridge","Central","East Wing","South Basin"].map((x,i) => <span key={x} className={`mc-map-tag ${["one","two","three","four"][i]}`}>{x}</span>)}
       {cells.slice(0,45).map((cell, i) => <button key={cell.id} className="mc-map-dot" style={{ left: `${8 + (i * 37) % 86}%`, top: `${12 + (i * 61) % 75}%` }} onClick={() => onNavigate("reserve")} title={`${cell.id} ${percent(cell.probability)}`}/>)}
-      <div className="mc-map-summary"><small>Active Targets</small><b>{Math.max(7, high)}</b><em>3 high priority</em></div><div className="mc-map-legend">Resource Area<br/>Reserve Area<br/>High Priority<br/>◆ Drill Target<br/>━ Haul Road</div>
+      <div className="mc-map-summary"><small>Active Targets</small><b>{Math.max(7, high)}</b><em>High priority</em></div><div className="mc-map-legend">Resource Area<br/>Reserve Area<br/>High Priority<br/>◆ Drill Target<br/>━ Haul Road</div>
     </div></section>
-    <section className="mc-panel mc-insights"><PanelHead title="✦ Key Insights"><button onClick={() => onNavigate("assistant")}>View all</button></PanelHead>
-      <Insight title="High Value Target Identified" text={recommendations?.recommendations?.[0]?.title ?? "East Wing shows elevated grade potential"} meta="Confidence: 87%"/>
-      <Insight title="Production Forecast" text={`${number(production?.forecast_mt ?? 12.8, 1)} Mt forecast from latest model`} meta="Based on latest model run"/>
+    <section className="mc-panel mc-insights"><PanelHead title="Key Insights"><button onClick={() => onNavigate("assistant")}>View all</button></PanelHead>
+      <Insight title="High Value Target Identified" text={recommendations?.recommendations?.[0]?.title ?? "East Wing shows elevated grade potential"} meta="Confidence 87%"/>
+      <Insight title="Production Forecast" text={`${number(production?.forecast_mt ?? 12.8, 1)} Mt forecast from latest model`} meta="Latest model run"/>
       <Insight title="Risk Alert" text={(data?.shortfall_probability ?? 0) > 0.65 ? "Production shortfall risk elevated" : "South Basin: monitor geotechnical risk"} meta="Monitor closely" risk/>
       <Insight title="Operational Efficiency" text={`Fleet utilization ${percent(fleet)}`} meta="Live equipment snapshot"/>
     </section>
@@ -120,8 +136,8 @@ function ReservePage({ cells, summary, boreholes, threshold, setThreshold, layer
 }
 
 function ProductionPage({ forecast, history, onRefresh }: { forecast?: ProductionForecastResponse | null; history: ProductionHistoryRecord[]; onRefresh: () => void }) {
-  const [tab, setTab] = useState(0); const rows = history.slice(-12); const titles = ["Production Forecast","Production Analytics","Downtime Analysis","Blasting Optimization"];
-  return <PageFrame title="Production Intelligence" subtitle="Forecasting, optimization and production performance" refresh={onRefresh}><Tabs labels={titles} active={tab} onChange={setTab}/>{tab === 0 && forecast && <ProductionForecastTerminal forecast={forecast}/>}<section className="mc-panel mc-chart-panel"><PanelHead title={tab === 0 ? "Production Forecast (Next 6 Months)" : titles[tab]} icon={<BarChart3/>}/><ResponsiveContainer width="100%" height={270}><LineChart data={rows}><CartesianGrid stroke="#15374c" strokeDasharray="3 3"/><XAxis dataKey="date" stroke="#6f91a5"/><YAxis stroke="#6f91a5"/><Tooltip/><Line type="monotone" dataKey="production_mt" stroke="#0bc8ff" strokeWidth={2} dot={false}/><Line type="monotone" dataKey="target_mt" stroke="#00d9a5" strokeDasharray="5 4" dot={false}/></LineChart></ResponsiveContainer></section><div className="mc-two"><StatPanel title="Key Metrics"><Metric label="Current" value={`${number(forecast?.forecast_mt ?? 12.8, 1)} Mt`}/><Metric label="Forecast next month" value="14.1 Mt"/><Metric label="Production variance" value={`${percent(forecast?.shortfall_probability ?? .13)} risk`}/><Metric label="OEE" value="87%"/></StatPanel><StatPanel title="Recent Alerts"><AlertRow title="Blasting delay at South Basin" level="HIGH"/><AlertRow title="Equipment downtime - Excavator EX-13" level="WATCH"/><AlertRow title="Production below target - East Wing" level="INFO"/></StatPanel></div></PageFrame>;
+  const [tab, setTab] = useState(0); const rows = history.slice(-30); const titles = ["Production Forecast","Production Analytics","Downtime Analysis","Blasting Optimization"];
+  return <PageFrame title="Production Intelligence" subtitle="Forecasting, optimization and production performance" refresh={onRefresh}><Tabs labels={titles} active={tab} onChange={setTab}/>{tab === 0 && forecast && <ProductionForecastTerminal forecast={forecast}/>}<section className="mc-panel mc-chart-panel"><PanelHead title={tab === 0 ? "Production Forecast" : titles[tab]} icon={<BarChart3/>}/><ResponsiveContainer width="100%" height={280}><LineChart data={rows}><CartesianGrid stroke="#15374c" strokeDasharray="3 3"/><XAxis dataKey="date" stroke="#8da9b8"/><YAxis stroke="#8da9b8"/><Tooltip contentStyle={{ background: "#071b2b", border: "1px solid #176080", color: "#eaf8ff" }}/><Line type="monotone" dataKey="production_mt" stroke="#0bc8ff" strokeWidth={2} dot={false}/><Line type="monotone" dataKey="target_mt" stroke="#00d9a5" strokeDasharray="5 4" dot={false}/></LineChart></ResponsiveContainer></section><div className="mc-two"><StatPanel title="Key Metrics"><Metric label="Current forecast" value={`${number(forecast?.forecast_mt ?? 12.8, 1)} Mt`}/><Metric label="Target" value={`${number(forecast?.target_mt ?? 13.5, 1)} Mt`}/><Metric label="Shortfall risk" value={`${percent(forecast?.shortfall_probability ?? .13)}`}/><Metric label="Model status" value={forecast ? "Available" : "Loading"}/></StatPanel><StatPanel title="Recent Alerts"><AlertRow title="Blasting delay at South Basin" level="HIGH"/><AlertRow title="Equipment downtime - EX-13" level="WATCH"/><AlertRow title="Production below target - East Wing" level="INFO"/></StatPanel></div></PageFrame>;
 }
 
 function ModelsPage({ models, monitoring, quality, onRefresh }: { models?: ModelRegistryResponse | null; monitoring?: ModelMonitoringResponse | null; quality?: DataQualityResponse | null; onRefresh: () => void }) {
@@ -129,17 +145,98 @@ function ModelsPage({ models, monitoring, quality, onRefresh }: { models?: Model
   return <PageFrame title="Model Monitoring" subtitle="Track model performance, drift and health across all AI models" refresh={onRefresh}><Tabs labels={labels} active={tab} onChange={setTab}/>{tab === 0 && monitoring && <ModelMonitoringPanel monitoring={monitoring}/>}<div className="mc-two"><StatPanel title="Model Health"><div className="mc-health-ring">{percent(quality?.overall_score ?? .87)}</div><Metric label="Healthy" value="4"/><Metric label="Warning" value="1"/><Metric label="Critical" value="0"/></StatPanel><StatPanel title="Model Registry"><div className="mc-model-list">{models?.models?.map(model => <div key={`${model.model_name}-${model.version}`}><b>{model.model_name}</b><span>{model.version}</span><em>{model.status}</em></div>)}</div></StatPanel></div></PageFrame>;
 }
 
-function AssistantPage({ recommendations }: { recommendations?: RecommendationResponse | null }) {
-  const [messages, setMessages] = useState<string[]>([]); const suggestions = ["What's the best expansion option?","Show me production forecast risks","Any anomalies in the models?","Summarise today's operations"]; const send = (text: string) => setMessages(v => [...v, text]);
-  return <PageFrame title="MANGAI AI Assistant" subtitle="Your intelligent mining operations companion"><div className="mc-assistant-page"><section className="mc-panel mc-chat"><div className="mc-chat-bubble"><Bot/><div><b>Hello! I'm your MANGAI AI Assistant.</b><p>I can help you with reserves, production forecasts, equipment status, and more.</p></div></div>{messages.map((m, i) => <div className="mc-user-message" key={`${m}-${i}`}>{m}</div>)}<div className="mc-suggestions">{suggestions.map(s => <button key={s} onClick={() => send(s)}>{s}</button>)}</div><div className="mc-chat-input"><input placeholder="Type your message..." onKeyDown={(e) => { if (e.key === "Enter" && e.currentTarget.value.trim()) { send(e.currentTarget.value.trim()); e.currentTarget.value = ""; } }}/><button onClick={() => send("Show latest intelligence")}><MessageSquare/></button></div></section><section className="mc-side-stack"><StatPanel title="Quick Insights"><Insight title="High value target" text={recommendations?.recommendations?.[0]?.title ?? "East Wing target identified"}/><Insight title="Equipment" text="Fleet utilization is being monitored live"/><Insight title="Weather" text="Latest weather inputs are available"/></StatPanel><StatPanel title="Suggested Actions"><button className="mc-action" onClick={() => send("Open reserve map")}>Open reserve map</button><button className="mc-action" onClick={() => send("Check equipment status")}>Check equipment status</button><button className="mc-action" onClick={() => send("Review production risk")}>Review production risk</button></StatPanel></section></div></PageFrame>;
+function AssistantPage({ initialQuestion, recommendations, onNavigate }: { initialQuestion: string | null; recommendations?: RecommendationResponse | null; onNavigate: (p: Page) => void }) {
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastSeed, setLastSeed] = useState<string | null>(null);
+
+  const send = async (raw: string) => {
+    const text = raw.trim();
+    if (!text || loading) return;
+    setInput(""); setError(null); setLoading(true);
+    setMessages((prev) => [...prev, { role: "user", content: text }]);
+    try {
+      const response = await apiPost<ChatResponse>("/api/v1/chat", { message: text, history: messages.slice(-12).map((m) => ({ role: m.role, content: m.content })), page_context: "assistant" });
+      setMessages((prev) => [...prev, { role: "assistant", content: response.answer, evidence: response.evidence }]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to reach the MANGAI assistant.");
+      setMessages((prev) => [...prev, { role: "assistant", content: "I could not reach the intelligence service. Please verify that the backend is running and try again." }]);
+    } finally { setLoading(false); }
+  };
+
+  if (initialQuestion && initialQuestion !== lastSeed) { setLastSeed(initialQuestion); if (initialQuestion !== "help") void send(initialQuestion); }
+
+  return <PageFrame title="MANGAI AI Assistant" subtitle="Evidence-first mining intelligence, connected to the MANGAI backend"><div className="mc-assistant-page">
+    <section className="mc-panel mc-chat"><div className="mc-chat-header"><div className="mc-ai"><Bot/></div><div><b>MANGAI AI Copilot</b><span>Backend-connected decision support</span></div><span className="mc-online-badge">● Online</span></div>
+      <div className="mc-chat-scroll"><div className="mc-chat-bubble"><Bot/><div><b>Hello! I’m MANGAI AI.</b><p>Ask about reserves, production, equipment, weather, blasting, recommendations or model health. I will answer from the connected intelligence services.</p></div></div>
+      {messages.map((m, i) => <div className={m.role === "user" ? "mc-message user" : "mc-message assistant"} key={`${m.role}-${i}`}><span className="mc-message-role">{m.role === "user" ? "YOU" : "MANGAI AI"}</span><p>{m.content}</p>{m.evidence?.length ? <div className="mc-evidence">{m.evidence.map((e) => <span key={`${e.label}-${e.value}`}><small>{e.label}</small><b>{e.value}</b></span>)}</div> : null}</div>)}{loading && <div className="mc-typing"><span/><span/><span/> MANGAI is analysing live intelligence…</div>}</div>
+      {error && <div className="mc-chat-error"><AlertTriangle size={15}/>{error}</div>}
+      <div className="mc-suggestions">{assistantQuestions.slice(0, 4).map((q) => <button key={q} onClick={() => void send(q)}>{q}</button>)}</div>
+      <div className="mc-chat-input"><input value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask MANGAI about reserves, production or operations…" onKeyDown={(e) => { if (e.key === "Enter") void send(input); }}/><button aria-label="Send message" disabled={loading || !input.trim()} onClick={() => void send(input)}><MessageSquare size={17}/></button></div>
+    </section>
+    <section className="mc-side-stack"><StatPanel title="Quick Insights"><Insight title="High value target" text={recommendations?.recommendations?.[0]?.title ?? "East Wing target identified"}/><Insight title="Production" text="Live forecast and shortfall analysis available"/><Insight title="Model health" text="Monitoring and data quality are connected"/></StatPanel><StatPanel title="Suggested Questions">{assistantQuestions.slice(4).map((q) => <button className="mc-action" key={q} onClick={() => void send(q)}>{q}</button>)}<button className="mc-action" onClick={() => onNavigate("reserve")}>Open Reserve Intelligence</button></StatPanel></section>
+  </div></PageFrame>;
 }
 
-function ReportsPage({ statuses, setStatus }: { statuses: Record<string, string>; setStatus: (v: Record<string, string>) => void }) {
-  const reports = ["Executive Overview Report","Reserve Intelligence Report","Production Forecast Report","Operations Risk Report"];
-  return <PageFrame title="Reports" subtitle="Generate and manage mining intelligence reports"><section className="mc-panel"><PanelHead title="Report Center" icon={<FileText/>}/><div className="mc-report-table"><div className="mc-report-row mc-report-head"><span>Report</span><span>Type</span><span>Generated</span><span>Status</span><span>Action</span></div>{reports.map((name, i) => { const status = statuses[name] ?? "Ready"; return <div className="mc-report-row" key={name}><span>{name}</span><span>{i === 0 ? "Executive" : "Intelligence"}</span><span>Today</span><span><b>{status}</b></span><button onClick={() => setStatus({ ...statuses, [name]: status === "Ready" ? "Generated" : "Ready" })}>{status === "Ready" ? "Generate" : "Reset"}</button></div>; })}</div></section></PageFrame>;
+function ReportsPage({ statuses, setStatus, data }: { statuses: Record<string, ReportState>; setStatus: (v: Record<string, ReportState>) => void; data: { overview?: OverviewResponse | null; production?: ProductionForecastResponse | null; reserve?: ReserveSummaryResponse | null; equipment?: EquipmentResponse | null; monitoring?: ModelMonitoringResponse | null; quality?: DataQualityResponse | null } }) {
+  const reports = [
+    { name: "Executive Overview Report", type: "Executive", description: "Resource, production, reserve life and AI confidence" },
+    { name: "Reserve Intelligence Report", type: "Intelligence", description: "Prospectivity, grade, thickness and reserve indicators" },
+    { name: "Production Forecast Report", type: "Intelligence", description: "Forecast, target, shortfall risk and model context" },
+    { name: "Operations Risk Report", type: "Operations", description: "Fleet, production, model and operational risk snapshot" },
+  ];
+
+  const generate = async (report: typeof reports[number]) => {
+    setStatus({ ...statuses, [report.name]: { status: "generating" } });
+    await new Promise((resolve) => window.setTimeout(resolve, 350));
+    const lines = reportLines(report.name, data);
+    downloadPdf(report.name, lines);
+    setStatus({ ...statuses, [report.name]: { status: "generated", generatedAt: new Date().toLocaleString() } });
+  };
+
+  return <PageFrame title="Reports" subtitle="Generate clean, decision-ready mining intelligence reports"><section className="mc-panel mc-report-center"><PanelHead title="Report Center" icon={<FileText/>}><span>{reports.length} report templates</span></PanelHead><div className="mc-report-intro">Reports use the latest data already loaded from the MANGAI backend. <b>Generate</b> creates a downloadable PDF immediately in your browser.</div><div className="mc-report-table"><div className="mc-report-row mc-report-head"><span>Report</span><span>Type</span><span>Last generated</span><span>Status</span><span>Action</span></div>{reports.map((report) => { const state = statuses[report.name] ?? { status: "ready" as const }; const busy = state.status === "generating"; return <div className="mc-report-row" key={report.name}><div className="mc-report-name"><b>{report.name}</b><small>{report.description}</small></div><span>{report.type}</span><span>{state.generatedAt ?? "Not generated"}</span><span><b className={`mc-report-status ${state.status}`}>{busy ? "Generating…" : state.status === "generated" ? "Generated" : "Ready"}</b></span><div className="mc-report-actions">{state.status === "generated" && <button title="Download PDF" onClick={() => downloadPdf(report.name, reportLines(report.name, data))}><FileDown size={14}/> PDF</button>}<button disabled={busy} onClick={() => void generate(report)}>{busy ? "Working…" : state.status === "generated" ? "Regenerate" : "Generate"}</button></div></div>; })}</div></section></PageFrame>;
 }
 
-function AssistantRail({ onClose, onOpen, recommendations }: { onClose: () => void; onOpen: () => void; recommendations?: RecommendationResponse | null }) { return <div><div className="mc-assistant-head"><div className="mc-ai"><Bot/></div><div><h2>MANGAI AI Assistant</h2><span>● Online</span></div><button onClick={onClose}><X size={15}/></button></div><div className="mc-rail-question"><Bot/><span>What would you like to know?</span></div>{["What's the best expansion option?","Show me production forecast risks","Any anomalies in the models?","Summarise today's operations"].map(q => <button key={q} className="mc-rail-suggestion" onClick={onOpen}>{q}</button>)}<div className="mc-rail-input" onClick={onOpen}>Ask about reserves, production, operations... <MessageSquare size={14}/></div><h3>Recent Activity</h3><Insight title="Model run completed" text="Production Forecast v2.4" meta="12m ago"/><Insight title="New satellite imagery available" text="Area: Central Reserve" meta="34m ago"/><Insight title="High value target" text={recommendations?.recommendations?.[0]?.title ?? "Target identified"} meta="1h ago"/></div>; }
+function reportLines(name: string, data: { overview?: OverviewResponse | null; production?: ProductionForecastResponse | null; reserve?: ReserveSummaryResponse | null; equipment?: EquipmentResponse | null; monitoring?: ModelMonitoringResponse | null; quality?: DataQualityResponse | null }): string[] {
+  const common = ["MANGAI INDUSTRIAL INTELLIGENCE PLATFORM", name, `Generated: ${new Date().toLocaleString()}`, "", "EXECUTIVE SNAPSHOT"];
+  const overview = data.overview;
+  const production = data.production;
+  const reserve = data.reserve;
+  const equipment = data.equipment;
+  const quality = data.quality;
+  if (name.startsWith("Reserve")) return [...common, `Resource potential: ${((reserve?.resource_potential_tonnage ?? 1240000000) / 1e9).toFixed(2)} Bt`, `High prospectivity cells: ${reserve?.high_prospectivity_cells ?? "N/A"}`, `Very-high cells: ${reserve?.very_high_prospectivity_cells ?? "N/A"}`, `Average predicted grade: ${reserve?.average_predicted_grade_pct?.toFixed(1) ?? "N/A"}% Mn`, `Average predicted thickness: ${reserve?.average_predicted_thickness_m?.toFixed(1) ?? "N/A"} m`, "", "Decision-support note: prototype resource potential is not an official mineral-reserve classification."];
+  if (name.startsWith("Production")) return [...common, `Forecast: ${number(production?.forecast_mt ?? 0, 1)} Mt`, `Target: ${number(production?.target_mt ?? 0, 1)} Mt`, `Gap: ${number(production?.gap_mt ?? 0, 1)} Mt`, `Shortfall probability: ${percent(production?.shortfall_probability ?? 0)}`, `Severity: ${production?.severity ?? "N/A"}`, "", "Use alongside operational review and human approval."];
+  if (name.startsWith("Operations")) return [...common, `Fleet availability: ${percent(equipment?.fleet_availability ?? 0)}`, `Fleet utilization: ${percent(equipment?.fleet_utilization ?? 0)}`, `Critical equipment: ${equipment?.critical_equipment_count ?? "N/A"}`, `Production forecast: ${number(production?.forecast_mt ?? 0, 1)} Mt`, `Shortfall probability: ${percent(production?.shortfall_probability ?? 0)}`, "", "Operational actions require human approval."];
+  return [...common, `Resource potential: ${((overview?.resource_potential_tonnage ?? reserve?.resource_potential_tonnage ?? 1240000000) / 1e9).toFixed(2)} Bt`, `7-day production forecast: ${number(production?.forecast_mt ?? overview?.next_7_day_production_mt ?? 0, 1)} Mt`, `Fleet utilization: ${percent(equipment?.fleet_utilization ?? 0)}`, `AI/data confidence: ${percent(quality?.overall_score ?? 0.87)}`, `Model monitoring: ${data.monitoring?.status ?? "N/A"}`, "", "MANGAI decision-support report. Verify operational decisions with responsible personnel."];
+}
+
+function downloadPdf(title: string, lines: string[]) {
+  const escapePdf = (value: string) => value.replaceAll("\\", "\\\\").replaceAll("(", "\\(").replaceAll(")", "\\)");
+  const safeLines = lines.map((line) => line.replace(/[^\x20-\x7E]/g, " ").slice(0, 112));
+  const commands = ["BT", "/F1 18 Tf", "50 780 Td", `(${escapePdf(safeLines[0] ?? title)}) Tj`, "/F1 11 Tf", "0 -28 Td", ...safeLines.slice(1).map((line) => `(${escapePdf(line)}) Tj 0 -18 Td`), "ET"].join("\n");
+  const objects = [
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>",
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    `<< /Length ${commands.length} >>\nstream\n${commands}\nendstream`,
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+  objects.forEach((object, index) => { offsets[index + 1] = pdf.length; pdf += `${index + 1} 0 obj\n${object}\nendobj\n`; });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (let i = 1; i <= objects.length; i += 1) pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  const blob = new Blob([pdf], { type: "application/pdf" });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a"); anchor.href = url; anchor.download = `${title.toLowerCase().replaceAll(/[^a-z0-9]+/g, "-")}.pdf`; anchor.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function AssistantRail({ onClose, onOpen, recommendations }: { onClose: () => void; onOpen: (question?: string) => void; recommendations?: RecommendationResponse | null }) { return <div><div className="mc-assistant-head"><div className="mc-ai"><Bot/></div><div><h2>MANGAI AI Assistant</h2><span>● Online · Backend connected</span></div><button onClick={onClose} aria-label="Close assistant"><X size={17}/></button></div><div className="mc-rail-question"><Bot/><span>Ask MANGAI about live intelligence</span></div>{assistantQuestions.slice(0, 4).map(q => <button key={q} className="mc-rail-suggestion" onClick={() => onOpen(q)}>{q}</button>)}<div className="mc-rail-input" onClick={() => onOpen()} role="button" tabIndex={0}>Ask about reserves, production, operations… <MessageSquare size={14}/></div><h3>Recent Intelligence</h3><Insight title="Model run completed" text="Production forecast is available" meta="Live"/><Insight title="Reserve intelligence" text={recommendations?.recommendations?.[0]?.title ?? "High-value target available"} meta="Live"/><Insight title="Operations" text="Fleet and weather signals connected" meta="Live"/></div>; }
 
 function PageFrame({ title, subtitle, refresh, children }: { title: string; subtitle: string; refresh?: () => void; children: ReactNode }) { return <div className="mc-content"><PageTitle title={title} subtitle={subtitle}/>{refresh && <button className="mc-refresh" onClick={refresh}><RefreshCw size={14}/> Refresh data</button>}{children}</div>; }
 function PageTitle({ title, subtitle }: { title: string; subtitle: string }) { return <div className="mc-page-title"><div><h1>{title}</h1><p>{subtitle}</p></div></div>; }
@@ -147,9 +244,9 @@ function PanelHead({ title, icon, children }: { title: string; icon?: ReactNode;
 function Kpi({ icon, title, value, change }: { icon: ReactNode; title: string; value: string; change: string }) { return <section className="mc-kpi"><span>{icon}</span><small>{title}</small><b>{value}</b><em>{change}</em></section>; }
 function Metric({ label, value }: { label: string; value: string }) { return <div className="mc-metric"><span>{label}</span><b>{value}</b></div>; }
 function StatPanel({ title, children }: { title: string; children: ReactNode }) { return <section className="mc-panel mc-stat-panel"><h3>{title}</h3>{children}</section>; }
-function Insight({ title, text, meta, risk }: { title: string; text: string; meta?: string; risk?: boolean }) { return <div className={risk ? "mc-insight risk" : "mc-insight"}><b>{title}</b><span>{text}</span>{meta && <small>{meta}</small>}</div>; }
-function Tabs({ labels, active, onChange }: { labels: string[]; active: number; onChange: (index: number) => void }) { return <div className="mc-tabs">{labels.map((label, i) => <button key={label} className={active === i ? "active" : ""} onClick={() => onChange(i)}>{label}</button>)}</div>; }
-function AlertRow({ title, level }: { title: string; level: string }) { return <div className="mc-alert-row"><AlertTriangle size={14}/><span>{title}</span><b>{level}</b></div>; }
+function Insight({ title, text, meta, risk }: { title: string; text: string; meta?: string; risk?: boolean }) { return <div className={risk ? "mc-insight risk" : "mc-insight"}><div className="mc-insight-icon">{risk ? <AlertTriangle size={13}/> : <CheckCircle2 size={13}/>}</div><div><b>{title}</b><span>{text}</span>{meta && <small>{meta}</small>}</div></div>; }
+function Tabs({ labels, active, onChange }: { labels: string[]; active: number; onChange: (index: number) => void }) { return <div className="mc-tabs" role="tablist">{labels.map((label, i) => <button key={label} className={active === i ? "active" : ""} onClick={() => onChange(i)}>{label}</button>)}</div>; }
+function AlertRow({ title, level }: { title: string; level: string }) { return <div className="mc-alert-row"><AlertTriangle size={14}/><span>{title}</span><b className={level.toLowerCase()}>{level}</b></div>; }
 function MiniChart({ title, value, onClick }: { title: string; value: string; onClick: () => void }) { return <button className="mc-mini-card" onClick={onClick}><small>{title}</small><b>{value}</b><span>View intelligence →</span></button>; }
 function MiniReserve({ resource, onClick }: { resource: number; onClick: () => void }) { return <button className="mc-mini-card" onClick={onClick}><small>Reserve Intelligence</small><b>{(resource / 1e9).toFixed(2)} Bt</b><span>Explore targets →</span></button>; }
 function MiniHealth({ confidence, onClick }: { confidence: number; onClick: () => void }) { return <button className="mc-mini-card" onClick={onClick}><small>Model Health</small><b>{percent(confidence)}</b><span>Open monitoring →</span></button>; }
