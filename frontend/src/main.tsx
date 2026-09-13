@@ -6,6 +6,7 @@ import "./phase12-polish.css";
 import "./reference-dashboard.css";
 import "./reference-dashboard-layout.css";
 import "./command-center-reference.css";
+import "./styles/mangai-production-terminal.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 const rootElement = document.getElementById("root");
