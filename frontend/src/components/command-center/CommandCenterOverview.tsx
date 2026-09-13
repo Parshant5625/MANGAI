@@ -24,7 +24,7 @@ function num(value: number | null | undefined, digits = 0) {
 export function CommandCenterOverview({ overview, production, recommendations, equipment, quality, onOpenReserve, onOpenProduction }: Props) {
   const risk = production.shortfall_probability ?? 0;
   const fleet = equipment.fleet_utilization ?? 0;
-  const health = quality.overall_quality_score ?? 0;
+  const health = quality.overall_score ?? 0;
   const lead = production.top_drivers?.[0];
   const topRecommendation = recommendations.recommendations?.[0];
 
@@ -60,7 +60,7 @@ export function CommandCenterOverview({ overview, production, recommendations, e
 
         <aside className="cc-panel cc-span-4 cc-rail">
           <div className="cc-panel-head"><div><span className="cc-label">LIVE SIGNALS</span><strong>Intelligence rail</strong></div><Activity size={15} /></div>
-          <div className="cc-signal cc-risk"><div><span>PRODUCTION RISK</span><strong>{pct(risk)}</strong></div><small>{lead ? `Primary: ${lead.feature ?? lead.name ?? "operational driver"}` : "Monitoring operational drivers"}</small><div className="cc-bar"><i style={{ width: `${Math.min(100, risk * 100)}%` }} /></div></div>
+          <div className="cc-signal cc-risk"><div><span>PRODUCTION RISK</span><strong>{pct(risk)}</strong></div><small>{lead ? `Primary: ${lead.feature ?? "operational driver"}` : "Monitoring operational drivers"}</small><div className="cc-bar"><i style={{ width: `${Math.min(100, risk * 100)}%` }} /></div></div>
           <div className="cc-signal"><div><span>FLEET UTILIZATION</span><strong>{pct(fleet)}</strong></div><small>{equipment.critical_equipment_count ?? 0} critical assets detected</small><div className="cc-bar"><i style={{ width: `${Math.min(100, fleet * 100)}%` }} /></div></div>
           <div className="cc-signal"><div><span>DATA HEALTH</span><strong>{pct(health)}</strong></div><small>Pipeline quality across intelligence sources</small><div className="cc-bar"><i style={{ width: `${Math.min(100, health * 100)}%` }} /></div></div>
           <div className="cc-action"><span>AI PRIORITY</span><strong>{topRecommendation?.title ?? "Review current operational risk signals"}</strong><small>{topRecommendation?.rationale ?? "No priority recommendation is currently available."}</small></div>
