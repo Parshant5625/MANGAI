@@ -17,6 +17,6 @@
     "jsx": "react-jsx"
   },
   "include": ["src"],
+  "exclude": ["src/components/ReferenceDashboard.tsx"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
-
