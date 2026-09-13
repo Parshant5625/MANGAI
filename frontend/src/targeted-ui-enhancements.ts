@@ -10,9 +10,7 @@ async function api(path: string): Promise<any> {
   return response.json();
 }
 
-function pageName() {
-  return document.querySelector<HTMLButtonElement>(".mc-nav.active")?.innerText.trim() ?? "";
-}
+function pageName() { return document.querySelector<HTMLButtonElement>(".mc-nav.active")?.innerText.trim() ?? ""; }
 
 function addGenerated(panel: HTMLElement, html: string) {
   panel.querySelectorAll(".targeted-generated-panel").forEach((node) => node.remove());
@@ -27,14 +25,14 @@ function enhanceReserve() {
   const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>(".mc-tabs button"));
   const mapPanel = page?.querySelector<HTMLElement>(".mc-map-panel");
   if (!page || !mapPanel || tabs.length !== 4) return;
-
   tabs.forEach((tab, index) => {
     if (tab.dataset.targetedBound === "reserve") return;
     tab.dataset.targetedBound = "reserve";
     tab.addEventListener("click", () => setTimeout(() => renderReserveMode(index), 40));
   });
-
   function renderReserveMode(index: number) {
+    if (page.dataset.targetedReserveMode === String(index)) return;
+    page.dataset.targetedReserveMode = String(index);
     const map = mapPanel.querySelector<HTMLElement>(".mc-map-wrap");
     const controls = mapPanel.querySelector<HTMLElement>(".mc-map-controls-inline");
     if (index === 0) {
@@ -52,7 +50,6 @@ function enhanceReserve() {
         : `<div class="targeted-layer-grid"><article><b>Probability</b><span>Prospectivity likelihood</span><em>0–100%</em></article><article><b>Grade</b><span>Predicted Mn grade</span><em>Low → High</em></article><article><b>Thickness</b><span>Predicted ore thickness</span><em>m</em></article><article><b>Confidence</b><span>Model support level</span><em>Low → High</em></article></div><div class="targeted-layer-note">Satellite + geology fusion is driving the current prospectivity field. Use Map View to select a target and inspect its evidence.</div>`;
     addGenerated(mapPanel, content);
   }
-
   const active = tabs.findIndex((tab) => tab.classList.contains("active"));
   renderReserveMode(active < 0 ? 0 : active);
 }
@@ -66,8 +63,9 @@ function enhanceProduction() {
     tab.dataset.targetedBound = "production";
     tab.addEventListener("click", () => setTimeout(() => void renderProductionMode(index), 60));
   });
-
   async function renderProductionMode(index: number) {
+    if (panel.dataset.targetedProductionMode === String(index)) return;
+    panel.dataset.targetedProductionMode = String(index);
     const chart = panel.querySelector<HTMLElement>(".recharts-responsive-container");
     if (index === 0) {
       if (chart) chart.style.display = "block";
@@ -98,7 +96,6 @@ function enhanceProduction() {
       addGenerated(panel, `<div class="targeted-error">Unable to load this analysis. Check that the MANGAI backend is running.</div>`);
     }
   }
-
   const active = tabs.findIndex((tab) => tab.classList.contains("active"));
   if (active > 0) void renderProductionMode(active);
 }
