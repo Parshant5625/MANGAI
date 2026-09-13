@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Activity, AlertTriangle, BarChart3, Bot, CheckCircle2, Database, FileDown, FileText, Gauge, Map as MapIcon, MessageSquare, RefreshCw, Settings, ShieldCheck, Target, Truck, X } from "lucide-react";
 import { ResponsiveContainer, CartesianGrid, LineChart, Line, Tooltip, XAxis, YAxis } from "recharts";
 import { useApi } from "../hooks/useApi";
@@ -73,18 +73,16 @@ export function MANGAICommandCenter() {
       <div className="mc-head-info">☀️ <b>18°C</b><small>Clear</small></div>
       <div className="mc-user">● <span>Operations Team<br/><small>Administrator</small></span></div>
     </header>
-
     <aside className="mc-sidebar">
-      {nav.map(({ id, label, icon: Icon }) => <button key={id} className={page === id ? "mc-nav active" : "mc-nav"} onClick={() => go(id)}><Icon size={15}/><span>{label}</span></button>)}
+      {nav.map(({ id, label, icon: Icon }) => <button key={id} className={page === id ? "mc-nav active" : "mc-nav"} onClick={() => go(id)}><Icon size={16}/><span>{label}</span></button>)}
       <div className="mc-divider"/><small className="mc-label">TOOLS</small>
-      <button className="mc-nav" onClick={() => go("reserve")}><MapIcon size={15}/><span>Map</span></button>
-      <button className="mc-nav" onClick={() => go("reports")}><FileText size={15}/><span>Reports</span></button>
+      <button className="mc-nav" onClick={() => go("reserve")}><MapIcon size={16}/><span>Map</span></button>
+      <button className="mc-nav" onClick={() => go("reports")}><FileText size={16}/><span>Reports</span></button>
       <div className="mc-divider"/><small className="mc-label">SYSTEM</small>
-      <button className="mc-nav" onClick={() => go("models")}><Settings size={15}/><span>Settings</span></button>
-      <button className="mc-nav" onClick={() => openAssistant("help")}><MessageSquare size={15}/><span>Help</span></button>
+      <button className="mc-nav" onClick={() => go("models")}><Settings size={16}/><span>Settings</span></button>
+      <button className="mc-nav" onClick={() => openAssistant("help")}><MessageSquare size={16}/><span>Help</span></button>
       <div className="mc-sidebar-brand"><b>MANGAI<span>▲</span></b><small>Smarter Decisions.<br/>Greater Value.</small><em>╱╲╱╲╱╲╱╲</em></div>
     </aside>
-
     <main className="mc-main">
       {page === "overview" && <Overview data={overview.data} production={production.data} confidence={confidence} resource={resource} fleet={fleet} cells={cells} recommendations={recommendations.data} onNavigate={go}/>} 
       {page === "reserve" && <ReservePage cells={cells} summary={reserveSummary.data} boreholes={boreholes.data?.boreholes ?? []} threshold={threshold} setThreshold={setThreshold} layer={layer} setLayer={setLayer} selected={selectedCell} setSelected={setSelectedCell} onRefresh={doRefresh}/>} 
@@ -94,7 +92,6 @@ export function MANGAICommandCenter() {
       {page === "assistant" && <AssistantPage initialQuestion={assistantSeed} recommendations={recommendations.data} onNavigate={go}/>} 
       {page === "reports" && <ReportsPage statuses={reportStatus} setStatus={setReportStatus} data={{ overview: overview.data, production: production.data, reserve: reserveSummary.data, equipment: equipment.data, monitoring: monitoring.data, quality: quality.data }}/>} 
     </main>
-
     {page === "overview" && assistantOpen && <aside className="mc-assistant-rail"><AssistantRail onClose={() => setAssistantOpen(false)} onOpen={openAssistant} recommendations={recommendations.data}/></aside>}
     {page === "overview" && !assistantOpen && <button className="mc-assistant-fab" onClick={() => setAssistantOpen(true)}><Bot/></button>}
     <footer className="mc-footer"><span>MANGAI <b>|</b> Industrial Intelligence for a Smarter Tomorrow</span><span><i/> Backend Online &nbsp; | &nbsp; Frontend Connected &nbsp; | &nbsp; v1.0.0</span></footer>
@@ -166,7 +163,12 @@ function AssistantPage({ initialQuestion, recommendations, onNavigate }: { initi
     } finally { setLoading(false); }
   };
 
-  if (initialQuestion && initialQuestion !== lastSeed) { setLastSeed(initialQuestion); if (initialQuestion !== "help") void send(initialQuestion); }
+  useEffect(() => {
+    if (initialQuestion && initialQuestion !== lastSeed) {
+      setLastSeed(initialQuestion);
+      if (initialQuestion !== "help") void send(initialQuestion);
+    }
+  }, [initialQuestion, lastSeed]);
 
   return <PageFrame title="MANGAI AI Assistant" subtitle="Evidence-first mining intelligence, connected to the MANGAI backend"><div className="mc-assistant-page">
     <section className="mc-panel mc-chat"><div className="mc-chat-header"><div className="mc-ai"><Bot/></div><div><b>MANGAI AI Copilot</b><span>Backend-connected decision support</span></div><span className="mc-online-badge">● Online</span></div>
@@ -191,8 +193,7 @@ function ReportsPage({ statuses, setStatus, data }: { statuses: Record<string, R
   const generate = async (report: typeof reports[number]) => {
     setStatus({ ...statuses, [report.name]: { status: "generating" } });
     await new Promise((resolve) => window.setTimeout(resolve, 350));
-    const lines = reportLines(report.name, data);
-    downloadPdf(report.name, lines);
+    downloadPdf(report.name, reportLines(report.name, data));
     setStatus({ ...statuses, [report.name]: { status: "generated", generatedAt: new Date().toLocaleString() } });
   };
 
