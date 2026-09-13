@@ -3,9 +3,9 @@ from __future__ import annotations
 import argparse
 from datetime import UTC, datetime, timedelta
 
+from backend.app.adapters.satellite.fusion_pipeline import LIVE_AOI_HALF_DEG
 from backend.app.adapters.satellite.planetary_computer import PlanetaryComputerSentinel2Provider
 from backend.app.adapters.satellite.sentinel2_pixel_service import Sentinel2PixelService
-from backend.app.adapters.satellite.fusion_pipeline import LIVE_AOI_HALF_DEG
 from backend.app.core.config import get_settings
 from backend.app.core.errors import DataUnavailableError
 
