@@ -176,9 +176,12 @@ class RecommendationResponse(DemoEnvelope):
 
 
 class RecommendationSimulationRequest(BaseModel):
+    scenario: Literal["stabilize-production", "redeploy-fleet", "weather-buffer"] | None = None
     reduce_downtime_pct: float = Field(default=0, ge=0, le=75)
     rainfall_risk_override: Literal["LOW", "MEDIUM", "HIGH"] | None = None
     defer_weather_sensitive_blasts: bool = False
+    equipment_redeployment: bool = False
+    weather_buffer: bool = False
 
 
 class ModelVersion(BaseModel):
@@ -230,4 +233,3 @@ class OverviewResponse(DemoEnvelope):
     model_health: str
     data_quality_score: float
     kpis: dict[str, Any]
-
