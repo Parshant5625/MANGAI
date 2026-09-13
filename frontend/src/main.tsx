@@ -1,12 +1,14 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { MANGAICommandCenter } from "./components/MANGAICommandCenter";
+import { installTargetedUIEnhancements } from "./targeted-ui-enhancements";
 import "./styles.css";
 import "./phase12-polish.css";
 import "./reference-dashboard.css";
 import "./reference-dashboard-layout.css";
 import "./command-center-reference.css";
 import "./styles/mangai-production-terminal.css";
+import "./targeted-ui-fixes.css";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 const rootElement = document.getElementById("root");
@@ -17,3 +19,5 @@ ReactDOM.createRoot(rootElement).render(
     <MANGAICommandCenter />
   </React.StrictMode>,
 );
+
+installTargetedUIEnhancements();
