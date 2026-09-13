@@ -1,152 +1,593 @@
-# MANGAI — AI + Geospatial Intelligence Platform
+# MANGAI — AI-Powered Mining Intelligence Platform
 
-**SIH Problem Statement ID:** 26009
-**Organization:** Ministry of Steel / MOIL Ltd.
+> **Smart India Hackathon (SIH) 2026 Prototype** for **MOIL Limited / Ministry of Steel**
+>
+> **SIH Problem Statement ID:** `26009`
 
-MANGAI is a modular mining decision-support platform for manganese reserve discovery, production forecasting, and mine decision support. It combines geological, borehole, terrain, and satellite data with machine learning to deliver actionable intelligence.
+MANGAI (**Manganese AI**) is an end-to-end mining decision-support platform designed to combine **geological intelligence, satellite/remote-sensing data, production forecasting, equipment analytics, blasting and weather signals, recommendations, and MLOps** into a single operational intelligence system.
 
----
-
-## ⚠️ Important Notice
-
-**This prototype uses synthetic/demo data.** All metrics, predictions, and recommendations are generated from synthetic datasets and are **NOT MOIL field-validated**. MANGAI is a decision-support prototype until validated with real MOIL data, domain experts, applicable mining regulations, and operational systems.
+The platform is designed around one goal: **turn heterogeneous mining data into explainable, actionable intelligence for mine planning and operational decision-making.**
 
 ---
 
-## Architecture
+## ⚠️ Prototype / Data Boundary
 
+**MANGAI is currently a demonstration and research prototype.**
+
+The repository contains deterministic synthetic/demo datasets and prototype integrations. Unless explicitly stated otherwise, dashboard metrics, predictions, risk scores, reserve estimates, and recommendations shown in demo mode are **not MOIL field measurements and are not validated mineral-reserve estimates**.
+
+A production deployment would require:
+
+- Real MOIL geological, borehole, production, fleet and blasting datasets
+- Validated satellite/remote-sensing inputs for the selected mine areas
+- Domain-expert review and calibration
+- Mine-specific model training and validation
+- Integration with operational systems and data pipelines
+- Appropriate mining, safety, environmental and regulatory controls
+- Human approval for operational decisions
+
+MANGAI should therefore be treated as a **decision-support prototype, not an autonomous mining-control system**.
+
+---
+
+## 🎯 Problem MANGAI Addresses
+
+Mining intelligence is often distributed across geological records, borehole logs, production systems, equipment data, weather observations, blasting schedules and remote-sensing sources.
+
+This makes it difficult to answer questions such as:
+
+- Where are the most prospective manganese zones?
+- What geological and satellite signals are associated with manganese prospectivity?
+- How much production is expected over the next few days or weeks?
+- What is the probability of missing the production target?
+- Which equipment or operational factors are driving production risk?
+- How much do downtime, weather and blasting delays affect production?
+- Which operational actions should be prioritized?
+- Are deployed ML models healthy, drifting or degrading?
+
+**MANGAI connects these signals into one intelligence layer.**
+
+---
+
+## 🧠 Core Capabilities
+
+### 1. Reserve Intelligence
+
+Spatial and geological intelligence for manganese prospectivity and resource assessment.
+
+- Geological + satellite feature fusion
+- Manganese prospectivity probability mapping
+- Spatial ML inference
+- Mn-grade prediction
+- Ore-thickness prediction
+- Prototype resource-potential estimation
+- P10 / P50 / P90 uncertainty representation
+- Borehole context
+- Spatial support / extrapolation indicators
+- Model confidence and validation signals
+- Feature-level explanations / SHAP analysis
+- Interactive reserve map
+- Dedicated reserve views for map, 3D-style analysis, estimates and geological layers
+
+### 2. Production Intelligence
+
+Forecasting and shortfall-risk intelligence for daily mine production.
+
+- Daily production forecasting
+- Configurable forecast horizons
+- Historical production analysis
+- Production target attainment
+- Shortfall probability
+- Risk severity classification
+- Prediction intervals
+- Production-driver attribution
+- Production analytics
+- Downtime analysis
+- Blasting-delay analysis
+- Operational risk context
+
+### 3. Operations Intelligence
+
+Cross-domain operational signals from fleet, weather and blasting data.
+
+- Fleet availability
+- Equipment utilization
+- Downtime ranking
+- Critical equipment identification
+- Weather exposure
+- Rainfall and soil-moisture signals
+- Temperature / environmental context
+- Blasting schedule and delay analysis
+- Delay-reason analysis
+- Production associations
+- Operational risk signals with LOW / MEDIUM / HIGH severity
+- Evidence-backed operational context
+
+### 4. Recommendation Engine
+
+Turns detected risks into prioritized decision-support actions.
+
+- Ranked corrective actions
+- Evidence attached to recommendations
+- Confidence scoring
+- Expected impact estimates
+- What-if / simulation support
+- Downtime-reduction scenarios
+- Blast-scheduling scenarios
+- Human approval boundary
+
+### 5. MLOps / Model Monitoring
+
+Monitoring layer for ML model health and data quality.
+
+- Model registry
+- Model version metadata
+- Model health indicators
+- Performance metrics
+- Drift / PSI monitoring
+- Data-quality reporting
+- Model availability / readiness checks
+- Explainability dimensions
+- Registry-level model comparison
+
+### 6. MANGAI AI Assistant
+
+A context-aware assistant interface connected to the MANGAI backend.
+
+The assistant can answer supported questions about:
+
+- Production risk and forecast
+- Reserve prospectivity
+- Equipment status
+- Model health and drift
+- Operations summary
+- Satellite signals
+- Recommendations
+- Platform help
+
+### 7. Reports
+
+The dashboard provides a report workflow for turning live dashboard/API information into a downloadable report artifact.
+
+---
+
+## 🖥️ Dashboard Experience
+
+The frontend is designed as a **premium dark mining-intelligence command centre**, with a consistent visual language across the application.
+
+Main dashboard areas include:
+
+| Module | Purpose |
+|---|---|
+| **Executive Overview** | High-level mine KPIs, reserve, production and operational insights |
+| **Reserve Intelligence** | Spatial prospectivity, geological/satellite intelligence and resource estimates |
+| **Production Intelligence** | Forecasts, historical analytics, shortfall risk and production drivers |
+| **Operations Intelligence** | Fleet, weather, blasting and operational risk signals |
+| **Model Monitoring** | Model health, registry, drift and explainability information |
+| **MANGAI AI Assistant** | Natural-language interaction with supported backend intelligence |
+| **Reports** | Report generation and export workflow |
+
+The current frontend also contains targeted interaction improvements for reserve and production analysis, including separate analytical views rather than showing the same panel for every tab.
+
+---
+
+## 🏗️ System Architecture
+
+```text
+                           MANGAI
+                              │
+              ┌───────────────┴───────────────┐
+              │                               │
+       React + TypeScript                External / Data Sources
+       Vite + Tailwind                    ├─ Geological data
+       Recharts + MapLibre                ├─ Boreholes
+       Lucide icons                       ├─ Satellite data
+              │                            ├─ Weather
+              │                            ├─ Equipment
+              │                            ├─ Blasting
+              │                            └─ Production
+              │
+              ▼
+        FastAPI REST API
+              │
+      ┌───────┼───────────────────────────────────┐
+      │       │             │          │           │
+      ▼       ▼             ▼          ▼           ▼
+   Reserve Production   Operations Recommendations MLOps
+   Services Intelligence Analytics     Engine     / Monitoring
+      │       │             │          │           │
+      └───────┴─────────────┴──────────┴───────────┘
+                          │
+                          ▼
+                 ML / Feature Layer
+                          │
+              ┌───────────┴───────────┐
+              │                       │
+        Reserve Models          Production Models
+              │                       │
+       XGBoost / ensemble       Regression + risk
+       spatial validation       chronological validation
+              │                       │
+              └───────────┬───────────┘
+                          ▼
+                Model Registry / Artifacts
+                          │
+                          ▼
+                 PostgreSQL / SQLite
 ```
-Frontend (React + TypeScript + Vite + Tailwind)
-    ↓
-FastAPI Backend
-    ↓
-Service Layer
-    ├── Reserve Intelligence (Prospectivity, Grade, Thickness, Resource Potential)
-    ├── Production Intelligence (Forecasting, Shortfall Risk)
-    ├── Operations Analytics (Equipment, Weather, Blasting)
-    ├── Recommendation Engine (Evidence-backed actions)
-    └── ML Inference (XGBoost models)
-    ↓
-PostgreSQL Database + Model Registry
+
+---
+
+## 🔬 AI / ML Pipeline
+
+### Reserve Intelligence Pipeline
+
+```text
+Geological Data ──────┐
+                      │
+Borehole Data ────────┼──► Data Validation / Fusion
+                      │              │
+Satellite Data ──────┘              ▼
+                              Feature Engineering
+                                      │
+                                      ▼
+                           Spatial ML / Ensemble Models
+                                      │
+                    ┌─────────────────┼─────────────────┐
+                    ▼                 ▼                 ▼
+              Prospectivity       Grade            Thickness
+                    │                 │                 │
+                    └─────────────────┼─────────────────┘
+                                      ▼
+                         Resource Potential / Uncertainty
+                                      │
+                                      ▼
+                         Map + Explainability + API
+```
+
+### Production Intelligence Pipeline
+
+```text
+Historical Production ─┐
+Equipment / Downtime ──┤
+Weather ───────────────┼──► Feature Engineering
+Blasting ──────────────┘            │
+                                    ▼
+                         Chronological Train / Validation
+                                    │
+                                    ▼
+                         Candidate Model Evaluation
+                                    │
+                      ┌─────────────┴─────────────┐
+                      ▼                           ▼
+                 Forecast Model              Risk Model
+                      │                           │
+                      ▼                           ▼
+              Production Forecast        Shortfall Probability
+                      │                           │
+                      └─────────────┬─────────────┘
+                                    ▼
+                         Drivers + Recommendations
 ```
 
 ---
 
-## Features
+## 🧪 Validation & Leakage Protection
+
+MANGAI does not use a single generic train/test strategy for every problem.
+
+### Reserve / Geological ML
+
+Spatial separation is used where appropriate to reduce the risk of spatial leakage between training and validation data.
+
+### Production ML
+
+Production models use **chronological train/validation/test splits** so future observations are not allowed to influence historical model training.
+
+### Data Leakage Controls
+
+Target columns such as production outcomes and geological assay targets are explicitly tracked by the common data-contract / validation layer. Feature matrices are checked to ensure target variables do not accidentally enter model inputs.
+
+### Evaluation Metrics
+
+Depending on the task, the project uses:
+
+- ROC-AUC
+- PR-AUC
+- F1 score
+- MAE
+- RMSE
+- R²
+- Calibration / probability-quality checks
+- Drift / PSI metrics
+- Spatial validation statistics
+
+---
+
+## 📊 Data Layer
+
+The demo system contains deterministic synthetic datasets representing the major domains of a mining operation.
+
+### Demo Dataset Inventory
+
+| Dataset | Example fields | Purpose |
+|---|---|---|
+| Geological | latitude, longitude, elevation, slope, Mn/Fe/SiO₂ | Geological intelligence |
+| Satellite | spectral bands, NDVI, NDWI, SWIR, bare-soil index, LST | Remote-sensing context |
+| Boreholes | interval, lithology, depth, assay values | Subsurface context |
+| Weather | rainfall, soil moisture, temperature, vegetation index | Environmental risk |
+| Equipment | operating hours, downtime, utilization, maintenance | Fleet intelligence |
+| Blasting | planned blasts, delay hours, delay reason | Blast-delay analysis |
+| Production | production, target, production gap | Forecasting / shortfall |
+
+### Geological + Satellite Fusion
+
+Geological and satellite observations are kept as conceptually separate sources and aligned through a deterministic fusion layer before reserve feature engineering.
+
+The fusion layer provides:
+
+- Key-based spatial/context alignment
+- Match / unmatched statistics
+- Merge-rate reporting
+- `inner`, `left` and `outer` join strategies
+- Collision-safe column handling
+
+### Data Contracts
+
+Canonical dataset contracts define:
+
+- Required and optional fields
+- Nullability
+- Data types
+- Units
+- Valid ranges
+- Categorical constraints
+- Primary keys
+- Uniqueness constraints
+- Leakage-sensitive columns
+
+---
+
+## 🛰️ Satellite / Remote Sensing
+
+MANGAI includes a satellite-data pathway for reserve intelligence and environmental context.
+
+The system is designed to work with remote-sensing features such as:
+
+- Multispectral bands
+- NDVI
+- NDWI
+- SWIR-derived ratios
+- Bare-soil indicators
+- Land-surface temperature
+- Spatial coordinates / AOI context
+
+The repository also includes live satellite-related smoke/integration tooling. Demo mode remains deterministic and does not require external satellite access.
+
+---
+
+## 🗄️ Database Model
+
+Key entities include:
+
+- `mine_sites`
+- `geological_samples`
+- `boreholes`
+- `satellite_observations`
+- `weather_observations`
+- `equipment`
+- `equipment_events`
+- `blasting_events`
+- `production_records`
+- `model_versions`
+- `predictions`
+- `recommendations`
+- `data_quality_runs`
+
+SQLite is convenient for local demo development; PostgreSQL is supported for the containerized / production-oriented configuration.
+
+---
+
+## 🔌 API Surface
+
+The FastAPI backend exposes versioned endpoints under `/api/v1`.
+
+### Overview
+
+```text
+GET  /api/v1/overview
+```
+
+Executive-level KPIs and dashboard summary data.
 
 ### Reserve Intelligence
-- **Manganese Prospectivity**: Spatial probability mapping using XGBoost with geological + satellite features
-- **Mn-Grade Prediction**: Regression model for manganese percentage estimation
-- **Ore Thickness Prediction**: Regression model for ore thickness in meters
-- **Prototype Resource Potential**: Monte Carlo-based tonnage estimation with P10/P50/P90 uncertainty
-- **SHAP Explanations**: Feature contribution analysis for model interpretability
 
-### Production Intelligence
-- **Production Forecasting**: XGBoost-based daily production forecasting with configurable horizons (1/7/30 days)
-- **Shortfall Probability**: Calibrated probability of production falling below target
-- **Risk Severity**: Classification into LOW/MEDIUM/HIGH/CRITICAL categories
-- **Top Driver Attribution**: SHAP-based identification of key production drivers
-- **Prediction Intervals**: P10/P50/P90 confidence intervals
-
-### Operations Analytics
-- **Equipment Health**: Availability, utilization, downtime ranking, maintenance trends
-- **Weather Impact**: Rainfall, soil moisture, temperature monitoring with risk assessment
-- **Blasting Analysis**: Delay tracking, trend analysis, weather overlap risk
-
-### Recommendation Engine
-- **Evidence-Backed Actions**: Structured recommendations with confidence scores
-- **Impact Estimation**: Quantified production recovery estimates
-- **Simulation**: What-if analysis for downtime reduction and blast scheduling
-- **Safety Boundaries**: All recommendations require human approval
-
----
-
-## Tech Stack
-
-### Backend
-- Python 3.11+
-- FastAPI + Pydantic v2
-- SQLAlchemy 2 + PostgreSQL + Alembic
-- XGBoost + scikit-learn + SHAP
-- pandas + numpy
-
-### Frontend
-- React + TypeScript + Vite
-- Tailwind CSS
-- MapLibre GL JS (GIS)
-- Recharts (charts)
-- Lucide React (icons)
-
-### Infrastructure
-- Docker Compose
-- pytest + httpx (testing)
-- ruff (linting)
-
----
-
-## Getting Started
-
-### Prerequisites
-- Python 3.11+
-- Node.js 18+
-- PostgreSQL 16+ (only required for `DATA_MODE=live`; not needed for demo mode)
-
-### Local Development
-
-These steps assume you are in the project root (`MANGAI/`).
-
-#### 1. Create virtual environment
-
-```bash
-python -m venv backend/.venv
-source backend/.venv/bin/activate        # Linux / macOS
-# Windows (PowerShell):
-# backend\.venv\Scripts\Activate.ps1
+```text
+GET  /api/v1/reserves/prospectivity
+GET  /api/v1/reserves/summary
+GET  /api/v1/reserves/{reserve_id}
+GET  /api/v1/reserves/boreholes
+POST /api/v1/predictions/reserve
 ```
 
-#### 2. Install dependencies
+### Production Intelligence
+
+```text
+GET  /api/v1/production/forecast
+GET  /api/v1/production/risk
+GET  /api/v1/production/history
+POST /api/v1/predictions/production
+```
+
+### Operations
+
+```text
+GET /api/v1/equipment
+GET /api/v1/weather
+GET /api/v1/blasting
+GET /api/v1/operations/summary
+```
+
+### Recommendations
+
+```text
+GET  /api/v1/recommendations
+POST /api/v1/recommendations/simulate
+```
+
+### MLOps / Data Quality
+
+```text
+GET /api/v1/models
+GET /api/v1/data-quality
+```
+
+### AI Assistant
+
+```text
+POST /api/v1/chat
+```
+
+The chat endpoint accepts a message, optional conversation history and optional page context.
+
+### Health / Readiness
+
+```text
+GET /health
+GET /ready
+```
+
+`/health` provides a lightweight liveness response. `/ready` checks application dependencies and reports structured readiness information.
+
+---
+
+## 🛠️ Technology Stack
+
+### Backend
+
+- Python 3.11+
+- FastAPI
+- Pydantic v2
+- SQLAlchemy 2
+- Alembic
+- PostgreSQL / SQLite
+- pandas
+- NumPy
+- scikit-learn
+- XGBoost
+- SHAP
+- matplotlib / geospatial processing utilities
+
+### Frontend
+
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS
+- MapLibre GL JS
+- Recharts
+- Lucide React
+
+### Engineering / Infrastructure
+
+- Docker Compose
+- pytest
+- httpx
+- Ruff
+- Git / GitHub
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+Install:
+
+- Python 3.11 or newer
+- Node.js 18 or newer
+- npm
+- Git
+- Docker Desktop (optional)
+- PostgreSQL 16+ only when using a PostgreSQL/live-style environment
+
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/Parshant5625/MANGAI.git
+cd MANGAI
+```
+
+### 2. Create and activate a Python environment
+
+#### Windows PowerShell
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+```
+
+#### Linux / macOS
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+### 3. Install backend dependencies
 
 ```bash
 pip install -r backend/requirements.txt
 ```
 
-#### 3. Configure environment
+### 4. Configure environment
+
+Copy the example environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-By default `DATA_MODE=demo`, which requires no external services. See [Configuration](#configuration) for `DATA_MODE=live`.
+On Windows PowerShell:
 
-#### 4. Seed demo data
+```powershell
+Copy-Item .env.example .env
+```
+
+The default configuration is intended for demo development.
+
+### 5. Seed demo data
 
 ```bash
 python scripts/seed_demo.py --skip-train
 ```
 
-This generates the offline synthetic datasets and initializes the database. Use `--skip-train` to avoid training ML models (models are optional in demo mode).
+This prepares the deterministic demo datasets and initializes the local database state. Model training is optional for demo startup.
 
-#### 5. Run migrations
+### 6. Apply migrations
 
 ```bash
 alembic upgrade head
 ```
 
-Note: `scripts/seed_demo.py` already runs migrations. Run this step directly when applying migrations without reseeding.
+The demo seeding workflow also handles migrations; run this command directly when you only need to apply database migrations.
 
-#### 6. Start backend
+### 7. Start the backend
 
 ```bash
 uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The API is available at:
-- API base: http://localhost:8000
-- API docs (Swagger): http://localhost:8000/docs
-- Health: http://localhost:8000/health
-- Readiness: http://localhost:8000/ready
+Backend:
 
-#### 7. Start frontend
+- API: `http://localhost:8000`
+- Swagger: `http://localhost:8000/docs`
+- Health: `http://localhost:8000/health`
+- Readiness: `http://localhost:8000/ready`
+
+### 8. Start the frontend
+
+Open a second terminal:
 
 ```bash
 cd frontend
@@ -154,23 +595,21 @@ npm install
 npm run dev
 ```
 
-Frontend: http://localhost:5173
+Frontend:
 
-#### 8. Run tests
+```text
+http://localhost:5173
+```
+
+### 9. Run the full test suite
+
+From the repository root:
 
 ```bash
 pytest
 ```
 
-Run a single suite:
-
-```bash
-pytest tests/backend -q
-pytest tests/ml -q
-pytest tests/integration -q
-```
-
-Lint:
+### 10. Run linting
 
 ```bash
 ruff check .
@@ -178,192 +617,86 @@ ruff check .
 
 ---
 
-## Docker
+## 🐳 Docker
 
-Build and start all services (PostgreSQL, backend, frontend):
+MANGAI includes a Docker Compose configuration for PostgreSQL, FastAPI and the frontend.
 
 ```bash
 docker compose up --build
 ```
 
 Services:
-- PostgreSQL: port 5432
-- Backend API: port 8000
-- Frontend: port 8080
 
-The backend container seeds demo data on startup, so `DATA_MODE=demo` works without internet access. To rebuild from scratch:
+| Service | Port |
+|---|---:|
+| PostgreSQL | `5432` |
+| FastAPI backend | `8000` |
+| Frontend | `8080` |
+
+Open the dashboard at:
+
+```text
+http://localhost:8080
+```
+
+To rebuild the complete Docker database volume:
 
 ```bash
 docker compose down -v
 docker compose up --build
 ```
 
-### Overview
-- `GET /api/v1/overview` - Executive KPIs
-
-### Reserve Intelligence
-- `GET /api/v1/reserves/prospectivity` - Prospectivity cells (supports bbox filtering)
-- `GET /api/v1/reserves/summary` - Reserve summary with resource potential
-- `GET /api/v1/reserves/{reserve_id}` - Cell detail with explanations
-- `GET /api/v1/reserves/boreholes` - Borehole data
-- `POST /api/v1/predictions/reserve` - On-demand reserve prediction
-
-### Production Intelligence
-- `GET /api/v1/production/forecast` - Production forecast with horizon
-- `GET /api/v1/production/risk` - Shortfall risk assessment
-- `GET /api/v1/production/history` - Historical production data
-- `POST /api/v1/predictions/production` - On-demand production prediction
-
-### Operations
-- `GET /api/v1/equipment` - Fleet status and analytics
-- `GET /api/v1/weather` - Weather observations and risk
-- `GET /api/v1/blasting` - Blasting schedule and delays
-
-### Recommendations
-- `GET /api/v1/recommendations` - Ranked corrective actions
-- `POST /api/v1/recommendations/simulate` - What-if simulation
-
-### MLOps
-- `GET /api/v1/models` - Model registry
-- `GET /api/v1/data-quality` - Data quality report
+The compose configuration uses `DATA_MODE=demo` for the demonstration environment.
 
 ---
 
-## Machine Learning
+## ⚙️ Configuration
 
-### Reserve Models
-- **Prospectivity**: XGBoost classifier with spatial block validation
-- **Grade**: XGBoost regressor for Mn percentage
-- **Thickness**: XGBoost regressor for ore thickness
-- **Resource Potential**: Monte Carlo simulation with uncertainty
+Important environment variables include:
 
-### Production Models
-- **Forecast**: XGBoost regressor with chronological validation
-- **Shortfall**: Calibrated probability model
+| Variable | Purpose | Typical default |
+|---|---|---|
+| `APP_ENV` | Application environment | `development` |
+| `DATABASE_URL` | Database connection | `sqlite:///./mangai_dev.db` |
+| `DATA_MODE` | `demo` or `live` data mode | `demo` |
+| `MODEL_DIR` | ML artifact directory | `models` |
+| `DATA_DIR` | Data directory | `data` |
+| `CORS_ORIGINS` | Allowed frontend origins | localhost frontend URLs |
+| `LOG_LEVEL` | Application logging level | `INFO` |
 
-### Validation Strategy
-- **Geological tasks**: Spatial block holdout (prevents spatial leakage)
-- **Production tasks**: Chronological train/validation/test split
-- **Metrics**: ROC-AUC, PR-AUC, F1, MAE, RMSE, R²
+### Demo Mode
 
----
+`DATA_MODE=demo` is the recommended mode for evaluation and local demonstration.
 
-## Database Schema
+It uses deterministic synthetic data and does not require a live MOIL data connection.
 
-Key entities:
-- `mine_sites` - Mine locations and boundaries
-- `geological_samples` - Surface/subsurface samples
-- `boreholes` - Borehole intervals and assays
-- `satellite_observations` - Remote sensing data
-- `weather_observations` - Weather measurements
-- `equipment` - Fleet assets
-- `equipment_events` - Equipment telemetry
-- `blasting_events` - Blasting schedule and delays
-- `production_records` - Daily production data
-- `model_versions` - ML model registry
-- `predictions` - Model predictions
-- `recommendations` - Generated recommendations
-- `data_quality_runs` - Data quality reports
+### Live Mode
+
+`DATA_MODE=live` is intended as the production-oriented path. A real deployment requires validated data sources, trained artifacts, a supported database configuration and appropriate external-service credentials/configuration.
+
+When required model artifacts are unavailable in live mode, ML-dependent endpoints should report model unavailability rather than silently presenting demo fallback results.
 
 ---
 
-## Testing
+## 🩺 Health & Readiness
 
-```bash
-# Run all tests
-python -m pytest tests/ -v
+### Health
 
-# Run specific test suites
-python -m pytest tests/backend/ -v
-python -m pytest tests/ml/ -v
-python -m pytest tests/integration/ -v
-
-# Run smoke tests
-python scripts/run_smoke_tests.py
+```http
+GET /health
 ```
 
----
+Lightweight application liveness check.
 
-## Project Structure
+### Readiness
 
-```
-MANGAI/
-├── backend/
-│   └── app/
-│       ├── main.py              # FastAPI application
-│       ├── core/                # Config, logging, security
-│       ├── db/                  # Database models and session
-│       ├── schemas/             # Pydantic schemas
-│       ├── api/v1/              # API routes
-│       ├── services/            # Business logic
-│       ├── repositories/        # Data access
-│       └── adapters/            # External data providers
-├── ml/
-│   ├── common/                  # Shared ML utilities
-│   ├── reserve/                 # Reserve intelligence models
-│   ├── production/              # Production intelligence models
-│   └── risk/                    # Risk models
-├── frontend/
-│   └── src/
-│       ├── api/                 # API client
-│       ├── components/          # Reusable components
-│       ├── pages/               # Page components
-│       ├── hooks/               # React hooks
-│       ├── types/               # TypeScript types
-│       └── utils/               # Utilities
-├── data/
-│   ├── synthetic/               # Demo datasets
-│   ├── processed/               # Processed features
-│   └── schemas/                 # Data contracts
-├── scripts/                     # Utility scripts
-├── tests/                       # Test suites
-├── models/                      # Trained model artifacts
-├── alembic/                     # Database migrations
-└── docs/                        # Documentation
----
-
-## Configuration
-
-Key environment variables (see `.env.example` for full list):
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `APP_ENV` | Environment (development/production) | development |
-| `DATABASE_URL` | Database connection string | sqlite:///./mangai_dev.db |
-| `DATA_MODE` | Data mode: `demo` or `live` | demo |
-| `MODEL_DIR` | Path to model artifacts | models |
-| `DATA_DIR` | Path to data directory | data |
-| `CORS_ORIGINS` | Comma-separated allowed CORS origins | http://localhost:5173,http://127.0.0.1:5173 |
-| `LOG_LEVEL` | Logging level (DEBUG/INFO/WARNING/ERROR) | INFO |
-
-### DATA_MODE=demo
-
-Default mode. Uses synthetic datasets shipped in `data/synthetic/`. No external services, internet connection, or ML model artifacts are required. The database defaults to a local SQLite file. This is the recommended mode for local development and demos.
-
-### DATA_MODE=live
-
-Production-intended mode. Requires:
-- A reachable PostgreSQL database (`DATABASE_URL`)
-- Trained ML model artifacts under `MODEL_DIR`
-- Real operational data
-
-In live mode, endpoints that need ML inference return `503 MODEL_UNAVAILABLE` when model artifacts are missing, instead of falling back to demo heuristics.
-
-### Database configuration
-
-- **Demo / local development:** SQLite (default). Set `DATABASE_URL=sqlite:///./mangai_dev.db`.
-- **Docker / production:** PostgreSQL. Set `DATABASE_URL=postgresql+psycopg://mangai:<password>@postgres:5432/mangai`.
-
-Apply migrations with:
-
-```bash
-alembic upgrade head
+```http
+GET /ready
 ```
 
-### Health & readiness endpoints
+Reports structured readiness information, including database/data-mode/model availability where applicable.
 
-- `GET /health` — Lightweight liveness check. Returns `{"status": "healthy", "service": "mangai-api"}`.
-- `GET /ready` — Readiness check verifying database and dependencies. Returns structured status:
+Example shape:
 
 ```json
 {
@@ -377,381 +710,226 @@ alembic upgrade head
 }
 ```
 
-`status` is `"ready"` when all required dependencies are available, otherwise `"degraded"`. In demo mode model artifacts are not required; in live mode they are.
+The exact model availability depends on the configured environment and available artifacts.
 
 ---
 
-## Data Layer
+## 🧪 Testing
 
-### Data directory structure
+MANGAI has backend, ML and integration test coverage.
 
-```
-data/
-├── raw/                  # Real data placeholder (empty until Phase 3 live data adapters)
-├── synthetic/            # Deterministic synthetic datasets (demo mode)
-│   ├── geological.csv
-│   ├── satellite_features.csv
-│   ├── boreholes.csv
-│   ├── weather.csv
-│   ├── equipment.csv
-│   ├── blasting.csv
-│   └── production.csv
-├── processed/            # Generated by the fusion + feature pipeline
-│   ├── reserve_predictions.csv
-│   └── prospectivity_map.png
-└── schemas/
-    └── datasets.json     # Column listing summary
-```
-
-All canonical schemas/contracts live in code at `ml/common/contracts.py`. The `data/schemas/datasets.json` file is a human-readable column summary that tracks the same datasets.
-
-**⚠️ All data under `data/synthetic/` is synthetic/demo data.** It is clearly labeled at every layer (see `BOUNDARY_NOTICE` in `backend/app/services/demo_data.py`). It is **NOT MOIL field-validated data** and must not be presented as official mineral reserves or operational performance.
-
-### Canonical data contracts
-
-Every major dataset is described by a machine-readable `DatasetContract` in [`ml/common/contracts.py`](ml/common/contracts.py). Each contract defines:
-
-- **Required vs. optional columns** (with nullability)
-- **Data types** (`str`, `float`, `int`, `date`)
-- **Units** (documented explicitly, e.g. `decimal degrees`, `meters`, `percent`, `metric tons`)
-- **Allowed ranges** (e.g. latitude ∈ [-90, 90], probabilities ∈ [0, 1])
-- **Categorical constraints** (e.g. formations, equipment types, delay reasons)
-- **Primary keys** and uniqueness constraints
-
-Validation utilities (`validate_dataset`, `assert_valid`, `validate_borehole_intervals`, `check_leakage`) live in [`ml/common/validation.py`](ml/common/validation.py).
-
-### Dataset inventory
-
-| Dataset | File | Primary Key | Description |
-|---------|------|-------------|-------------|
-| Geological samples | `geological.csv` | `sample_id` | Sample locations with grade (% Mn, % Fe, % SiO₂), formation, elevation, slope, depth |
-| Satellite features | `satellite_features.csv` | `sample_id` | Spectral bands (B2–B12), NDVI, NDWI, SWIR ratio, bare soil index, LST |
-| Boreholes | `boreholes.csv` | (composite) | Drilling intervals with lithology and grade per interval |
-| Weather | `weather.csv` | `date` | Daily rainfall (mm), soil moisture (fraction), temperature (°C), vegetation index |
-| Equipment fleet | `equipment.csv` | (composite) | Daily fleet operating hours, downtime, utilization, maintenance flag per equipment |
-| Equipment events | (in-memory) | `equipment_id` + `event_date` | Derived per-equipment daily events (used for DB seeding) |
-| Blasting events | `blasting.csv` | `date` | Planned blasts, delay hours, delay reason category |
-| Production | `production.csv` | `date` | Daily production (metric tons), target, gap, with weather/fleet/blasting context |
-
-### Geological + satellite fusion
-
-The raw geological and satellite datasets remain **conceptually separate**. A deterministic fusion layer (`ml/reserve/fusion.py`) aligns them on shared keys (`sample_id`, `latitude`, `longitude`) to produce the reserve feature dataset:
-
-```
-geological observations    +   satellite observations   +   terrain/context
-                    ↓
-          spatial/context alignment  (fusion.py)
-                    ↓
-          reserve feature dataset
-                    ↓
-          feature engineering  (reserve/features.py)
-                    ↓
-                        ML
-```
-
-The fusion produces:
-- `FusionResult` with matched/unmatched statistics and merge rate
-- No duplicated alignment columns (suffixes applied only on collision)
-- Supports `inner`, `left`, and `outer` join strategies
-
-### Leakage protection
-
-Reserve targets (`mn_pct`, `fe_pct`, `sio2_pct`, `ore_thickness_m`, `is_manganese`) and production targets (`production_mt`, `target_mt`, `production_gap_mt`, `shortfall`) are registered in `LEAKAGE_COLUMNS` (`ml/common/contracts.py`). The `check_leakage()` function verifies that these columns never appear in a feature matrix. Feature engineering modules exclude them via `LEAKAGE_EXCLUSIONS`.
-
-### Data generation & validation
-
-Regenerate synthetic data:
+Run everything:
 
 ```bash
-python -m ml.generate_data
+pytest
 ```
 
-Validate against contracts:
+Backend tests:
 
 ```bash
-python -m ml.common.validation  # validates all synthetic CSVs against their contracts
+pytest tests/backend -q
 ```
 
-### Seeding & idempotency
-
-Database seeding is idempotent — running it multiple times produces no duplicates:
+ML tests:
 
 ```bash
-python scripts/seed_demo.py --skip-train
+pytest tests/ml -q
 ```
 
-The `seed_demo_database()` function checks for existing rows before inserting. Use `--compact` to generate a smaller dataset for faster iteration.
-
----
-
-## Reserve AI Baseline (Phase 3)
-
-Prototype resource-intelligence pipeline for three related prediction tasks,
-trained **only on synthetic demo data**. Every output is a decision-support
-signal — **NOT official mineral reserves/resources and NOT field-validated**.
-
-### Pipeline
-
-```
-geological.csv  +  satellite_features.csv
-            ↓  canonical fusion (ml/reserve/fusion.py)
-      fused reserve table
-            ↓  curated feature matrix (ml/reserve/features.py)
-            ↓  LEAKAGE ASSERTION  (ml/reserve/spatial.assert_no_target_leakage)
-            ↓  model comparison   (ml/reserve/evaluate.py)
-            ↓  spatial-block holdout + grouped CV  (ml/reserve/spatial.py)
-      versioned artifacts + registry records
-            ↓  inference (ml/reserve/inference.py) + SHAP (ml/reserve/explain.py)
-            ↓  prototype resource potential (ml/reserve/resource_estimator.py)
-      FastAPI /reserves/* + /predictions/reserve
-```
-
-### The three prediction tasks
-
-| Task | Target | Kind | Primary metric | Candidates compared |
-|------|--------|------|----------------|---------------------|
-| Prospectivity | `is_manganese` | binary classification | ROC-AUC | LogisticRegression, RandomForest, XGBoost |
-| Mn grade | `mn_pct` | regression | RMSE | Ridge, RandomForest, XGBoost |
-| Ore thickness | `ore_thickness_m` | regression | RMSE | Ridge, RandomForest, XGBoost |
-
-All candidates share the same spatial validation; the full metric set of every
-candidate is retained in the registry. Selection uses the primary metric but
-never ignores the others (PR-AUC, F1, precision, recall, confusion matrix for
-classification; MAE, R² for regression).
-
-### Feature groups (explicit, curated — never "all numeric columns")
-
-- **Geological/terrain:** `elevation_m`, `slope_deg`, `aspect_deg`, `depth_m`
-- **Satellite bands:** `blue_b2`, `green_b3`, `red_b4`, `nir_b8`, `swir_b11`, `swir_b12`
-- **Spectral indices:** `ndvi`, `ndwi`, `swir_ratio`, `bare_soil_index`, `land_surface_temperature`
-- **Categorical:** `formation` (one-hot encoded)
-
-No production, future, or target-derived variables are used in reserve models.
-
-### Leakage protection (mandatory, automated)
-
-- `RESERVE_FORBIDDEN_COLUMNS` (`ml/reserve/features.py`) forbids, for **every**
-  task: `mn_pct`, `fe_pct`, `sio2_pct`, `is_manganese`, `ore_thickness_m`,
-  `production_mt`, `target_mt`, `production_gap_mt`, `shortfall`.
-- `assert_no_target_leakage()` runs before training and raises `ValueError` if
-  a forbidden column enters the feature matrix.
-- `check_leakage()` (Phase 2 contract validation) re-checks the matrix and its
-  result is recorded as `leakage_check_passed` in model metadata.
-
-### Validation strategy
-
-- **Primary:** spatial-block holdout — `GroupShuffleSplit` over 5×5
-  latitude/longitude blocks (`spatial_holdout_indices`, seed 42). Samples from
-  the same block never appear in both train and validation sets, so spatially
-  clustered mineralization cannot leak.
-- **Secondary:** `GroupKFold` spatial cross-validation (`grouped_cv_scores`),
-  reported as `cv_*` metrics.
-- **Diagnostic only:** random i.i.d. split (`random_split_diagnostic`). It
-  shares spatial blocks across the split and is recorded solely to quantify
-  the optimism of non-spatial validation. It is never the primary metric.
-
-### Training, artifacts, registry
+Integration tests:
 
 ```bash
-python -m scripts.train_reserve          # full candidate comparison
-python -m scripts.train_reserve --quick  # cheap smoke-test configuration
+pytest tests/integration -q
 ```
 
-- Versioned artifacts: `models/reserve/versions/<version>/` — never silently
-  overwritten (versions are `YYYY.MM.NNN`, auto-incremented per model).
-- Latest serving copies: `models/reserve/{prospectivity,grade,thickness}_*`.
-- Legacy compatibility copies: `models/reserve_xgboost.json` et al.
-- Per-model metadata sidecar (`*_meta.json`): model name, version, task,
-  algorithm, target, prediction type, feature names, feature schema hash,
-  training-data hash, validation strategy, full metrics, random seed,
-  `synthetic_data: true`, boundary notice, `status: candidate`.
-- Registry records: `models/registry/<model_name>-<version>.json`, surfaced by
-  `GET /api/v1/models`.
-
-### Inference & API
-
-- `ml/reserve/inference.py` validates artifact availability, applies the exact
-  training feature schema, and fails clearly (`FileNotFoundError`) when a model
-  artifact is missing. `maybe_predict_regressor` returns `None` instead of
-  guessing.
-- `POST /api/v1/predictions/reserve` returns the prediction plus
-  `model_version` resolved from the served artifact's training metadata
-  (never hard-coded), and the demo envelope carries `data_mode`,
-  `synthetic_data`, and the boundary notice.
-- Demo mode (`DATA_MODE=demo`) may fall back to a labelled heuristic
-  (`reserve-prototype-heuristic-001`). Live mode (`DATA_MODE=live`) raises
-  `503 MODEL_UNAVAILABLE` rather than faking predictions.
-- Explanations: SHAP feature contributions via `ml/reserve/explain.py` when
-  available, with model-level gain importance as fallback. Feature importance
-  is **not** geological causality.
-
-### Prototype resource potential
-
-Connected via `ml/reserve/resource_estimator.py`:
-
-```
-cell_area_m2 × predicted_thickness_m × density_t_per_m3 × prospectivity_probability
-```
-
-- Density is configurable (default assumption 3.6 t/m³ — an assumption, not an
-  official MOIL parameter).
-- Uncertainty is a real Monte Carlo simulation (P10/P50/P90), not fabricated.
-- Always labelled `prototype resource potential`, never official reserves.
-
-> ⚠️ All reserve metrics in this repository are computed on synthetic data.
-> They demonstrate pipeline mechanics only — never real-world MOIL performance.
-
----
-
-## Advanced Reserve Intelligence (Phase 4)
-
-Phase 4 upgrades the Phase 3 baseline into a more rigorous spatial
-resource-intelligence prototype. It preserves every Phase 1/2/3 component and
-adds: ensemble prospectivity, probability calibration, conformal prediction
-intervals, resource-uncertainty propagation, spatial prediction grids,
-data-support/extrapolation indicators, model-lifecycle management, drift
-monitoring, and a real-data ingestion skeleton.
-
-### Architecture
-
-```
-Phase 3 baseline models
-        ↓  Phase 4 ensemble (ml/reserve/ensemble.py)
-  weighted soft-voting: LogReg + RF + XGB
-  weights ∝ OOF spatial-CV ROC-AUC
-  calibration fitted on OOF ensemble probabilities (isotonic|sigmoid, by Brier)
-        ↓  probability calibration (ml/reserve/calibration.py)
-  out-of-fold calibration → no calibration leakage
-  reliability diagrams + Brier score → models/reserve/evaluation/
-        ↓  conformal prediction intervals (ml/reserve/conformal.py)
-  split-conformal from grouped-OOF residuals
-  grade + ore-thickness: [pred − q, pred + q], 90% coverage
-  thickness clipped at 0 (documented)
-        ↓  spatial prediction grid (ml/reserve/grid.py)
-  nearest-observation covariate context (not fabricated)
-  per-cell probability/grade/thickness + intervals + resource potential
-        ↓  resource-uncertainty propagation (resource_estimator.py)
-  conformal thickness interval → Monte Carlo; configurable density assumption
-        ↓  data support + extrapolation (ml/reserve/support.py)
-  standardized feature distance + observation proximity + completeness
-        ↓  model lifecycle (ml/common/registry.py)
-  candidate → validated → champion (+ retired); deterministic criteria
-        ↓  drift monitoring (ml/common/drift.py)
-  PSI / mean-percentile shift / missingness / categorical TV; warn-only
-        ↓  real-data ingestion skeleton (ml/ingestion/)
-  CSV/Parquet → load → validate (Phase 2 contracts) → normalize → quality → process
-```
-
-### Ensemble & calibration
-
-- **Ensemble**: `ReserveEnsemble` (weighted soft-voting). Weights ∝
-  `max(oof_roc_auc − 0.5, 0.01)`, normalized, from out-of-fold spatial
-  predictions. The ensemble is only preferred when its ROC-AUC on the same
-  spatial holdout is at least as good as the best single baseline.
-- **Calibration**: monotone calibrator (isotonic or Platt/sigmoid) fitted on
-  pooled OOF ensemble probabilities; the method with the lower Brier score is
-  selected. No calibration leakage (holdout never used for fitting).
-- **Evaluation artifacts** saved to `models/reserve/evaluation/`: reliability
-  diagram PNG + per-bin calibration JSON consuming the actual predictions.
-
-### Conformal prediction intervals
-
-Split-conformal intervals from grouped out-of-fold absolute residuals on the
-training blocks (90% target → `ceil((n+1)·0.9)/n` rank). Interval for point
-`ŷ` is `[ŷ − q, ŷ + q]`; empirical coverage reported on the untouched spatial
-holdout. Ore-thickness lower bound clipped at zero (documented as conservative).
-Coverage is empirical under grouped-exchangeability, not a field guarantee.
-
-### Resource-uncertainty propagation
-
-`estimate_resource_potential_with_intervals` propagates the conformal thickness
-interval via a fitted normal (5th/95th percentiles → interval bounds) and
-Monte Carlo. Density stays configurable; if no density standard deviation is
-given, density is a fixed assumption (no invented geological density
-distribution). Only model-derived uncertainty is propagated.
-
-### Spatial prediction grid
-
-`generate_prediction_grid(bbox, cells_per_side)` — deterministic grid (capped
-40×40). Each cell reuses terrain + satellite covariates from the nearest
-fused observation (available context, not fabricated geology). Cells beyond the
-search radius return a `no_context` data-support state. Every scored cell
-carries calibrated probability, grade/thickness + intervals, prototype
-resource potential, data support, and extrapolation level.
-
-### Data support vs model uncertainty (separate concepts)
-
-- **Model uncertainty**: calibration reliability + prediction-interval width.
-- **Data support**: standardized feature distance (mean |z|; thresholds are
-  documented heuristics) → `well_supported` / `moderate_support` /
-  `extrapolation_warning`; plus nearest-observation distance, observations
-  within 5 km, feature completeness. A warning mechanism only.
-
-### Model lifecycle
-
-`candidate → validated → champion` (+ `retired`) in `ml/common/registry.py`.
-Promotion requires: `leakage_check_passed`, spatial-block validation, required
-metrics present, artifact file exists. Champion promotion demotes the previous
-champion (recorded as `previous_champion`) and appends `promotion_history`.
-Training always writes `candidate`; promotion is explicit. No overwrites.
-
-### Drift monitoring foundation
-
-`compute_feature_drift(reference, current)`: PSI, mean/median/percentile
-shift, missingness delta, categorical total-variation. Configurable
-thresholds → `warning` (never auto-invalidates). A foundation for later MLOps.
-
-### Real-data ingestion skeleton
-
-`ml/ingestion/` — `DataSource` protocol with `CsvSource`/`ParquetSource` and an
-`IngestionPipeline`: load → validate against Phase 2 contracts → normalize →
-quality-check → process. Demo stays offline; real MOIL data supplied later.
-
-### API changes
-
-- `GET /api/v1/reserves/grid` — spatial prediction grid.
-- `GET /api/v1/models/compare` — model-comparison view.
-- `POST /api/v1/predictions/reserve` adds `calibrated_probability`,
-  `base_probabilities`, `grade_interval`, `thickness_interval`,
-  `extrapolation`, `data_support_detail` (all optional → `None` if unavailable).
-- Model-registry responses include lifecycle status, `promoted_at`,
-  `previous_champion`, artifact status.
-
-### Running Phase 4
+Verbose test run:
 
 ```bash
-python -m scripts.train_reserve_advanced          # full pipeline + ensemble
-python -m scripts.train_reserve_advanced --quick  # cheap smoke configuration
+python -m pytest tests/ -v
+```
 
-python -c "from backend.app.services.model_registry import ModelRegistryService; ModelRegistryService().promote('reserve_prospectivity','<version>','champion')"
+Smoke tests:
+
+```bash
+python scripts/run_smoke_tests.py
+```
+
+Lint:
+
+```bash
+ruff check .
+```
+
+### Submission Checkpoint Validation
+
+The SIH prototype checkpoint was validated with:
+
+- **207 tests passing**
+- **Ruff checks passing**
+- Clean Git working tree at the checkpoint
+
+These numbers describe the validated prototype checkpoint and may change with subsequent development commits.
+
+---
+
+## 📁 Project Structure
+
+```text
+MANGAI/
+├── backend/
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── api/              # FastAPI routes
+│   │   ├── core/             # Configuration / security / logging
+│   │   ├── db/               # SQLAlchemy models / sessions
+│   │   ├── schemas/          # Pydantic schemas
+│   │   ├── services/         # Business logic
+│   │   ├── repositories/     # Data access
+│   │   └── adapters/         # External data providers
+│   ├── requirements.txt
+│   └── Dockerfile
+│
+├── ml/
+│   ├── common/               # Contracts, validation, monitoring
+│   ├── reserve/              # Reserve intelligence / spatial ML
+│   ├── production/           # Production forecasting / risk
+│   └── risk/                 # Risk modelling utilities
+│
+├── frontend/
+│   ├── src/
+│   │   ├── api/              # API client
+│   │   ├── components/        # Dashboard components
+│   │   ├── hooks/             # React hooks
+│   │   ├── pages/             # Page-level UI
+│   │   ├── styles/            # Dashboard styling
+│   │   ├── types/             # TypeScript API/domain types
+│   │   └── utils/             # Frontend utilities
+│   ├── package.json
+│   └── Dockerfile
+│
+├── data/
+│   ├── raw/                   # Real-data placeholder
+│   ├── synthetic/             # Demo datasets
+│   ├── processed/             # Generated outputs
+│   └── schemas/               # Dataset summaries/contracts
+│
+├── models/                    # Model artifacts / registry metadata
+├── scripts/                   # Training, seeding and smoke-test scripts
+├── tests/                     # Backend / ML / integration tests
+├── alembic/                   # Database migrations
+├── docs/                      # Project documentation
+├── docker-compose.yml
+├── .env.example
+└── README.md
 ```
 
 ---
 
-## SIH Demo Narrative
+## 🔐 Safety, Governance & Decision Boundary
 
-1. **Discover**: Open Reserve Intelligence and explore the prospectivity heatmap
-2. **Investigate**: Click a high-prospectivity cell to view grade, thickness, confidence, and contributing factors
-3. **Forecast**: View the next 7 days production forecast against target
-4. **Diagnose**: Examine equipment, weather, and blasting drivers behind shortfall risk
-5. **Act**: Review ranked corrective actions with evidence and estimated impact
-6. **Trust**: Inspect data quality, model version, and validation metrics
-7. **Scale**: MOIL data can replace demo adapters without rewriting the core application
+MANGAI is designed as a **human-in-the-loop decision-support platform**.
 
----
+The system should not independently:
 
-## Scientific / Operational Boundary
+- Control mining equipment
+- Execute blasting operations
+- Declare an official mineral reserve
+- Override mine safety procedures
+- Replace qualified geologists, mining engineers or operational decision-makers
 
-MANGAI is a **decision-support prototype** until validated with:
-- Real MOIL operational data
-- Domain expert review
-- Applicable mining regulations
-- Operational system integration
-
-**Official mineral-resource/reserve classification, mine design, blasting safety, equipment dispatch, and production commitments must remain under qualified human and organizational control.**
+Recommendations are intended to provide **evidence and prioritization**, while final operational decisions remain with authorized personnel.
 
 ---
 
-## License
+## 🗺️ Roadmap
 
-This project is developed for SIH 2026 (Smart India Hackathon) under Ministry of Steel / MOIL Ltd.
+The prototype architecture is designed to support future deployment with real mine data.
+
+### Near-term
+
+- Connect validated MOIL datasets
+- Add mine-specific calibration
+- Improve real satellite/AOI ingestion
+- Expand operational telemetry ingestion
+- Strengthen model monitoring and alerting
+- Add role-based access and audit trails
+
+### Production-scale direction
+
+- Multi-mine / multi-site support
+- Streaming equipment telemetry
+- Automated data-quality pipelines
+- Feature store / centralized model-serving architecture
+- Continuous model evaluation and drift monitoring
+- GIS layers from validated mine-survey sources
+- Integration with enterprise mining systems
+- Role-specific dashboards for geology, production and operations
+
+---
+
+## 🏆 SIH Demonstration Narrative
+
+A recommended demonstration flow is:
+
+```text
+1. Executive Overview
+        ↓
+2. Reserve Intelligence
+        ↓
+3. Production Forecast + Shortfall Risk
+        ↓
+4. Operations Intelligence
+        ↓
+5. Recommendations / What-if Analysis
+        ↓
+6. Model Monitoring
+        ↓
+7. MANGAI AI Assistant
+        ↓
+8. Reports
+```
+
+This flow demonstrates the complete decision chain:
+
+**Observe → Predict → Explain → Assess Risk → Recommend → Monitor → Report**
+
+---
+
+## 📌 Submission Checkpoint
+
+The repository contains a protected SIH prototype checkpoint tagged as:
+
+```text
+v1.0-submission
+```
+
+The tag represents the frozen prototype state before subsequent documentation/presentation work. The active branch may contain documentation commits made after that tag.
+
+To inspect the exact tagged checkpoint:
+
+```bash
+git fetch --tags
+git checkout v1.0-submission
+```
+
+To return to the active branch:
+
+```bash
+git checkout ui-targeted-fixes-2026-09-13
+```
+
+---
+
+## 👨‍💻 Project
+
+**MANGAI — Manganese AI**
+
+Built as a Smart India Hackathon prototype for **MOIL Limited / Ministry of Steel**.
+
+Repository: `https://github.com/Parshant5625/MANGAI`
+
+---
+
+## 📄 License
+
+This repository is a project prototype. Add the appropriate project/open-source license here if required by the final submission or deployment context.
