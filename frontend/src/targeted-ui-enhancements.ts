@@ -25,20 +25,22 @@ function enhanceReserve() {
   const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>(".mc-tabs button"));
   const mapPanel = page?.querySelector<HTMLElement>(".mc-map-panel");
   if (!page || !mapPanel || tabs.length !== 4) return;
+  const reservePage = page;
+  const reserveMapPanel = mapPanel;
   tabs.forEach((tab, index) => {
     if (tab.dataset.targetedBound === "reserve") return;
     tab.dataset.targetedBound = "reserve";
     tab.addEventListener("click", () => setTimeout(() => renderReserveMode(index), 40));
   });
   function renderReserveMode(index: number) {
-    if (page.dataset.targetedReserveMode === String(index)) return;
-    page.dataset.targetedReserveMode = String(index);
-    const map = mapPanel.querySelector<HTMLElement>(".mc-map-wrap");
-    const controls = mapPanel.querySelector<HTMLElement>(".mc-map-controls-inline");
+    if (reservePage.dataset.targetedReserveMode === String(index)) return;
+    reservePage.dataset.targetedReserveMode = String(index);
+    const map = reserveMapPanel.querySelector<HTMLElement>(".mc-map-wrap");
+    const controls = reserveMapPanel.querySelector<HTMLElement>(".mc-map-controls-inline");
     if (index === 0) {
       if (map) map.style.display = "block";
       if (controls) controls.style.display = "flex";
-      mapPanel.querySelector(".targeted-generated-panel")?.remove();
+      reserveMapPanel.querySelector(".targeted-generated-panel")?.remove();
       return;
     }
     if (map) map.style.display = "none";
@@ -48,7 +50,7 @@ function enhanceReserve() {
       : index === 2
         ? `<div class="targeted-section-title">Reserve Estimate Distribution</div><div class="targeted-bars"><div><span>Measured</span><i style="width:42%"></i><b>42%</b></div><div><span>Indicated</span><i style="width:34%"></i><b>34%</b></div><div><span>Inferred</span><i style="width:24%"></i><b>24%</b></div></div><div class="targeted-data-grid"><div><small>Resource potential</small><b>1.24 Bt</b></div><div><small>Average probability</small><b>96%</b></div><div><small>Average thickness</small><b>5.7 m</b></div></div>`
         : `<div class="targeted-layer-grid"><article><b>Probability</b><span>Prospectivity likelihood</span><em>0–100%</em></article><article><b>Grade</b><span>Predicted Mn grade</span><em>Low → High</em></article><article><b>Thickness</b><span>Predicted ore thickness</span><em>m</em></article><article><b>Confidence</b><span>Model support level</span><em>Low → High</em></article></div><div class="targeted-layer-note">Satellite + geology fusion is driving the current prospectivity field. Use Map View to select a target and inspect its evidence.</div>`;
-    addGenerated(mapPanel, content);
+    addGenerated(reserveMapPanel, content);
   }
   const active = tabs.findIndex((tab) => tab.classList.contains("active"));
   renderReserveMode(active < 0 ? 0 : active);
@@ -58,18 +60,19 @@ function enhanceProduction() {
   const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>(".mc-tabs button"));
   const panel = document.querySelector<HTMLElement>(".mc-chart-panel");
   if (!panel || tabs.length !== 4) return;
+  const productionPanel = panel;
   tabs.forEach((tab, index) => {
     if (tab.dataset.targetedBound === "production") return;
     tab.dataset.targetedBound = "production";
     tab.addEventListener("click", () => setTimeout(() => void renderProductionMode(index), 60));
   });
   async function renderProductionMode(index: number) {
-    if (panel.dataset.targetedProductionMode === String(index)) return;
-    panel.dataset.targetedProductionMode = String(index);
-    const chart = panel.querySelector<HTMLElement>(".recharts-responsive-container");
+    if (productionPanel.dataset.targetedProductionMode === String(index)) return;
+    productionPanel.dataset.targetedProductionMode = String(index);
+    const chart = productionPanel.querySelector<HTMLElement>(".recharts-responsive-container");
     if (index === 0) {
       if (chart) chart.style.display = "block";
-      panel.querySelector(".targeted-generated-panel")?.remove();
+      productionPanel.querySelector(".targeted-generated-panel")?.remove();
       return;
     }
     if (chart) chart.style.display = "none";
@@ -91,9 +94,9 @@ function enhanceProduction() {
         const blastLevel = operations.risk_signals?.find((signal: AnyRecord) => String(signal.source).toLowerCase().includes("blast"))?.level ?? "MEDIUM";
         html = `<div class="targeted-data-grid"><div><small>Planned blasts</small><b>${num(operations.planned_blasts_7d, 0)}</b></div><div><small>7-day delay</small><b>${num(operations.blasting_delay_7d_hours)} h</b></div><div><small>Blast risk</small><b>${esc(blastLevel)}</b></div></div><div class="targeted-section-title">Blast / production pressure</div><div class="targeted-bars"><div><span>Delay exposure</span><i style="width:${Math.min(100, Number(operations.blasting_delay_7d_hours ?? 0) * 6)}%"></i><b>${num(operations.blasting_delay_7d_hours)} h</b></div><div><span>Aligned production days</span><i style="width:${Math.min(100, Number(operations.data_coverage?.aligned_days ?? 0) / 30 * 100)}%"></i><b>${num(operations.data_coverage?.aligned_days, 0)}/30</b></div></div>`;
       }
-      addGenerated(panel, html);
+      addGenerated(productionPanel, html);
     } catch {
-      addGenerated(panel, `<div class="targeted-error">Unable to load this analysis. Check that the MANGAI backend is running.</div>`);
+      addGenerated(productionPanel, `<div class="targeted-error">Unable to load this analysis. Check that the MANGAI backend is running.</div>`);
     }
   }
   const active = tabs.findIndex((tab) => tab.classList.contains("active"));
